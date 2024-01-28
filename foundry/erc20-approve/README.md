@@ -1,5 +1,5 @@
-# WETH Permit Hack
+# Front run ERC20 approve
 
 ```shell
-forge test
+forge test -vvv
 ```

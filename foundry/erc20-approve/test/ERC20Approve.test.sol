@@ -14,6 +14,11 @@ contract ERC20ApproveTest is Test {
         token.mint(owner, 2000);
     }
 
+    // Front run ERC20 approve
+    // 1. Owner approves 1000 
+    // 2. Spender spend 1000
+    // 3. Owner updates approval to 100
+    // 4. Spender spend 100
     function test() public {
         // Owner approves 1000
         vm.prank(owner);
