@@ -2,8 +2,8 @@
 pragma solidity 0.8.24;
 
 // 1. Op faucet and network setup
-// 2. Deploy L2 contract
-// 3. Deploy L1 contract
+// 2. Deploy L1 contract
+// 3. Deploy L2 contract
 // 4. Set L1 greeter on L2
 // 5. Set L2 greeter on L1
 // 6. Send message to L2
@@ -20,6 +20,8 @@ interface ICrossDomainMessenger {
     ) external;
 }
 
+// L1 - 0xCDE505e2FDaA0644cfc67D0077BEEf915D81c312
+// L2 - 0xfb471aDA6f0Cb0eb50731d8C18e2C0F2A1652466
 contract Greeter {
     // ETH Sepolia messenger - L1 0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef
     // OP Sepolia messenger  - L2 0x4200000000000000000000000000000000000007
