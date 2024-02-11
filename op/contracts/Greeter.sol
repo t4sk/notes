@@ -20,14 +20,16 @@ interface ICrossDomainMessenger {
     ) external;
 }
 
-// L1 - 0xCDE505e2FDaA0644cfc67D0077BEEf915D81c312
-// L2 - 0xfb471aDA6f0Cb0eb50731d8C18e2C0F2A1652466
 contract Greeter {
     // ETH Sepolia messenger - L1 0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef
     // OP Sepolia messenger  - L2 0x4200000000000000000000000000000000000007
     address public immutable MESSENGER;
+    // Old
     // L1 - 0x0f3ed00838a3180E32707D5997184f7AEa00433d
     // L2 - 0x034D015DBA1A960CA3b92C8d0Bd21b84fbbc507f
+    // New
+    // L1 - 0xCDE505e2FDaA0644cfc67D0077BEEf915D81c312
+    // L2 - 0xfb471aDA6f0Cb0eb50731d8C18e2C0F2A1652466
     address public remote_greeter;
     mapping(address => string) public greetings;
 
