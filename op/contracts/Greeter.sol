@@ -20,6 +20,16 @@ interface ICrossDomainMessenger {
     ) external;
 }
 
+// Send L1 -> L2
+// https://sepolia.etherscan.io/tx/0x55716ee249fa9c1a2125c6705434ffc1cbbda34fdeeebc1a0a5a632325b3e782
+// 1. L2 Greeter.send
+// 2. L1 prove message (OptimismPortal.proveWithdrawalTransaction)
+// 3. Wait challenge period (7 days on mainnet)
+// 4. L1 finalize message (OptimismPortal.finalizeWithdrawalTransaction)
+
+// OptimismPortal - Sepolia
+// 0x16Fc5058F25648194471939df75CF27A2fdC48BC
+
 contract Greeter {
     // ETH Sepolia messenger - L1 0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef
     // OP Sepolia messenger  - L2 0x4200000000000000000000000000000000000007
@@ -74,3 +84,4 @@ contract Greeter {
 // TODO: how is message relayed from OP to ETH?
 // TODO: how to send ETH between L1 and L2
 // TODO: how to send ERC20 between L1 and L2
+// TODO: L2 -> L1 tx hardway
