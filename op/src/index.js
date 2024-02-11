@@ -11,6 +11,12 @@ const L1_CHAIN_ID = 11155111
 // 11155420 for OP Sepolia, 10 for OP Mainnet
 const L2_CHAIN_ID = 11155420
 
+const WAIT_TIME = 5 * 60
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(() => resolve(), ms))
+}
+
 async function main() {
   // Create RPC providers and wallet
   const l1_provider = new ethers.providers.StaticJsonRpcProvider(L1_RPC)
@@ -35,7 +41,7 @@ async function main() {
 
   // Prove the message on L1
   console.log("Prove message on L1...")
-  await messenger.proveMessage(L2_TX)
+  // await messenger.proveMessage(L2_TX)
 
   // Wait until the message is ready for relay
   // NOTE:
@@ -48,6 +54,10 @@ async function main() {
     optimism.MessageStatus.READY_FOR_RELAY
   )
 
+  console.log(`Sleep ${WAIT_TIME} seconds`)
+  await sleep(WAIT_TIME * 1000)
+
+  // FIX: withdrawal index 0 out of bounds. There are 0 withdrawals
   // Relay the message on L1
   console.log("Finalize...")
   await messenger.finalizeMessage(L2_TX)

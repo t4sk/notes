@@ -27,6 +27,7 @@ interface ICrossDomainMessenger {
 // 3. Wait challenge period (7 days on mainnet)
 // 4. L1 finalize message (OptimismPortal.finalizeWithdrawalTransaction)
 
+// L1CrossDomainMessenger.sendMessage -> OptimismPortal.depositTransaction
 // OptimismPortal - Sepolia
 // 0x16Fc5058F25648194471939df75CF27A2fdC48BC
 
