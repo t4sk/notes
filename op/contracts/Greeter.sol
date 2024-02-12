@@ -20,7 +20,7 @@ interface ICrossDomainMessenger {
     ) external;
 }
 
-// Send L1 -> L2
+// Send L2 -> L1
 // https://sepolia.etherscan.io/tx/0x55716ee249fa9c1a2125c6705434ffc1cbbda34fdeeebc1a0a5a632325b3e782
 // 1. L2 Greeter.send
 // 2. L1 prove message (OptimismPortal.proveWithdrawalTransaction)
