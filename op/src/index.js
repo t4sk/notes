@@ -57,7 +57,6 @@ async function main() {
   console.log(`Sleep ${WAIT_TIME} seconds`)
   await sleep(WAIT_TIME * 1000)
 
-  // FIX: withdrawal index 0 out of bounds. There are 0 withdrawals
   // Relay the message on L1
   console.log("Finalize...")
   await messenger.finalizeMessage(L2_TX)
