@@ -11,7 +11,7 @@ const L1_CHAIN_ID = 11155111
 // 11155420 for OP Sepolia, 10 for OP Mainnet
 const L2_CHAIN_ID = 11155420
 
-const WAIT_TIME = 5 * 60
+const WAIT_TIME = 60
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(() => resolve(), ms))
@@ -41,7 +41,7 @@ async function main() {
 
   // Prove the message on L1
   console.log("Prove message on L1...")
-  // await messenger.proveMessage(L2_TX)
+  await messenger.proveMessage(L2_TX)
 
   // Wait until the message is ready for relay
   // NOTE:

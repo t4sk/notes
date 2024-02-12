@@ -83,6 +83,5 @@ contract Greeter {
 
 // TODO: how is message relayed from ETH to OP?
 // TODO: how is message relayed from OP to ETH?
-// TODO: how to send ETH between L1 and L2
 // TODO: how to send ERC20 between L1 and L2
 // TODO: L2 -> L1 tx hardway
