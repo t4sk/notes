@@ -30,6 +30,11 @@ const ERC20_ABI = [
   },
 ]
 
+// deposit tx hash
+// https://sepolia.otterscan.io/tx/0x075ca7829ed3b30dbdd2fe4cf3b5cd77e83b34134bbbed4a71caa13a4cbd6df2/trace
+// L1StandardBridge.depositERC20
+// -> L1CrossDomainMessenger.sendMessage
+//    -> OptimismPortal.depositTransaction
 async function main() {
   // Create RPC providers and wallet
   const l1_provider = new ethers.providers.StaticJsonRpcProvider(L1_RPC)
