@@ -292,6 +292,7 @@ abstract contract StandardBridge is Initializable {
             OptimismMintableERC20(_localToken).mint(_to, _amount);
         } else {
             deposits[_localToken][_remoteToken] = deposits[_localToken][_remoteToken] - _amount;
+            // TODO: where is token coming in from?
             IERC20(_localToken).safeTransfer(_to, _amount);
         }
 

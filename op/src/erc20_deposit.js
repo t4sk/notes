@@ -35,6 +35,7 @@ const ERC20_ABI = [
 // L1StandardBridge.depositERC20
 // -> L1CrossDomainMessenger.sendMessage (L2StandardBridge.finalizeBridgeERC20)
 //    -> OptimismPortal.depositTransaction
+// TODO: OptimisticMintableERC20
 async function main() {
   // Create RPC providers and wallet
   const l1_provider = new ethers.providers.StaticJsonRpcProvider(L1_RPC)

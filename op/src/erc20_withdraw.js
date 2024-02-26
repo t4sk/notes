@@ -30,11 +30,19 @@ const ERC20_ABI = [
   },
 ]
 
-// deposit tx hash
-// https://sepolia.otterscan.io/tx/0x075ca7829ed3b30dbdd2fe4cf3b5cd77e83b34134bbbed4a71caa13a4cbd6df2/trace
-// L1StandardBridge.depositERC20
-// -> L1CrossDomainMessenger.sendMessage
-//    -> OptimismPortal.depositTransaction
+// Withdraw from L2 tx hash
+// https://sepolia-optimism.etherscan.io/tx/0x5237fc420ee0fb376d29a25cdb114335a1a610b75e6468a08092df446d349c86
+// L2StandardBridge.withdraw
+// -> CrossDomainMessenger.sendMessage(L1StandardBridge.finalizeBridgeERC20)
+
+// Prove withdrawal on L1
+// https://sepolia.etherscan.io/tx/0x633599baec6b617d5acf468c49d9ee992c241c8f888270f3352b6dee919cb89b
+// OptimismPortal.proveWithdrawalTransaction
+
+// Finalize withdrawal on L1
+// https://sepolia.etherscan.io/tx/0xdc070d1241068ab8f2c647116ac6e74e999d0d4c749e06b24b387fa8dc005046
+// OptimismPortal.finalizeWithdrawalTransaction
+
 async function main() {
   // Create RPC providers and wallet
   const l1_provider = new ethers.providers.StaticJsonRpcProvider(L1_RPC)
