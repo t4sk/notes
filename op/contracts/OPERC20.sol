@@ -19,6 +19,14 @@ contract OPERC20 is ERC20, IOptimismMintableERC20 {
     address public immutable remoteToken;
     address public immutable bridge;
 
+    event Mint(address indexed account, uint256 amount);
+    event Burn(address indexed account, uint256 amount);
+
+    modifier onlyBridge() {
+        require(msg.sender == bridge, "not bridge");
+        _;
+    }
+
     constructor(address _remoteToken, address _bridge) {
         remoteToken = _remoteToken;
         bridge = _bridge;
@@ -31,5 +39,15 @@ contract OPERC20 is ERC20, IOptimismMintableERC20 {
         // Interface corresponding to the updated OptimismMintableERC20 (this contract).
         bytes4 iface3 = type(IOptimismMintableERC20).interfaceId;
         return _interfaceId == iface1 || _interfaceId == iface3;
+    }
+
+    function mint(address dst, uint256 amount) public override(ERC20, IOptimismMintableERC20) onlyBridge {
+        mint(dst, amount);
+        emit Mint(dst, amount);
+    }
+
+    function burn(address src, uint256 amount) public override(ERC20, IOptimismMintableERC20) onlyBridge {
+        burn(src, amount);
+        emit Burn(src, amount);
     }
 }

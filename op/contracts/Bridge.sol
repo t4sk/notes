@@ -67,13 +67,13 @@ interface IERC20 {
     function transferFrom(address src, address dst, uint256 amount) external returns (bool);
 }
 
-// 0xC05d24b61d91b914D6f51A3Bd1AEC62cb42B04dD
+// 0x9EC35f70d03b84a62E688a1aec525bCb73A9A4ED
 contract L1Bridge {
     // 0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1
     address public immutable l1_bridge;
     // 0x230c88c6EdaA9D19Ec904ab75b0D506Cbd81CaF6
     address public immutable l1_token;
-    // 0x3825dc11Ad0da8f2788c52bAA9672Cf38B7A0e78
+    // 0xd0e76D0ea91f25Ce0Ad3e48e3CeD94d98806Fe6d
     address public immutable l2_token;
 
     constructor(address _l1_bridge, address _l1_token, address _l2_token) {
@@ -107,9 +107,9 @@ contract L1Bridge {
     }
 }
 
-// 0xffC0F11c92F4E2e50b3f72Fd32BB3d034Ac77BDc
+// 0x01d04e9A7480a4E62C953737753697D5D73E6D3e
 contract L2Bridge {
-    // 0x4200000000000000000000000000000000000010 
+    // 0x4200000000000000000000000000000000000010
     address public immutable l2_bridge;
     address public immutable l1_token;
     address public immutable l2_token;
