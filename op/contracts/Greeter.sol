@@ -13,11 +13,7 @@ pragma solidity 0.8.24;
 
 interface ICrossDomainMessenger {
     function xDomainMessageSender() external view returns (address);
-    function sendMessage(
-        address target,
-        bytes calldata message,
-        uint32 gasLimit
-    ) external;
+    function sendMessage(address target, bytes calldata message, uint32 gasLimit) external;
 }
 
 // Send L2 -> L1
@@ -53,10 +49,7 @@ contract Greeter {
     }
 
     function set(address sender, string memory greeting) external {
-        require(
-            msg.sender == MESSENGER,
-            "Greeter: Caller must be the CrossDomainMessenger"
-        );
+        require(msg.sender == MESSENGER, "Greeter: Caller must be the CrossDomainMessenger");
         require(
             ICrossDomainMessenger(MESSENGER).xDomainMessageSender() == remote_greeter,
             "Greeter: Remote sender must be the remote greeter"
@@ -68,13 +61,7 @@ contract Greeter {
     function send(string memory greeting) external {
         ICrossDomainMessenger(MESSENGER).sendMessage({
             target: remote_greeter,
-            message: abi.encodeCall(
-                this.set,
-                (
-                    msg.sender,
-                    greeting
-                )
-            ),
+            message: abi.encodeCall(this.set, (msg.sender, greeting)),
             // TODO: gas fee
             gasLimit: 200000
         });

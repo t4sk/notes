@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { Predeploys } from "../libraries/Predeploys.sol";
-import { OptimismPortal } from "./OptimismPortal.sol";
-import { CrossDomainMessenger } from "../universal/CrossDomainMessenger.sol";
-import { Semver } from "../universal/Semver.sol";
+import {Predeploys} from "../libraries/Predeploys.sol";
+import {OptimismPortal} from "./OptimismPortal.sol";
+import {CrossDomainMessenger} from "../universal/CrossDomainMessenger.sol";
+import {Semver} from "../universal/Semver.sol";
 
 /// @custom:proxied
 /// @title L1CrossDomainMessenger
@@ -21,7 +21,7 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, Semver {
     /// @custom:semver 1.5.1
     /// @notice Constructs the L1CrossDomainMessenger contract.
     constructor() Semver(1, 5, 1) CrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER) {
-        initialize({ _portal: OptimismPortal(payable(0)) });
+        initialize({_portal: OptimismPortal(payable(0))});
     }
 
     /// @notice Initializes the contract.
@@ -38,7 +38,7 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, Semver {
 
     /// @inheritdoc CrossDomainMessenger
     function _sendMessage(address _to, uint64 _gasLimit, uint256 _value, bytes memory _data) internal override {
-        PORTAL.depositTransaction{ value: _value }(_to, _value, _gasLimit, false, _data);
+        PORTAL.depositTransaction{value: _value}(_to, _value, _gasLimit, false, _data);
     }
 
     /// @inheritdoc CrossDomainMessenger

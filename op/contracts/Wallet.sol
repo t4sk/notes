@@ -12,11 +12,7 @@ pragma solidity 0.8.24;
 
 interface ICrossDomainMessenger {
     function xDomainMessageSender() external view returns (address);
-    function sendMessage(
-        address target,
-        bytes calldata message,
-        uint32 gasLimit
-    ) external payable;
+    function sendMessage(address target, bytes calldata message, uint32 gasLimit) external payable;
 }
 
 contract Wallet {
@@ -45,7 +41,7 @@ contract Wallet {
     }
 
     function withdraw() external {
-        (bool ok, ) = msg.sender.call{value: address(this).balance}("");
+        (bool ok,) = msg.sender.call{value: address(this).balance}("");
         require(ok, "call failed");
     }
 }

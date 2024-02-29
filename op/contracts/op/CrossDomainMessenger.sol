@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { SafeCall } from "../libraries/SafeCall.sol";
-import { Hashing } from "../libraries/Hashing.sol";
-import { Encoding } from "../libraries/Encoding.sol";
-import { Constants } from "../libraries/Constants.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {SafeCall} from "../libraries/SafeCall.sol";
+import {Hashing} from "../libraries/Hashing.sol";
+import {Encoding} from "../libraries/Encoding.sol";
+import {Constants} from "../libraries/Constants.sol";
 
 /// @custom:legacy
 /// @title CrossDomainMessengerLegacySpacer0
@@ -215,10 +215,7 @@ abstract contract CrossDomainMessenger is
         uint256 _value,
         uint256 _minGasLimit,
         bytes calldata _message
-    )
-        external
-        payable
-    {
+    ) external payable {
         (, uint16 version) = Encoding.decodeVersionedNonce(_nonce);
         require(version < 2, "CrossDomainMessenger: only version 0 or 1 messages are supported at this time");
 

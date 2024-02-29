@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import { SafeCall } from "src/libraries/SafeCall.sol";
-import { L2OutputOracle } from "src/L1/L2OutputOracle.sol";
-import { SystemConfig } from "src/L1/SystemConfig.sol";
-import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
-import { Constants } from "src/libraries/Constants.sol";
-import { Types } from "src/libraries/Types.sol";
-import { Hashing } from "src/libraries/Hashing.sol";
-import { SecureMerkleTrie } from "src/libraries/trie/SecureMerkleTrie.sol";
-import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
-import { ResourceMetering } from "src/L1/ResourceMetering.sol";
-import { ISemver } from "src/universal/ISemver.sol";
-import { Constants } from "src/libraries/Constants.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {SafeCall} from "src/libraries/SafeCall.sol";
+import {L2OutputOracle} from "src/L1/L2OutputOracle.sol";
+import {SystemConfig} from "src/L1/SystemConfig.sol";
+import {SuperchainConfig} from "src/L1/SuperchainConfig.sol";
+import {Constants} from "src/libraries/Constants.sol";
+import {Types} from "src/libraries/Types.sol";
+import {Hashing} from "src/libraries/Hashing.sol";
+import {SecureMerkleTrie} from "src/libraries/trie/SecureMerkleTrie.sol";
+import {AddressAliasHelper} from "src/vendor/AddressAliasHelper.sol";
+import {ResourceMetering} from "src/L1/ResourceMetering.sol";
+import {ISemver} from "src/universal/ISemver.sol";
+import {Constants} from "src/libraries/Constants.sol";
 
 /// @custom:proxied
 /// @title OptimismPortal
@@ -107,11 +107,7 @@ contract OptimismPortal is Initializable, ResourceMetering, ISemver {
     /// @param _l2Oracle Contract of the L2OutputOracle.
     /// @param _systemConfig Contract of the SystemConfig.
     /// @param _superchainConfig Contract of the SuperchainConfig.
-    function initialize(
-        L2OutputOracle _l2Oracle,
-        SystemConfig _systemConfig,
-        SuperchainConfig _superchainConfig
-    )
+    function initialize(L2OutputOracle _l2Oracle, SystemConfig _systemConfig, SuperchainConfig _superchainConfig)
         public
         initializer
     {
@@ -207,10 +203,7 @@ contract OptimismPortal is Initializable, ResourceMetering, ISemver {
         uint256 _l2OutputIndex,
         Types.OutputRootProof calldata _outputRootProof,
         bytes[] calldata _withdrawalProof
-    )
-        external
-        whenNotPaused
-    {
+    ) external whenNotPaused {
         // Prevent users from creating a deposit transaction where this address is the message
         // sender on L2. Because this is checked here, we do not need to check again in
         // `finalizeWithdrawalTransaction`.
@@ -371,13 +364,7 @@ contract OptimismPortal is Initializable, ResourceMetering, ISemver {
     /// @param _gasLimit   Amount of L2 gas to purchase by burning gas on L1.
     /// @param _isCreation Whether or not the transaction is a contract creation.
     /// @param _data       Data to trigger the recipient with.
-    function depositTransaction(
-        address _to,
-        uint256 _value,
-        uint64 _gasLimit,
-        bool _isCreation,
-        bytes memory _data
-    )
+    function depositTransaction(address _to, uint256 _value, uint64 _gasLimit, bool _isCreation, bytes memory _data)
         public
         payable
         metered(_gasLimit)
