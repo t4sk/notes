@@ -1,15 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+// L1Bridge -> L1StandardBridge -> CrossDomainMessenger (L1)
+// L2Bridge -> L2StandardBridge -> CrossDomainMessenger (L2)
+
+// Lock ERC20 on L1 and mint OPERC20 on L2
+// ERC20 -> L1Bridge -> L1StandardBrige
+
+// Burn OPERC20 on L2 and unlock ERC20 on L1
+// OPERC20 -> L2Bridge -> L2StandardBridge
+
 // 1. Deploy ERC20 on L1
 // 2. Deploy OPERC20 on L2
 // 3. Deploy L1Bridge on L1
 // 4. Deploy L2Bridge on L2
-// 5. Mint and approve L1Bridge
+// 5. Mint ERC20 and approve L1Bridge
 // 6. Send ERC20 to L2
-// 7. Withdraw on L2
-// 8. Send ERC20 to L1
-// 9. Withdraw on L1
+// 7. Check OPERC20 balance of L2Bridge
+// 8. Withdraw OPERC20 on L2
+// 9. Send ERC20 to L1
+// 10. Check ERC20 balance of L1Bridge
+// 11. Withdraw ERC20 on L1
 
 interface IL1StandardBridge {
     // Calls same internal function as bridgeERC20To
@@ -56,16 +67,17 @@ interface IERC20 {
     function transferFrom(address src, address dst, uint256 amount) external returns (bool);
 }
 
+// 0xC05d24b61d91b914D6f51A3Bd1AEC62cb42B04dD
 contract L1Bridge {
+    // 0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1
     address public immutable l1_bridge;
-    address public immutable l2_bridge;
-    // TODO: deploy OPMintableERC20
+    // 0x230c88c6EdaA9D19Ec904ab75b0D506Cbd81CaF6
     address public immutable l1_token;
+    // 0x3825dc11Ad0da8f2788c52bAA9672Cf38B7A0e78
     address public immutable l2_token;
 
-    constructor(address _l1_bridge, address _l2_bridge, address _l1_token, address _l2_token) {
+    constructor(address _l1_bridge, address _l1_token, address _l2_token) {
         l1_bridge = _l1_bridge;
-        l2_bridge = _l2_bridge;
         l1_token = _l1_token;
         l2_token = _l2_token;
 
@@ -74,6 +86,7 @@ contract L1Bridge {
     }
 
     // Deposit L1 -> L2
+    // remote_addr = L2Bridge
     function sendToL2(address remote_addr, uint256 amount) external {
         // TODO: how to cancel bridge transfer?
         IERC20(l1_token).transferFrom(msg.sender, address(this), amount);
@@ -94,15 +107,14 @@ contract L1Bridge {
     }
 }
 
+// 0xffC0F11c92F4E2e50b3f72Fd32BB3d034Ac77BDc
 contract L2Bridge {
-    address public immutable l1_bridge;
+    // 0x4200000000000000000000000000000000000010 
     address public immutable l2_bridge;
-    // TODO: deploy OPMintableERC20
     address public immutable l1_token;
     address public immutable l2_token;
 
-    constructor(address _l1_bridge, address _l2_bridge, address _l1_token, address _l2_token) {
-        l1_bridge = _l1_bridge;
+    constructor(address _l2_bridge, address _l1_token, address _l2_token) {
         l2_bridge = _l2_bridge;
         l1_token = _l1_token;
         l2_token = _l2_token;
@@ -112,11 +124,13 @@ contract L2Bridge {
     }
 
     // Withdraw L2 -> L1
+    // remote_addr = L1Bridge
     function sendToL1(address remote_addr, uint256 amount) external {
         // TODO: how to cancel bridge transfer?
         IERC20(l2_token).transferFrom(msg.sender, address(this), amount);
-        IL2StandardBridge(l2_bridge).withdrawTo({
-            l2_token: l2_token,
+        IL1StandardBridge(l2_bridge).bridgeERC20To({
+            local_token: l2_token,
+            remote_token: l1_token,
             to: remote_addr,
             amount: amount,
             // TODO: what should go here?

@@ -15,7 +15,7 @@ interface IOptimismMintableERC20 is IERC165 {
     function burn(address src, uint256 amount) external;
 }
 
-contract OPToken is ERC20, IOptimismMintableERC20 {
+contract OPERC20 is ERC20, IOptimismMintableERC20 {
     address public immutable remoteToken;
     address public immutable bridge;
 
