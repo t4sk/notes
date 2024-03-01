@@ -34,20 +34,20 @@ contract OPERC20 is ERC20, IOptimismMintableERC20 {
 
     function supportsInterface(bytes4 _interfaceId) external pure returns (bool) {
         bytes4 iface1 = type(IERC165).interfaceId;
-        // Interface corresponding to the legacy L2StandardERC20.
+        // Interface corresponding to the legacy L3StandardERC20.
         // bytes4 iface2 = type(ILegacyMintableERC20).interfaceId;
         // Interface corresponding to the updated OptimismMintableERC20 (this contract).
         bytes4 iface3 = type(IOptimismMintableERC20).interfaceId;
         return _interfaceId == iface1 || _interfaceId == iface3;
     }
 
-    function mint(address dst, uint256 amount) public override(ERC20, IOptimismMintableERC20) onlyBridge {
-        mint(dst, amount);
+    function mint(address dst, uint256 amount) external override(ERC20, IOptimismMintableERC20) onlyBridge {
+        _mint(dst, amount);
         emit Mint(dst, amount);
     }
 
-    function burn(address src, uint256 amount) public override(ERC20, IOptimismMintableERC20) onlyBridge {
-        burn(src, amount);
+    function burn(address src, uint256 amount) external override(ERC20, IOptimismMintableERC20) onlyBridge {
+        _burn(src, amount);
         emit Burn(src, amount);
     }
 }

@@ -18,7 +18,7 @@ pragma solidity 0.8.24;
 // 6. Send ERC20 to L2
 // 7. Check OPERC20 balance of L2Bridge
 // 8. Withdraw OPERC20 on L2
-// 9. Send ERC20 to L1
+// 9. Approve OPERC20 for L2Bridge and send ERC20 to L1
 // 10. Check ERC20 balance of L1Bridge
 // 11. Withdraw ERC20 on L1
 
@@ -67,22 +67,22 @@ interface IERC20 {
     function transferFrom(address src, address dst, uint256 amount) external returns (bool);
 }
 
-// 0x9EC35f70d03b84a62E688a1aec525bCb73A9A4ED
+// 0xB0b0F34273940594b6E637Ca9e8fdc527061c423
 contract L1Bridge {
     // 0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1
-    address public immutable l1_bridge;
-    // 0x230c88c6EdaA9D19Ec904ab75b0D506Cbd81CaF6
+    address public immutable l1_op_bridge;
+    // 0x93F74d0730758094cE8Cb2ee1f6999A7cD38e75a 
     address public immutable l1_token;
-    // 0xd0e76D0ea91f25Ce0Ad3e48e3CeD94d98806Fe6d
+    // 0x27d48bDF3238DFd85023139f0400eFa4B646b474
     address public immutable l2_token;
 
-    constructor(address _l1_bridge, address _l1_token, address _l2_token) {
-        l1_bridge = _l1_bridge;
+    constructor(address _l1_op_bridge, address _l1_token, address _l2_token) {
+        l1_op_bridge = _l1_op_bridge;
         l1_token = _l1_token;
         l2_token = _l2_token;
 
         // TODO: infinite approval is safe?
-        IERC20(l1_token).approve(l1_bridge, type(uint256).max);
+        IERC20(l1_token).approve(l1_op_bridge, type(uint256).max);
     }
 
     // Deposit L1 -> L2
@@ -90,7 +90,7 @@ contract L1Bridge {
     function sendToL2(address remote_addr, uint256 amount) external {
         // TODO: how to cancel bridge transfer?
         IERC20(l1_token).transferFrom(msg.sender, address(this), amount);
-        IL1StandardBridge(l1_bridge).bridgeERC20To({
+        IL1StandardBridge(l1_op_bridge).bridgeERC20To({
             local_token: l1_token,
             remote_token: l2_token,
             to: remote_addr,
@@ -107,20 +107,22 @@ contract L1Bridge {
     }
 }
 
-// 0x01d04e9A7480a4E62C953737753697D5D73E6D3e
+// 0x31B136e2d1fa077e6e6b629b05B1E0360835e5B8
+// Withdraw from L2 to L1 tx
+// 0x915f467d322682f0bb1bfe332a9099dcef8dbd2acc4335b0d653cb5d255b655b
 contract L2Bridge {
     // 0x4200000000000000000000000000000000000010
-    address public immutable l2_bridge;
+    address public immutable l2_op_bridge;
     address public immutable l1_token;
     address public immutable l2_token;
 
-    constructor(address _l2_bridge, address _l1_token, address _l2_token) {
-        l2_bridge = _l2_bridge;
+    constructor(address _l2_op_bridge, address _l1_token, address _l2_token) {
+        l2_op_bridge = _l2_op_bridge;
         l1_token = _l1_token;
         l2_token = _l2_token;
 
         // TODO: infinite approval is safe?
-        IERC20(l2_token).approve(l2_bridge, type(uint256).max);
+        IERC20(l2_token).approve(l2_op_bridge, type(uint256).max);
     }
 
     // Withdraw L2 -> L1
@@ -128,7 +130,7 @@ contract L2Bridge {
     function sendToL1(address remote_addr, uint256 amount) external {
         // TODO: how to cancel bridge transfer?
         IERC20(l2_token).transferFrom(msg.sender, address(this), amount);
-        IL1StandardBridge(l2_bridge).bridgeERC20To({
+        IL1StandardBridge(l2_op_bridge).bridgeERC20To({
             local_token: l2_token,
             remote_token: l1_token,
             to: remote_addr,
