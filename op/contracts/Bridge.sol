@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-// L1Bridge -> L1StandardBridge -> CrossDomainMessenger (L1)
-// L2Bridge -> L2StandardBridge -> CrossDomainMessenger (L2)
+// L1    | L2
+// ERC20 | OPERC20 (OptimismMintableERC20)
 
-// Lock ERC20 on L1 and mint OPERC20 on L2
-// ERC20 -> L1Bridge -> L1StandardBrige
+// Send ERC20 from L1 to L2
+// Lock ERC20 on L1StandardBrige
+// -> CrossDomainMessenger (L1)
+// -> L2StandardBrige (L2)
+// -> Mint OPERC20 (L2)
 
-// Burn OPERC20 on L2 and unlock ERC20 on L1
-// OPERC20 -> L2Bridge -> L2StandardBridge
+// Send ERC20 from L2 to L1
+// Burn OPERC20 by L2StandardBrige
+// -> CrossDomainMessenger (L2)
+// -> Unlock ERC20 on L1StandardBridge
 
 // 1. Deploy ERC20 on L1
 // 2. Deploy OPERC20 on L2
@@ -21,6 +26,7 @@ pragma solidity 0.8.24;
 // 9. Approve OPERC20 for L2Bridge and send ERC20 to L1
 // 10. Check ERC20 balance of L1Bridge
 // 11. Withdraw ERC20 on L1
+// 12. Check finalize tx and token transfer
 
 interface IL1StandardBridge {
     // Calls same internal function as bridgeERC20To
@@ -109,7 +115,7 @@ contract L1Bridge {
 
 // 0x31B136e2d1fa077e6e6b629b05B1E0360835e5B8
 // Withdraw from L2 to L1 tx
-// 0x915f467d322682f0bb1bfe332a9099dcef8dbd2acc4335b0d653cb5d255b655b
+// https://optimism-sepolia.blockscout.com/tx/0x915f467d322682f0bb1bfe332a9099dcef8dbd2acc4335b0d653cb5d255b655b
 contract L2Bridge {
     // 0x4200000000000000000000000000000000000010
     address public immutable l2_op_bridge;
