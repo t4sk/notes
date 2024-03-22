@@ -81,9 +81,26 @@ https://mumbai.polygonscan.com/tx/0x6812adc9d70278b36df3f8a68a728e4bff5a80e2363b
 
 ### Weather API example
 
-1. Execute `tmp/weather.js`
-2. Copy `calculation-example.js` and create `weather.js`
-3. Setup OPEN_WEATHER_API_KEY into env-enc
-4. Modify `Functions-request-config.js`
+1. Execute `weather-api-example.js`
+2. Copy `calculation-example.js` and create `weather-func.js`
+3. Modify `Functions-request-config.js`
+4. Setup OPEN_WEATHER_API_KEY into env-enc
+
+```shell
+npx env-enc set-pw
+npx env-enc set
+```
+
 5. Execute weather API
-6. Call contract, get data
+
+```shell
+# Simulate
+npx hardhat functions-simulate-script
+
+# Execute
+CONTRACT_ADDR=0x9083947A3090Fd3Bf09dEfC85990042b6bf9DD83
+SUB_ID=1371
+npx hardhat functions-request --network polygonMumbai --contract $CONTRACT_ADDR --subid $SUB_ID --simulate true
+```
+
+6. Call contract, get data, decode data
