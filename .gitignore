@@ -1,3 +1,4 @@
 .ipynb_checkpoints
 tmp
 .env
+__pycache__
