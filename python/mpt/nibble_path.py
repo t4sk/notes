@@ -1,4 +1,10 @@
 class NibblePath:
+    """
+    extension even = 0x00
+    extension  odd = 0x10
+    leaf      even = 0x20
+    leaf       odd = 0x30
+    """
     ODD_FLAG = 0x10
     LEAF_FLAG = 0x20
 
