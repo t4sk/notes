@@ -162,19 +162,7 @@ class Array(VGroup):
 
 class ArrayScene(Scene):  
     def construct(self):
-        # s = "00"
-        # box = Square(color=BLUE)
-        # text = Text(s).move_to(box.get_center())
-        # v_group = VGroup(box, text)
-
-        # move text box around
-        # self.play(v_group.animate.shift(2*RIGHT), run_time=3)
-        # self.play(v_group.animate.shift(2*UP), run_time=3)
-
-        # self.play(Create(box))
-        # self.play(Write(text))
-        # self.wait()
-
+        # Initial array
         vals = ["00", "00", "00", "00", "..."]
         squares = [Square(color=BLUE) for i in range(len(vals))]
         texts = [Text(v, color=WHITE) for v in vals]
@@ -186,6 +174,34 @@ class ArrayScene(Scene):
         for (square, text) in zip(squares, texts):
             text.move_to(square.get_center())
 
+        text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
+        v_group_text_boxes = VGroup(*text_boxes).arrange()
+
         self.play(Create(v_group_squares))
         self.play(Write(v_group_texts))
-        self.wait(2)
+        self.wait(1)
+
+        # Grow array
+        vals = ["00", "00", "00", "00", "00", "00", "00", "..."]
+        squares = [Square(color=BLUE) for i in range(len(vals))]
+        texts = [Text(v, color=WHITE) for v in vals]
+        
+        v_group_squares_1 = VGroup(*squares).arrange()
+        v_group_texts_1 = VGroup(*texts).arrange()
+
+        # NOTE - this code must be after vgroup.arrange
+        for (square, text) in zip(squares, texts):
+            text.move_to(square.get_center())
+
+        text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
+        v_group_text_boxes_1 = VGroup(*text_boxes).arrange()
+
+        self.play(ReplacementTransform(v_group_text_boxes, v_group_text_boxes_1))
+        self.play(ScaleInPlace(v_group_text_boxes_1, 0.5))
+        self.wait(1)
+
+        # Show length
+        brace = Brace(mobject=v_group_text_boxes_1, direction=DOWN, buff=0.2)
+        brace_tex = brace.get_tex("2^{256} elements")
+        self.play(GrowFromCenter(brace), FadeIn(brace_tex), run_time=1)
+        self.wait(1)
