@@ -177,9 +177,9 @@ class ArrayScene(Scene):
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
         v_group_text_boxes = VGroup(*text_boxes).arrange()
 
-        self.play(Create(v_group_squares))
-        self.play(Write(v_group_texts))
-        self.wait(1)
+        # self.play(Create(v_group_squares))
+        # self.play(Write(v_group_texts))
+        # self.wait(1)
 
         # Grow array
         vals = ["00", "00", "00", "00", "00", "00", "00", "..."]
@@ -204,4 +204,76 @@ class ArrayScene(Scene):
         brace = Brace(mobject=v_group_text_boxes_1, direction=DOWN, buff=0.2)
         brace_tex = brace.get_tex("2^{256} elements")
         self.play(GrowFromCenter(brace), FadeIn(brace_tex), run_time=1)
+        # self.play(FadeOut(brase), FadeOut(brace_tex), run_time=1)
         self.wait(1)
+
+        self.play(
+            ScaleInPlace(v_group_text_boxes_1, 0.7),
+            ScaleInPlace(brace, 0.7),
+            ScaleInPlace(brace_tex, 0.7),
+        )
+        self.wait(1)
+
+        # Show quadratic gas cost
+        highlight_square = Square(color=YELLOW).scale(0.5 * 0.7)
+        highlight_square.align_to(v_group_text_boxes_1, LEFT)
+
+        # Quadratic graph
+        ax = Axes(
+            x_range=[0, 10], y_range=[0, 100, 10], axis_config={"include_tip": False}
+        )
+        labels = ax.get_axis_labels(x_label="memory", y_label="gas")
+
+        t = ValueTracker(0)
+
+        def func(x):
+            return x**2
+
+        graph = ax.plot(func, color=MAROON)
+
+        initial_point = [ax.coords_to_point(t.get_value(), func(t.get_value()))]
+        dot = Dot(point=initial_point, color=YELLOW)
+
+        dot.add_updater(lambda x: x.move_to(ax.c2p(t.get_value(), func(t.get_value()))))
+        x_space = np.linspace(*ax.x_range[:2],10)
+
+        self.play(FadeIn(ax, labels, graph, dot))
+
+        for (x, box) in zip(x_space, text_boxes):
+            self.play(
+                highlight_square.animate.move_to(box.get_center()),
+                t.animate.set_value(x)
+            )
+            self.wait(0.1)
+
+
+
+class FuncScene(Scene):
+    def construct(self):
+        ax = Axes(
+            x_range=[0, 10], y_range=[0, 100, 10], axis_config={"include_tip": False}
+        )
+        labels = ax.get_axis_labels(x_label="memory", y_label="gas")
+
+        t = ValueTracker(0)
+
+        def func(x):
+            return 10 * x**2
+
+        graph = ax.plot(func, color=MAROON)
+
+        initial_point = [ax.coords_to_point(t.get_value(), func(t.get_value()))]
+        dot = Dot(point=initial_point)
+
+        dot.add_updater(lambda x: x.move_to(ax.c2p(t.get_value(), func(t.get_value()))))
+        x_space = np.linspace(*ax.x_range[:2],10)
+        # max_index = func(x_space).argmax()
+
+        # self.add(ax, labels, graph, dot)
+        # self.play(t.animate.set_value(x_space[max_index]))
+        # self.wait()
+
+        self.add(ax, labels, graph, dot)
+        for x in x_space:
+            self.play(t.animate.set_value(x))
+            self.wait(0.1)
