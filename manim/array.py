@@ -177,9 +177,9 @@ class ArrayScene(Scene):
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
         v_group_text_boxes = VGroup(*text_boxes).arrange()
 
-        # self.play(Create(v_group_squares))
-        # self.play(Write(v_group_texts))
-        # self.wait(1)
+        self.play(Create(v_group_squares))
+        self.play(Write(v_group_texts))
+        self.wait(1)
 
         # Grow array
         vals = ["00", "00", "00", "00", "00", "00", "00", "..."]
@@ -246,6 +246,34 @@ class ArrayScene(Scene):
             )
             self.wait(0.1)
 
+        self.wait(1)
+
+        # Fade out graph and brace
+        self.play(
+            FadeOut(highlight_square, brace, brace_tex, ax, labels, graph, dot),
+        )
+
+class Array2Scene(Scene):  
+    def construct(self):
+        vals = ["00", "00", "00", "00", "00", "00", "00", "..."]
+        squares = [Square(color=BLUE) for i in range(len(vals))]
+        texts = [Text(v, color=WHITE) for v in vals]
+        
+        v_group_squares = VGroup(*squares).arrange()
+        v_group_texts = VGroup(*texts).arrange()
+
+        # NOTE - this code must be after vgroup.arrange
+        for (square, text) in zip(squares, texts):
+            text.move_to(square.get_center())
+
+        text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
+        v_group_text_boxes = VGroup(*text_boxes).arrange()
+        v_group_text_boxes.scale(0.35)
+
+        self.add(v_group_text_boxes)
+        self.wait(1)
+
+
 
 
 class FuncScene(Scene):
@@ -258,7 +286,7 @@ class FuncScene(Scene):
         t = ValueTracker(0)
 
         def func(x):
-            return 10 * x**2
+            return 100 * x**2
 
         graph = ax.plot(func, color=MAROON)
 

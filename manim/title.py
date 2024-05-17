@@ -7,5 +7,6 @@ class TitleScene(Scene):
             Text("in Solidity", font_size=80),
         ).arrange(DOWN)
         self.play(Write(lines), run_time=1)
-        self.wait()
-        self.remove(lines)
+        self.wait(1)
+        self.play(FadeOut(lines))
+        self.wait(1)
