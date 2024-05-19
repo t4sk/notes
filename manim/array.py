@@ -93,7 +93,7 @@ class ArrayScene(Scene):
             FadeOut(highlight_square, brace, brace_tex, ax, labels, graph, dot),
         )
 
-class Array2Scene(Scene):  
+class ArrayScene2(Scene):  
     def construct(self):
         vals = ["00", "00", "00", "00", "00", "00", "00", "..."]
         squares = [Square(color=BLUE) for i in range(len(vals))]
@@ -202,7 +202,7 @@ class Array2Scene(Scene):
         # 96 - 128 = zero slot
         squares = [Square(color=BLUE) for i in range(len(b32))]
         texts = [Text(v, color=WHITE) for v in b32]
-        
+
         v_group_squares = VGroup(*squares).arrange()
         v_group_texts = VGroup(*texts).arrange()
 
@@ -312,6 +312,181 @@ class Array2Scene(Scene):
         self.wait(1)
         self.play(Write(v_b32_4_text))
         self.wait(1)
+
+        self.play(
+            FadeOut(v_b32_0_text),
+            FadeOut(v_b32_1_text),
+            FadeOut(v_b32_2_text),
+            FadeOut(v_b32_3_text),
+            FadeOut(v_b32_4_text),
+        )
+        self.wait(1)
+
+def create_boxes(vals):
+    squares = [Square(color=BLUE) for i in range(len(vals))]
+    texts = [Text(v, color=WHITE) for v in vals]
+
+    v_group_squares = VGroup(*squares).arrange()
+    v_group_texts = VGroup(*texts).arrange()
+
+    # NOTE - this code must be after vgroup.arrange
+    for (square, text) in zip(squares, texts):
+        text.move_to(square.get_center())
+    
+    return ([VGroup(s, t) for (s, t) in zip(squares, texts)], texts)
+
+
+class ArrayScene3(Scene):
+    def construct(self):
+        b32 = ["00"] * 32
+
+        rows = []
+        text_rows = []
+
+        for i in range(5):
+            (boxes, texts) = create_boxes(b32)
+
+            v_boxes = VGroup(*boxes).arrange()
+            v_boxes.scale(0.15)
+            v_boxes.move_to((3 - i) * UP)
+
+            pos = v_boxes.get_center()
+            h = v_boxes.height
+            w = v_boxes.width
+            x = pos[0]
+            y = pos[1]
+            slot = Text(f"0x{2 * i}0").scale(0.5).next_to(v_boxes, LEFT)
+
+            rows.append(boxes)
+            text_rows.append(texts)
+
+            self.add(v_boxes)
+            self.add(slot)
+
+        self.wait(1)
+
+        code_0 = Text("mstore(p, v)").move_to(2 * DOWN)
+        self.play(Write(code_0))
+        self.wait(1)
+
+        # mstore(0, 0xff)
+        code_1 = Text("mstore(0, 0xff)").move_to(2 * DOWN)
+        self.play(ReplacementTransform(code_0, code_1))
+        self.wait(1)
+
+        h_square = Square(color=YELLOW).scale(0.5 * 0.5 * 0.7)
+        h_square.move_to(rows[0][0].get_center())
+
+        self.play(Create(h_square))
+
+        h_boxes = [Square(color=YELLOW).scale(0.5 * 0.5 * 0.7) for i in range(32)]
+        for i in range(32):
+            h_boxes[i].move_to(rows[0][i].get_center())
+
+        v_h_boxes = VGroup(*h_boxes)
+        self.play(FadeIn(v_h_boxes))
+        self.wait(1)
+
+        text = Text("ff").scale(0.5 * 0.5 * 0.7).move_to(text_rows[0][31])
+        self.play(FocusOn(text))
+        self.play(ReplacementTransform(text_rows[0][31], text))
+        self.wait(1)
+
+        self.play(FadeOut(h_square), FadeOut(v_h_boxes))
+        self.wait(1)
+
+        # mstore(0x20, 0xaa)
+        code_2 = Text("mstore(0x20, 0xaa)").move_to(2 * DOWN)
+        self.play(ReplacementTransform(code_1, code_2))
+        self.wait(1)
+
+        h_square = Square(color=YELLOW).scale(0.5 * 0.5 * 0.7)
+        h_square.move_to(rows[1][0].get_center())
+
+        self.play(Create(h_square))
+
+        h_boxes = [Square(color=YELLOW).scale(0.5 * 0.5 * 0.7) for i in range(32)]
+        for i in range(32):
+            h_boxes[i].move_to(rows[1][i].get_center())
+
+        v_h_boxes = VGroup(*h_boxes)
+        self.play(FadeIn(v_h_boxes))
+        self.wait(1)
+
+        text = Text("aa").scale(0.5 * 0.5 * 0.7).move_to(text_rows[1][31])
+        self.play(FocusOn(text))
+        self.play(ReplacementTransform(text_rows[1][31], text))
+        self.wait(1)
+
+        self.play(FadeOut(h_square), FadeOut(v_h_boxes))
+        self.wait(1)
+
+        # Write mstore(1, 0xbb)
+        code_3 = Text("mstore(1, 0xbb)").move_to(2 * DOWN)
+        self.play(ReplacementTransform(code_2, code_3))
+        self.wait(1)
+
+        h_square = Square(color=YELLOW).scale(0.5 * 0.5 * 0.7)
+        h_square.move_to(rows[0][1].get_center())
+
+        self.play(Create(h_square))
+
+        h_boxes = [Square(color=YELLOW).scale(0.5 * 0.5 * 0.7) for i in range(32)]
+        for i in range(1, 32):
+            h_boxes[i-1].move_to(rows[0][i].get_center())
+        h_boxes[31].move_to(rows[1][0].get_center())
+
+        v_h_boxes = VGroup(*h_boxes)
+        self.play(FadeIn(v_h_boxes))
+        self.wait(1)
+
+        text = Text("00").scale(0.5 * 0.5 * 0.7).move_to(text_rows[0][31])
+        self.play(FocusOn(text))
+        self.play(ReplacementTransform(text_rows[0][31], text))
+        self.wait(1)
+
+        text = Text("bb").scale(0.5 * 0.5 * 0.7).move_to(text_rows[1][0])
+        self.play(FocusOn(text))
+        self.play(ReplacementTransform(text_rows[1][0], text))
+        self.wait(1)
+
+        self.play(FadeOut(h_square), FadeOut(v_h_boxes))
+        self.wait(1)
+
+        # Write mstore(2, 0xcc)
+        code_4 = Text("mstore(2, 0xcc)").move_to(2 * DOWN)
+        self.play(ReplacementTransform(code_3, code_4))
+        self.wait(1)
+
+        h_square = Square(color=YELLOW).scale(0.5 * 0.5 * 0.7)
+        h_square.move_to(rows[0][2].get_center())
+
+        self.play(Create(h_square))
+
+        h_boxes = [Square(color=YELLOW).scale(0.5 * 0.5 * 0.7) for i in range(32)]
+        for i in range(2, 32):
+            h_boxes[i-2].move_to(rows[0][i].get_center())
+        h_boxes[30].move_to(rows[1][0].get_center())
+        h_boxes[31].move_to(rows[1][1].get_center())
+
+        v_h_boxes = VGroup(*h_boxes)
+        self.play(FadeIn(v_h_boxes))
+        self.wait(1)
+
+        text = Text("00").scale(0.5 * 0.5 * 0.7).move_to(text_rows[1][0])
+        self.play(FocusOn(text))
+        self.play(ReplacementTransform(text_rows[1][0], text))
+        self.wait(1)
+
+        text = Text("cc").scale(0.5 * 0.5 * 0.7).move_to(text_rows[1][1])
+        self.play(FocusOn(text))
+        self.play(ReplacementTransform(text_rows[1][1], text))
+        self.wait(1)
+
+        self.play(FadeOut(h_square), FadeOut(v_h_boxes))
+        self.wait(1)
+
+
 
 
 class FuncScene(Scene):
