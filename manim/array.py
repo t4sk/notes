@@ -1,165 +1,5 @@
 from manim import *
 
-class ArrayIndex(VGroup):
-    """
-    Visualization of an array index.
-    Includes a highlighting rectangle for the array element, and option pointer and label
-    with index value.
-    """
-
-    CONFIG = {
-        'wdith': 1,
-        'height': 1,
-        'name': 'i',
-        'color': BLUE,
-        'opacity': 0.75,
-        'position': DOWN,
-        'show_arrow': True,
-        'show_label': True,
-    }
-
-    def __init__(self, parent, value, **kwargs):
-        self.parent = parent
-        self.index_tracker = ValueTracker(value)
-        self.indicator_box = self.add_indicator_box()
-        if self.show_label:
-            self.label = always_redraw(lambda: self.get_label())
-        else:
-            self.label = None
-            self.show_arrow = False  # No arrow without label
-        if self.show_arrow:
-            self.arrow = always_redraw(lambda: self.get_arrow())
-        else:
-            self.arrow = None
-        self.add(*remove_nones([self.label, self.arrow, self.indicator_box]))
-
-    def add_indicator_box(self):
-        box = Rectangle(width=self.width - 0.1, height=self.height - 0.1)
-        box.set_stroke(color=self.color,
-                       opacity=self.get_box_opacity(self.get_value()))
-        box.move_to(self.get_box_target(self.get_value()))
-        return box
-
-    def get_label(self):
-        i = int(round(self.index_tracker.get_value(), 0))
-        ni = TextMobject(self.name + '=' + str(i))
-        ni.next_to(self.indicator_box, self.position, LARGE_BUFF)
-        return ni
-
-    def get_arrow(self):
-        if self.label.get_y() < self.indicator_box.get_y():
-            a = Arrow(self.label.get_top(),
-                      self.indicator_box.get_bottom(),
-                      buff=MED_SMALL_BUFF)
-        else:
-            a = Arrow(self.label.get_bottom(),
-                      self.indicator_box.get_top(),
-                      buff=MED_SMALL_BUFF)
-        return a
-
-    def set_index(self, value):
-        self.indicator_box.set_stroke(opacity=self.get_box_opacity(value))
-        self.indicator_box.move_to(self.get_box_target(value))
-        self.index_tracker.set_value(value)
-        return self
-
-    def get_box_target(self, value):
-        if value < 0:
-            fpe_o = self.parent.elements[0].get_critical_point(ORIGIN)
-            return fpe_o + LEFT * self.width
-        elif value < len(self.parent.elements):
-            return self.parent.elements[value].get_critical_point(ORIGIN)
-        else:
-            lpe_o = self.parent.elements[-1].get_critical_point(ORIGIN)
-            return lpe_o + RIGHT * self.width
-
-    def get_box_opacity(self, value):
-        if 0 <= value < len(self.parent.elements):
-            return self.opacity
-        else:
-            return 0.5
-
-    def animate_set_index(self, value):
-        return [
-            self.indicator_box.set_stroke,
-            {
-                'opacity': self.get_box_opacity(value),
-                'family': False
-            },
-            self.indicator_box.move_to,
-            self.get_box_target(value),
-            self.index_tracker.set_value,
-            value,
-        ]
-
-    def get_value(self):
-        return int(self.index_tracker.get_value())
-
-class Array(VGroup):
-    def __init__(self, values, **kwargs):
-        super().__init__(**kwargs)
-        self.values = values
-        self.indicies = {}
-        self.element_width = 1
-        self.element_height= 1
-        self.element_color= WHITE
-        self.total_width = self.element_width * len(self.values)
-        self.hw = self.element_width / 2
-        self.hh = self.element_height / 2
-        self.left_element_offset = (self.total_width / 2) - self.hw
-        self.left_edge_offset = self.left_element_offset + self.hw 
-        self.rects = [Rectangle(height=1, width=1) for _ in range(len(values))]
-
-        rects = self.rects
-        for rect in rects:
-            rect.set_color(BLUE)
-
-        for i in range(1, len(rects)):
-            rects[i].next_to(rects[i - 1], RIGHT, buff=0)
-
-        self.add(*rects)
-
-        self.elements = VGroup()
-        self.backgrounds = VGroup()
-        for i, v in enumerate(values):
-            if v is not None:
-                t = Tex(str(v))
-            else:
-                t = Tex('.', width=0, height=0, color=BLACK)
-
-            t.move_to(i * RIGHT * self.element_width)
-            self.elements.add(t)
-
-            b = Rectangle(width=self.element_width - 0.1,
-                          height=self.element_height - 0.1)
-            b.set_stroke(color=BLACK, opacity=0)
-            b.move_to(t.get_center())
-            self.backgrounds.add(b)
-
-        self.add(self.backgrounds)
-        self.elements.set_color(self.element_color)
-
-        self.add(self.elements)
-        self.move_to(ORIGIN-self.get_center())
-    
-    def append(self, val):
-        self.values.append(val)
-        rect = Rectangle(height=1, width=1)
-        rect.set_color(BLUE)
-        self.rects.append(rect)
-        n = len(self.rects)
-        self.rects[n - 1].next_to(self.rects[n - 2], RIGHT, buff=0)
-        self.add(rect)
-
-# def create_array(num_rectangles, color, start_pos, height, width):
-#     initial_array = [Rectangle(height=height, width=width) for _ in range(num_rectangles)]
-#     for rect in initial_array:
-#         rect.set_color(color)
-#     initial_array[0].move_to(start_pos)
-#     for i in range(1, len(initial_array)):
-#         initial_array[i].next_to(initial_array[i - 1], RIGHT, buff=0)
-#     return initial_array
-
 class ArrayScene(Scene):  
     def construct(self):
         # Initial array
@@ -273,7 +113,205 @@ class Array2Scene(Scene):
         self.add(v_group_text_boxes)
         self.wait(1)
 
+        # Move array
+        self.play(v_group_text_boxes.animate.shift(3 * RIGHT))
+        self.play(v_group_text_boxes.animate.shift(3 * DOWN))
 
+        prev = text_boxes
+        v_prev = v_group_text_boxes
+
+        # Show first 32 bytes = scratch space
+        b32 = ["00"] * 32
+
+        squares = [Square(color=BLUE) for i in range(len(b32))]
+        texts = [Text(v, color=WHITE) for v in b32]
+        
+        v_group_squares = VGroup(*squares).arrange()
+        v_group_texts = VGroup(*texts).arrange()
+
+        # NOTE - this code must be after vgroup.arrange
+        for (square, text) in zip(squares, texts):
+            text.move_to(square.get_center())
+        
+        text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
+        v_group_text_boxes = VGroup(*text_boxes).arrange()
+        v_group_text_boxes.scale(0.15)
+
+        highlight_square = Square(color=YELLOW).scale(0.5 * 0.7)
+
+        highlight_square.animate.move_to(prev[0].get_center())
+        self.wait(1)
+
+        for i in range(len(text_boxes)):
+            box = text_boxes[i]
+            p = prev[i] if i < len(prev) else prev[-1]
+            self.play(
+                highlight_square.animate.move_to(p.get_center())
+            )
+            self.play(GrowFromPoint(box, p), run_time=1)
+        
+        v_b32_0 = v_group_text_boxes
+        self.play(v_b32_0.animate.shift(3 * UP))
+
+        # 32 - 64
+        squares = [Square(color=BLUE) for i in range(len(b32))]
+        texts = [Text(v, color=WHITE) for v in b32]
+        
+        v_group_squares = VGroup(*squares).arrange()
+        v_group_texts = VGroup(*texts).arrange()
+
+        # NOTE - this code must be after vgroup.arrange
+        for (square, text) in zip(squares, texts):
+            text.move_to(square.get_center())
+        
+        text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
+        v_group_text_boxes = VGroup(*text_boxes).arrange()
+        v_group_text_boxes.scale(0.15)
+
+        for i in range(len(text_boxes)):
+            box = text_boxes[i]
+            p = prev[i] if i < len(prev) else prev[-1]
+            self.play(GrowFromPoint(box, p), run_time=1)
+
+        v_b32_1 = v_group_text_boxes
+        self.play(v_b32_1.animate.shift(2 * UP))
+
+        # 64 - 96 = free memory pointer
+        squares = [Square(color=BLUE) for i in range(len(b32))]
+        texts = [Text(v, color=WHITE) for v in b32]
+        
+        v_group_squares = VGroup(*squares).arrange()
+        v_group_texts = VGroup(*texts).arrange()
+
+        # NOTE - this code must be after vgroup.arrange
+        for (square, text) in zip(squares, texts):
+            text.move_to(square.get_center())
+        
+        text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
+        v_group_text_boxes = VGroup(*text_boxes).arrange()
+        v_group_text_boxes.scale(0.15)
+
+        for i in range(len(text_boxes)):
+            box = text_boxes[i]
+            p = prev[i] if i < len(prev) else prev[-1]
+            self.play(GrowFromPoint(box, p), run_time=1)
+
+        v_b32_2 = v_group_text_boxes
+        self.play(v_b32_2.animate.shift(1 * UP))
+
+        # 96 - 128 = zero slot
+        squares = [Square(color=BLUE) for i in range(len(b32))]
+        texts = [Text(v, color=WHITE) for v in b32]
+        
+        v_group_squares = VGroup(*squares).arrange()
+        v_group_texts = VGroup(*texts).arrange()
+
+        # NOTE - this code must be after vgroup.arrange
+        for (square, text) in zip(squares, texts):
+            text.move_to(square.get_center())
+        
+        text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
+        v_group_text_boxes = VGroup(*text_boxes).arrange()
+        v_group_text_boxes.scale(0.15)
+
+        for i in range(len(text_boxes)):
+            box = text_boxes[i]
+            p = prev[i] if i < len(prev) else prev[-1]
+            self.play(GrowFromPoint(box, p), run_time=1)
+
+        v_b32_3 = v_group_text_boxes
+
+        # 128 = free memory pointer
+        squares = [Square(color=BLUE) for i in range(len(b32))]
+        texts = [Text(v, color=WHITE) for v in b32]
+        
+        v_group_squares = VGroup(*squares).arrange()
+        v_group_texts = VGroup(*texts).arrange()
+
+        # NOTE - this code must be after vgroup.arrange
+        for (square, text) in zip(squares, texts):
+            text.move_to(square.get_center())
+        
+        text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
+        v_group_text_boxes = VGroup(*text_boxes).arrange()
+        v_group_text_boxes.scale(0.15)
+        v_group_text_boxes.move_to(DOWN)
+
+        for i in range(len(text_boxes)):
+            box = text_boxes[i]
+            p = prev[i] if i < len(prev) else prev[-1]
+            self.play(GrowFromPoint(box, p), run_time=1)
+
+        v_b32_4 = v_group_text_boxes
+
+        # write texts
+        pos = v_b32_0.get_center()
+        h = v_b32_0.height
+        w = v_b32_0.width
+        x = pos[0]
+        y = pos[1]
+        slot_0 = Text("0x00").scale(0.5).next_to(v_b32_0, LEFT)
+        v_b32_0_text = Text("Scratch space").scale(0.5)
+        text_h = v_b32_0_text.height
+        text_w = v_b32_0_text.width
+        v_b32_0_text.move_to([x - w/2 + text_w / 2 + 0.1, y + h/2 + text_h / 2 + 0.1, 0])
+
+        pos = v_b32_1.get_center()
+        h = v_b32_1.height
+        w = v_b32_1.width
+        x = pos[0]
+        y = pos[1]
+        slot_1 = Text("0x20").scale(0.5).next_to(v_b32_1, LEFT)
+        v_b32_1_text = Text("Scratch space").scale(0.5)
+        text_h = v_b32_1_text.height
+        text_w = v_b32_1_text.width
+        v_b32_1_text.move_to([x - w/2 + text_w / 2 + 0.1, y + h/2 + text_h / 2 + 0.1, 0])
+
+        pos = v_b32_2.get_center()
+        h = v_b32_2.height
+        w = v_b32_2.width
+        x = pos[0]
+        y = pos[1]
+        slot_2 = Text("0x40").scale(0.5).next_to(v_b32_2, LEFT)
+        v_b32_2_text = Text("Free memory pointer").scale(0.5)
+        text_h = v_b32_2_text.height
+        text_w = v_b32_2_text.width
+        v_b32_2_text.move_to([x - w/2 + text_w / 2 + 0.1, y + h/2 + text_h / 2 + 0.1, 0])
+
+        pos = v_b32_3.get_center()
+        h = v_b32_3.height
+        w = v_b32_3.width
+        x = pos[0]
+        y = pos[1]
+        slot_3 = Text("0x60").scale(0.5).next_to(v_b32_3, LEFT)
+        v_b32_3_text = Text("Zero slot").scale(0.5)
+        text_h = v_b32_3_text.height
+        text_w = v_b32_3_text.width
+        v_b32_3_text.move_to([x - w/2 + text_w / 2 + 0.1, y + h/2 + text_h / 2 + 0.1, 0])
+
+        pos = v_b32_4.get_center()
+        h = v_b32_4.height
+        w = v_b32_4.width
+        x = pos[0]
+        y = pos[1]
+        slot_4 = Text("0x80").scale(0.5).next_to(v_b32_4, LEFT)
+        v_b32_4_text = Text("Initial free memory").scale(0.5)
+        text_h = v_b32_4_text.height
+        text_w = v_b32_4_text.width
+        v_b32_4_text.move_to([x - w/2 + text_w / 2 + 0.1, y + h/2 + text_h / 2 + 0.1, 0])
+
+        self.play(FadeOut(v_prev, highlight_square))
+        self.wait(1)
+
+        self.play(Write(slot_0), Write(slot_1), Write(slot_2), Write(slot_3), Write(slot_4))
+        self.play(Write(v_b32_0_text))
+        self.wait(1)
+        self.play(Write(v_b32_2_text))
+        self.wait(1)
+        self.play(Write(v_b32_3_text))
+        self.wait(1)
+        self.play(Write(v_b32_4_text))
+        self.wait(1)
 
 
 class FuncScene(Scene):
