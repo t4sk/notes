@@ -315,7 +315,7 @@ class ArrayScene2(Scene):
 
         self.play(
             FadeOut(v_b32_0_text),
-            FadeOut(v_b32_1_text),
+            # FadeOut(v_b32_1_text),
             FadeOut(v_b32_2_text),
             FadeOut(v_b32_3_text),
             FadeOut(v_b32_4_text),
