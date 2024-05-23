@@ -1,6 +1,7 @@
 from manim import *
 
-class ArrayScene(Scene):  
+
+class ArrayScene(Scene):
     def construct(self):
         # Initial array
         vals = ["00", "00", "00", "00", "..."]
@@ -11,7 +12,7 @@ class ArrayScene(Scene):
         v_group_texts = VGroup(*texts).arrange()
 
         # NOTE - this code must be after vgroup.arrange
-        for (square, text) in zip(squares, texts):
+        for square, text in zip(squares, texts):
             text.move_to(square.get_center())
 
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
@@ -25,12 +26,12 @@ class ArrayScene(Scene):
         vals = ["00", "00", "00", "00", "00", "00", "00", "..."]
         squares = [Square(color=BLUE) for i in range(len(vals))]
         texts = [Text(v, color=WHITE) for v in vals]
-        
+
         v_group_squares_1 = VGroup(*squares).arrange()
         v_group_texts_1 = VGroup(*texts).arrange()
 
         # NOTE - this code must be after vgroup.arrange
-        for (square, text) in zip(squares, texts):
+        for square, text in zip(squares, texts):
             text.move_to(square.get_center())
 
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
@@ -75,14 +76,14 @@ class ArrayScene(Scene):
         dot = Dot(point=initial_point, color=YELLOW)
 
         dot.add_updater(lambda x: x.move_to(ax.c2p(t.get_value(), func(t.get_value()))))
-        x_space = np.linspace(*ax.x_range[:2],10)
+        x_space = np.linspace(*ax.x_range[:2], 10)
 
         self.play(FadeIn(ax, labels, graph, dot))
 
-        for (x, box) in zip(x_space, text_boxes):
+        for x, box in zip(x_space, text_boxes):
             self.play(
                 highlight_square.animate.move_to(box.get_center()),
-                t.animate.set_value(x)
+                t.animate.set_value(x),
             )
             self.wait(0.1)
 
@@ -93,17 +94,18 @@ class ArrayScene(Scene):
             FadeOut(highlight_square, brace, brace_tex, ax, labels, graph, dot),
         )
 
-class ArrayScene2(Scene):  
+
+class ArrayScene2(Scene):
     def construct(self):
         vals = ["00", "00", "00", "00", "00", "00", "00", "..."]
         squares = [Square(color=BLUE) for i in range(len(vals))]
         texts = [Text(v, color=WHITE) for v in vals]
-        
+
         v_group_squares = VGroup(*squares).arrange()
         v_group_texts = VGroup(*texts).arrange()
 
         # NOTE - this code must be after vgroup.arrange
-        for (square, text) in zip(squares, texts):
+        for square, text in zip(squares, texts):
             text.move_to(square.get_center())
 
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
@@ -125,14 +127,14 @@ class ArrayScene2(Scene):
 
         squares = [Square(color=BLUE) for i in range(len(b32))]
         texts = [Text(v, color=WHITE) for v in b32]
-        
+
         v_group_squares = VGroup(*squares).arrange()
         v_group_texts = VGroup(*texts).arrange()
 
         # NOTE - this code must be after vgroup.arrange
-        for (square, text) in zip(squares, texts):
+        for square, text in zip(squares, texts):
             text.move_to(square.get_center())
-        
+
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
         v_group_text_boxes = VGroup(*text_boxes).arrange()
         v_group_text_boxes.scale(0.15)
@@ -145,33 +147,28 @@ class ArrayScene2(Scene):
         for i in range(len(text_boxes)):
             box = text_boxes[i]
             p = prev[i] if i < len(prev) else prev[-1]
-            self.play(
-                highlight_square.animate.move_to(p.get_center())
-            )
+            self.play(highlight_square.animate.move_to(p.get_center()))
             self.play(GrowFromPoint(box, p), run_time=1)
-        
+
         v_b32_0 = v_group_text_boxes
         self.play(v_b32_0.animate.shift(3 * UP))
 
-        # 32 - 64
+        # Show 32 - 64
         squares = [Square(color=BLUE) for i in range(len(b32))]
         texts = [Text(v, color=WHITE) for v in b32]
-        
+
         v_group_squares = VGroup(*squares).arrange()
         v_group_texts = VGroup(*texts).arrange()
 
         # NOTE - this code must be after vgroup.arrange
-        for (square, text) in zip(squares, texts):
+        for square, text in zip(squares, texts):
             text.move_to(square.get_center())
-        
+
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
         v_group_text_boxes = VGroup(*text_boxes).arrange()
         v_group_text_boxes.scale(0.15)
 
-        for i in range(len(text_boxes)):
-            box = text_boxes[i]
-            p = prev[i] if i < len(prev) else prev[-1]
-            self.play(GrowFromPoint(box, p), run_time=1)
+        self.play(GrowFromPoint(v_group_text_boxes, prev[-1]))
 
         v_b32_1 = v_group_text_boxes
         self.play(v_b32_1.animate.shift(2 * UP))
@@ -179,22 +176,19 @@ class ArrayScene2(Scene):
         # 64 - 96 = free memory pointer
         squares = [Square(color=BLUE) for i in range(len(b32))]
         texts = [Text(v, color=WHITE) for v in b32]
-        
+
         v_group_squares = VGroup(*squares).arrange()
         v_group_texts = VGroup(*texts).arrange()
 
         # NOTE - this code must be after vgroup.arrange
-        for (square, text) in zip(squares, texts):
+        for square, text in zip(squares, texts):
             text.move_to(square.get_center())
-        
+
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
         v_group_text_boxes = VGroup(*text_boxes).arrange()
         v_group_text_boxes.scale(0.15)
 
-        for i in range(len(text_boxes)):
-            box = text_boxes[i]
-            p = prev[i] if i < len(prev) else prev[-1]
-            self.play(GrowFromPoint(box, p), run_time=1)
+        self.play(GrowFromPoint(v_group_text_boxes, prev[-1]))
 
         v_b32_2 = v_group_text_boxes
         self.play(v_b32_2.animate.shift(1 * UP))
@@ -207,40 +201,34 @@ class ArrayScene2(Scene):
         v_group_texts = VGroup(*texts).arrange()
 
         # NOTE - this code must be after vgroup.arrange
-        for (square, text) in zip(squares, texts):
+        for square, text in zip(squares, texts):
             text.move_to(square.get_center())
-        
+
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
         v_group_text_boxes = VGroup(*text_boxes).arrange()
         v_group_text_boxes.scale(0.15)
 
-        for i in range(len(text_boxes)):
-            box = text_boxes[i]
-            p = prev[i] if i < len(prev) else prev[-1]
-            self.play(GrowFromPoint(box, p), run_time=1)
+        self.play(GrowFromPoint(v_group_text_boxes, prev[-1]))
 
         v_b32_3 = v_group_text_boxes
 
         # 128 = free memory pointer
         squares = [Square(color=BLUE) for i in range(len(b32))]
         texts = [Text(v, color=WHITE) for v in b32]
-        
+
         v_group_squares = VGroup(*squares).arrange()
         v_group_texts = VGroup(*texts).arrange()
 
         # NOTE - this code must be after vgroup.arrange
-        for (square, text) in zip(squares, texts):
+        for square, text in zip(squares, texts):
             text.move_to(square.get_center())
-        
+
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
         v_group_text_boxes = VGroup(*text_boxes).arrange()
         v_group_text_boxes.scale(0.15)
         v_group_text_boxes.move_to(DOWN)
 
-        for i in range(len(text_boxes)):
-            box = text_boxes[i]
-            p = prev[i] if i < len(prev) else prev[-1]
-            self.play(GrowFromPoint(box, p), run_time=1)
+        self.play(GrowFromPoint(v_group_text_boxes, prev[-1]))
 
         v_b32_4 = v_group_text_boxes
 
@@ -254,7 +242,9 @@ class ArrayScene2(Scene):
         v_b32_0_text = Text("Scratch space").scale(0.5)
         text_h = v_b32_0_text.height
         text_w = v_b32_0_text.width
-        v_b32_0_text.move_to([x - w/2 + text_w / 2 + 0.1, y + h/2 + text_h / 2 + 0.1, 0])
+        v_b32_0_text.move_to(
+            [x - w / 2 + text_w / 2 + 0.1, y + h / 2 + text_h / 2 + 0.1, 0]
+        )
 
         pos = v_b32_1.get_center()
         h = v_b32_1.height
@@ -265,7 +255,9 @@ class ArrayScene2(Scene):
         v_b32_1_text = Text("Scratch space").scale(0.5)
         text_h = v_b32_1_text.height
         text_w = v_b32_1_text.width
-        v_b32_1_text.move_to([x - w/2 + text_w / 2 + 0.1, y + h/2 + text_h / 2 + 0.1, 0])
+        v_b32_1_text.move_to(
+            [x - w / 2 + text_w / 2 + 0.1, y + h / 2 + text_h / 2 + 0.1, 0]
+        )
 
         pos = v_b32_2.get_center()
         h = v_b32_2.height
@@ -276,7 +268,9 @@ class ArrayScene2(Scene):
         v_b32_2_text = Text("Free memory pointer").scale(0.5)
         text_h = v_b32_2_text.height
         text_w = v_b32_2_text.width
-        v_b32_2_text.move_to([x - w/2 + text_w / 2 + 0.1, y + h/2 + text_h / 2 + 0.1, 0])
+        v_b32_2_text.move_to(
+            [x - w / 2 + text_w / 2 + 0.1, y + h / 2 + text_h / 2 + 0.1, 0]
+        )
 
         pos = v_b32_3.get_center()
         h = v_b32_3.height
@@ -287,7 +281,9 @@ class ArrayScene2(Scene):
         v_b32_3_text = Text("Zero slot").scale(0.5)
         text_h = v_b32_3_text.height
         text_w = v_b32_3_text.width
-        v_b32_3_text.move_to([x - w/2 + text_w / 2 + 0.1, y + h/2 + text_h / 2 + 0.1, 0])
+        v_b32_3_text.move_to(
+            [x - w / 2 + text_w / 2 + 0.1, y + h / 2 + text_h / 2 + 0.1, 0]
+        )
 
         pos = v_b32_4.get_center()
         h = v_b32_4.height
@@ -298,12 +294,16 @@ class ArrayScene2(Scene):
         v_b32_4_text = Text("Initial free memory").scale(0.5)
         text_h = v_b32_4_text.height
         text_w = v_b32_4_text.width
-        v_b32_4_text.move_to([x - w/2 + text_w / 2 + 0.1, y + h/2 + text_h / 2 + 0.1, 0])
+        v_b32_4_text.move_to(
+            [x - w / 2 + text_w / 2 + 0.1, y + h / 2 + text_h / 2 + 0.1, 0]
+        )
 
         self.play(FadeOut(v_prev, highlight_square))
         self.wait(1)
 
-        self.play(Write(slot_0), Write(slot_1), Write(slot_2), Write(slot_3), Write(slot_4))
+        self.play(
+            Write(slot_0), Write(slot_1), Write(slot_2), Write(slot_3), Write(slot_4)
+        )
         self.play(Write(v_b32_0_text))
         self.wait(1)
         self.play(Write(v_b32_2_text))
@@ -322,6 +322,7 @@ class ArrayScene2(Scene):
         )
         self.wait(1)
 
+
 def create_boxes(vals):
     squares = [Square(color=BLUE) for i in range(len(vals))]
     texts = [Text(v, color=WHITE) for v in vals]
@@ -330,9 +331,9 @@ def create_boxes(vals):
     v_group_texts = VGroup(*texts).arrange()
 
     # NOTE - this code must be after vgroup.arrange
-    for (square, text) in zip(squares, texts):
+    for square, text in zip(squares, texts):
         text.move_to(square.get_center())
-    
+
     return ([VGroup(s, t) for (s, t) in zip(squares, texts)], texts)
 
 
@@ -433,7 +434,7 @@ class ArrayScene3(Scene):
 
         h_boxes = [Square(color=YELLOW).scale(0.5 * 0.5 * 0.7) for i in range(32)]
         for i in range(1, 32):
-            h_boxes[i-1].move_to(rows[0][i].get_center())
+            h_boxes[i - 1].move_to(rows[0][i].get_center())
         h_boxes[31].move_to(rows[1][0].get_center())
 
         v_h_boxes = VGroup(*h_boxes)
@@ -465,7 +466,7 @@ class ArrayScene3(Scene):
 
         h_boxes = [Square(color=YELLOW).scale(0.5 * 0.5 * 0.7) for i in range(32)]
         for i in range(2, 32):
-            h_boxes[i-2].move_to(rows[0][i].get_center())
+            h_boxes[i - 2].move_to(rows[0][i].get_center())
         h_boxes[30].move_to(rows[1][0].get_center())
         h_boxes[31].move_to(rows[1][1].get_center())
 
@@ -487,8 +488,6 @@ class ArrayScene3(Scene):
         self.wait(1)
 
 
-
-
 class FuncScene(Scene):
     def construct(self):
         ax = Axes(
@@ -507,7 +506,7 @@ class FuncScene(Scene):
         dot = Dot(point=initial_point)
 
         dot.add_updater(lambda x: x.move_to(ax.c2p(t.get_value(), func(t.get_value()))))
-        x_space = np.linspace(*ax.x_range[:2],10)
+        x_space = np.linspace(*ax.x_range[:2], 10)
         # max_index = func(x_space).argmax()
 
         # self.add(ax, labels, graph, dot)
