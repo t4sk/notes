@@ -339,17 +339,17 @@ def create_boxes(vals):
 
 class ArrayScene3(Scene):
     def construct(self):
-        b32 = ["00"] * 32
+        b32 = ["00", "00", "00", "...", "00", "00", "00"]
 
         rows = []
         text_rows = []
 
-        for i in range(5):
+        for i in range(2):
             (boxes, texts) = create_boxes(b32)
 
             v_boxes = VGroup(*boxes).arrange()
-            v_boxes.scale(0.15)
-            v_boxes.move_to((3 - i) * UP)
+            v_boxes.scale(0.5)
+            v_boxes.move_to(2 * (1 - i) * UP)
 
             pos = v_boxes.get_center()
             h = v_boxes.height
@@ -375,22 +375,23 @@ class ArrayScene3(Scene):
         self.play(ReplacementTransform(code_0, code_1))
         self.wait(1)
 
-        h_square = Square(color=YELLOW).scale(0.5 * 0.5 * 0.7)
+        h_square = Square(color=YELLOW).scale(0.5)
         h_square.move_to(rows[0][0].get_center())
 
-        self.play(Create(h_square))
+        self.play(Circumscribe(h_square, color=YELLOW))
 
-        h_boxes = [Square(color=YELLOW).scale(0.5 * 0.5 * 0.7) for i in range(32)]
-        for i in range(32):
+        h_boxes = [Square(color=YELLOW).scale(0.5) for i in range(len(b32))]
+        for i in range(len(b32)):
             h_boxes[i].move_to(rows[0][i].get_center())
 
         v_h_boxes = VGroup(*h_boxes)
-        self.play(FadeIn(v_h_boxes))
+        self.play(Write(v_h_boxes))
         self.wait(1)
 
-        text = Text("ff").scale(0.5 * 0.5 * 0.7).move_to(text_rows[0][31])
-        self.play(FocusOn(text))
-        self.play(ReplacementTransform(text_rows[0][31], text))
+        text = Text("ff").scale(0.5).move_to(text_rows[0][-1])
+        ff = text
+        self.play(Circumscribe(rows[0][-1]))
+        self.play(ReplacementTransform(text_rows[0][-1], text))
         self.wait(1)
 
         self.play(FadeOut(h_square), FadeOut(v_h_boxes))
@@ -401,22 +402,22 @@ class ArrayScene3(Scene):
         self.play(ReplacementTransform(code_1, code_2))
         self.wait(1)
 
-        h_square = Square(color=YELLOW).scale(0.5 * 0.5 * 0.7)
+        h_square = Square(color=YELLOW).scale(0.5)
         h_square.move_to(rows[1][0].get_center())
 
-        self.play(Create(h_square))
+        self.play(Circumscribe(h_square))
 
-        h_boxes = [Square(color=YELLOW).scale(0.5 * 0.5 * 0.7) for i in range(32)]
-        for i in range(32):
+        h_boxes = [Square(color=YELLOW).scale(0.5) for i in range(len(b32))]
+        for i in range(len(b32)):
             h_boxes[i].move_to(rows[1][i].get_center())
 
         v_h_boxes = VGroup(*h_boxes)
-        self.play(FadeIn(v_h_boxes))
+        self.play(Write(v_h_boxes))
         self.wait(1)
 
-        text = Text("aa").scale(0.5 * 0.5 * 0.7).move_to(text_rows[1][31])
-        self.play(FocusOn(text))
-        self.play(ReplacementTransform(text_rows[1][31], text))
+        text = Text("aa").scale(0.5).move_to(text_rows[1][-1])
+        self.play(Circumscribe(rows[1][-1]))
+        self.play(ReplacementTransform(text_rows[1][-1], text))
         self.wait(1)
 
         self.play(FadeOut(h_square), FadeOut(v_h_boxes))
@@ -427,27 +428,28 @@ class ArrayScene3(Scene):
         self.play(ReplacementTransform(code_2, code_3))
         self.wait(1)
 
-        h_square = Square(color=YELLOW).scale(0.5 * 0.5 * 0.7)
+        h_square = Square(color=YELLOW).scale(0.5)
         h_square.move_to(rows[0][1].get_center())
 
-        self.play(Create(h_square))
+        self.play(Circumscribe(h_square))
 
-        h_boxes = [Square(color=YELLOW).scale(0.5 * 0.5 * 0.7) for i in range(32)]
-        for i in range(1, 32):
+        h_boxes = [Square(color=YELLOW).scale(0.5) for i in range(len(b32))]
+        for i in range(1, len(b32)):
             h_boxes[i - 1].move_to(rows[0][i].get_center())
-        h_boxes[31].move_to(rows[1][0].get_center())
+        h_boxes[-1].move_to(rows[1][0].get_center())
 
         v_h_boxes = VGroup(*h_boxes)
-        self.play(FadeIn(v_h_boxes))
+        self.play(Write(v_h_boxes))
         self.wait(1)
 
-        text = Text("00").scale(0.5 * 0.5 * 0.7).move_to(text_rows[0][31])
-        self.play(FocusOn(text))
-        self.play(ReplacementTransform(text_rows[0][31], text))
+        text = Text("00").scale(0.5).move_to(text_rows[0][-1])
+        self.play(Circumscribe(rows[0][-1]))
+        self.play(ReplacementTransform(ff, text))
         self.wait(1)
 
-        text = Text("bb").scale(0.5 * 0.5 * 0.7).move_to(text_rows[1][0])
-        self.play(FocusOn(text))
+        text = Text("bb").scale(0.5).move_to(text_rows[1][0])
+        bb = text
+        self.play(Circumscribe(rows[1][0]))
         self.play(ReplacementTransform(text_rows[1][0], text))
         self.wait(1)
 
@@ -459,28 +461,28 @@ class ArrayScene3(Scene):
         self.play(ReplacementTransform(code_3, code_4))
         self.wait(1)
 
-        h_square = Square(color=YELLOW).scale(0.5 * 0.5 * 0.7)
+        h_square = Square(color=YELLOW).scale(0.5)
         h_square.move_to(rows[0][2].get_center())
 
-        self.play(Create(h_square))
+        self.play(Circumscribe(h_square))
 
-        h_boxes = [Square(color=YELLOW).scale(0.5 * 0.5 * 0.7) for i in range(32)]
-        for i in range(2, 32):
+        h_boxes = [Square(color=YELLOW).scale(0.5) for i in range(len(b32))]
+        for i in range(2, len(b32)):
             h_boxes[i - 2].move_to(rows[0][i].get_center())
-        h_boxes[30].move_to(rows[1][0].get_center())
-        h_boxes[31].move_to(rows[1][1].get_center())
+        h_boxes[-2].move_to(rows[1][0].get_center())
+        h_boxes[-1].move_to(rows[1][1].get_center())
 
         v_h_boxes = VGroup(*h_boxes)
-        self.play(FadeIn(v_h_boxes))
+        self.play(Write(v_h_boxes))
         self.wait(1)
 
-        text = Text("00").scale(0.5 * 0.5 * 0.7).move_to(text_rows[1][0])
-        self.play(FocusOn(text))
-        self.play(ReplacementTransform(text_rows[1][0], text))
+        text = Text("00").scale(0.5).move_to(text_rows[1][0])
+        self.play(Circumscribe(rows[1][0]))
+        self.play(ReplacementTransform(bb, text))
         self.wait(1)
 
-        text = Text("cc").scale(0.5 * 0.5 * 0.7).move_to(text_rows[1][1])
-        self.play(FocusOn(text))
+        text = Text("cc").scale(0.5).move_to(text_rows[1][1])
+        self.play(Circumscribe(rows[1][1]))
         self.play(ReplacementTransform(text_rows[1][1], text))
         self.wait(1)
 
@@ -488,32 +490,32 @@ class ArrayScene3(Scene):
         self.wait(1)
 
 
-class FuncScene(Scene):
-    def construct(self):
-        ax = Axes(
-            x_range=[0, 10], y_range=[0, 100, 10], axis_config={"include_tip": False}
-        )
-        labels = ax.get_axis_labels(x_label="memory", y_label="gas")
+# class FuncScene(Scene):
+#     def construct(self):
+#         ax = Axes(
+#             x_range=[0, 10], y_range=[0, 100, 10], axis_config={"include_tip": False}
+#         )
+#         labels = ax.get_axis_labels(x_label="memory", y_label="gas")
 
-        t = ValueTracker(0)
+#         t = ValueTracker(0)
 
-        def func(x):
-            return 100 * x**2
+#         def func(x):
+#             return 100 * x**2
 
-        graph = ax.plot(func, color=MAROON)
+#         graph = ax.plot(func, color=MAROON)
 
-        initial_point = [ax.coords_to_point(t.get_value(), func(t.get_value()))]
-        dot = Dot(point=initial_point)
+#         initial_point = [ax.coords_to_point(t.get_value(), func(t.get_value()))]
+#         dot = Dot(point=initial_point)
 
-        dot.add_updater(lambda x: x.move_to(ax.c2p(t.get_value(), func(t.get_value()))))
-        x_space = np.linspace(*ax.x_range[:2], 10)
-        # max_index = func(x_space).argmax()
+#         dot.add_updater(lambda x: x.move_to(ax.c2p(t.get_value(), func(t.get_value()))))
+#         x_space = np.linspace(*ax.x_range[:2], 10)
+#         # max_index = func(x_space).argmax()
 
-        # self.add(ax, labels, graph, dot)
-        # self.play(t.animate.set_value(x_space[max_index]))
-        # self.wait()
+#         # self.add(ax, labels, graph, dot)
+#         # self.play(t.animate.set_value(x_space[max_index]))
+#         # self.wait()
 
-        self.add(ax, labels, graph, dot)
-        for x in x_space:
-            self.play(t.animate.set_value(x))
-            self.wait(0.1)
+#         self.add(ax, labels, graph, dot)
+#         for x in x_space:
+#             self.play(t.animate.set_value(x))
+#             self.wait(0.1)
