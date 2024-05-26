@@ -9,6 +9,6 @@ https://docs.manim.community/en/stable/examples.html
 ```shell
 docker run -it --name my-manim --rm -v "$PWD:/manim" manimcommunity/manim bash
 
-docker exec -it my-manim manim -qm title.py TitleScene
-docker exec -it my-manim manim -qm array.py ArrayScene
+docker exec -it my-manim manim -qh title.py TitleScene
+docker exec -it my-manim manim -qh array.py ArrayScene
 ```

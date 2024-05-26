@@ -141,6 +141,18 @@ class ArrayScene2(Scene):
 
         self.play(GrowFromPoint(v_group_text_boxes, prev[-1]))
 
+        # Show length
+        v_b32_0 = v_group_text_boxes
+        brace = Brace(mobject=v_b32_0, direction=DOWN, buff=0.2)
+        brace_tex = brace.get_tex("32 bytes")
+        self.play(GrowFromCenter(brace), FadeIn(brace_tex), run_time=1)
+
+        self.wait(1)
+
+        self.play(FadeOut(brace), FadeOut(brace_tex))
+        self.wait(1)
+
+        # Move
         v_b32_0 = v_group_text_boxes
         self.play(v_b32_0.animate.shift(3 * UP))
         self.wait(1)
@@ -164,6 +176,9 @@ class ArrayScene2(Scene):
 
         v_b32_1 = v_group_text_boxes
         self.play(v_b32_1.animate.shift(2 * UP))
+        self.wait(1)
+
+        # self.play(FadeOut(brase), FadeOut(brace_tex), run_time=1)
         self.wait(1)
 
         # Show 64 - 96 = free memory pointer
