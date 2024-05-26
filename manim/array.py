@@ -123,7 +123,7 @@ class ArrayScene2(Scene):
         v_prev = v_group_text_boxes
 
         # Show first 32 bytes = scratch space
-        b32 = ["00"] * 32
+        b32 = ["00", "00", "00", "...", "00", "00", "00"]
 
         squares = [Square(color=BLUE) for i in range(len(b32))]
         texts = [Text(v, color=WHITE) for v in b32]
@@ -137,21 +137,13 @@ class ArrayScene2(Scene):
 
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
         v_group_text_boxes = VGroup(*text_boxes).arrange()
-        v_group_text_boxes.scale(0.15)
+        v_group_text_boxes.scale(0.35)
 
-        highlight_square = Square(color=YELLOW).scale(0.5 * 0.7)
-
-        highlight_square.animate.move_to(prev[0].get_center())
-        self.wait(1)
-
-        for i in range(len(text_boxes)):
-            box = text_boxes[i]
-            p = prev[i] if i < len(prev) else prev[-1]
-            self.play(highlight_square.animate.move_to(p.get_center()))
-            self.play(GrowFromPoint(box, p), run_time=1)
+        self.play(GrowFromPoint(v_group_text_boxes, prev[-1]))
 
         v_b32_0 = v_group_text_boxes
         self.play(v_b32_0.animate.shift(3 * UP))
+        self.wait(1)
 
         # Show 32 - 64
         squares = [Square(color=BLUE) for i in range(len(b32))]
@@ -166,14 +158,15 @@ class ArrayScene2(Scene):
 
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
         v_group_text_boxes = VGroup(*text_boxes).arrange()
-        v_group_text_boxes.scale(0.15)
+        v_group_text_boxes.scale(0.35)
 
         self.play(GrowFromPoint(v_group_text_boxes, prev[-1]))
 
         v_b32_1 = v_group_text_boxes
         self.play(v_b32_1.animate.shift(2 * UP))
+        self.wait(1)
 
-        # 64 - 96 = free memory pointer
+        # Show 64 - 96 = free memory pointer
         squares = [Square(color=BLUE) for i in range(len(b32))]
         texts = [Text(v, color=WHITE) for v in b32]
 
@@ -186,12 +179,13 @@ class ArrayScene2(Scene):
 
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
         v_group_text_boxes = VGroup(*text_boxes).arrange()
-        v_group_text_boxes.scale(0.15)
+        v_group_text_boxes.scale(0.35)
 
         self.play(GrowFromPoint(v_group_text_boxes, prev[-1]))
 
         v_b32_2 = v_group_text_boxes
         self.play(v_b32_2.animate.shift(1 * UP))
+        self.wait(1)
 
         # 96 - 128 = zero slot
         squares = [Square(color=BLUE) for i in range(len(b32))]
@@ -206,11 +200,11 @@ class ArrayScene2(Scene):
 
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
         v_group_text_boxes = VGroup(*text_boxes).arrange()
-        v_group_text_boxes.scale(0.15)
-
-        self.play(GrowFromPoint(v_group_text_boxes, prev[-1]))
+        v_group_text_boxes.scale(0.35)
 
         v_b32_3 = v_group_text_boxes
+        self.play(GrowFromPoint(v_group_text_boxes, prev[-1]))
+        self.wait(1)
 
         # 128 = free memory pointer
         squares = [Square(color=BLUE) for i in range(len(b32))]
@@ -225,12 +219,12 @@ class ArrayScene2(Scene):
 
         text_boxes = [VGroup(s, t) for (s, t) in zip(squares, texts)]
         v_group_text_boxes = VGroup(*text_boxes).arrange()
-        v_group_text_boxes.scale(0.15)
+        v_group_text_boxes.scale(0.35)
         v_group_text_boxes.move_to(DOWN)
 
-        self.play(GrowFromPoint(v_group_text_boxes, prev[-1]))
-
         v_b32_4 = v_group_text_boxes
+        self.play(GrowFromPoint(v_group_text_boxes, prev[-1]))
+        self.wait(1)
 
         # write texts
         pos = v_b32_0.get_center()
@@ -242,9 +236,7 @@ class ArrayScene2(Scene):
         v_b32_0_text = Text("Scratch space").scale(0.5)
         text_h = v_b32_0_text.height
         text_w = v_b32_0_text.width
-        v_b32_0_text.move_to(
-            [x - w / 2 + text_w / 2 + 0.1, y + h / 2 + text_h / 2 + 0.1, 0]
-        )
+        v_b32_0_text.move_to([x + w / 2 + text_w / 2 + 0.3, y, 0])
 
         pos = v_b32_1.get_center()
         h = v_b32_1.height
@@ -255,9 +247,7 @@ class ArrayScene2(Scene):
         v_b32_1_text = Text("Scratch space").scale(0.5)
         text_h = v_b32_1_text.height
         text_w = v_b32_1_text.width
-        v_b32_1_text.move_to(
-            [x - w / 2 + text_w / 2 + 0.1, y + h / 2 + text_h / 2 + 0.1, 0]
-        )
+        v_b32_1_text.move_to([x + w / 2 + text_w / 2 + 0.3, y, 0])
 
         pos = v_b32_2.get_center()
         h = v_b32_2.height
@@ -268,9 +258,7 @@ class ArrayScene2(Scene):
         v_b32_2_text = Text("Free memory pointer").scale(0.5)
         text_h = v_b32_2_text.height
         text_w = v_b32_2_text.width
-        v_b32_2_text.move_to(
-            [x - w / 2 + text_w / 2 + 0.1, y + h / 2 + text_h / 2 + 0.1, 0]
-        )
+        v_b32_2_text.move_to([x + w / 2 + text_w / 2 + 0.3, y, 0])
 
         pos = v_b32_3.get_center()
         h = v_b32_3.height
@@ -281,9 +269,7 @@ class ArrayScene2(Scene):
         v_b32_3_text = Text("Zero slot").scale(0.5)
         text_h = v_b32_3_text.height
         text_w = v_b32_3_text.width
-        v_b32_3_text.move_to(
-            [x - w / 2 + text_w / 2 + 0.1, y + h / 2 + text_h / 2 + 0.1, 0]
-        )
+        v_b32_3_text.move_to([x + w / 2 + text_w / 2 + 0.3, y, 0])
 
         pos = v_b32_4.get_center()
         h = v_b32_4.height
@@ -294,11 +280,8 @@ class ArrayScene2(Scene):
         v_b32_4_text = Text("Initial free memory").scale(0.5)
         text_h = v_b32_4_text.height
         text_w = v_b32_4_text.width
-        v_b32_4_text.move_to(
-            [x - w / 2 + text_w / 2 + 0.1, y + h / 2 + text_h / 2 + 0.1, 0]
-        )
+        v_b32_4_text.move_to([x + w / 2 + text_w / 2 + 0.3, y, 0])
 
-        self.play(FadeOut(v_prev, highlight_square))
         self.wait(1)
 
         self.play(
@@ -313,14 +296,34 @@ class ArrayScene2(Scene):
         self.play(Write(v_b32_4_text))
         self.wait(1)
 
+        # Fade out
         self.play(
             FadeOut(v_b32_0_text),
             # FadeOut(v_b32_1_text),
             FadeOut(v_b32_2_text),
             FadeOut(v_b32_3_text),
             FadeOut(v_b32_4_text),
+            FadeOut(slot_2),
+            FadeOut(slot_3),
+            FadeOut(slot_4),
+            FadeOut(v_b32_3),
+            FadeOut(v_b32_2),
+            FadeOut(v_b32_4),
+            FadeOut(v_prev),
         )
         self.wait(1)
+
+        self.play(
+            slot_0.animate.shift(1 * DOWN),
+            slot_1.animate.shift(2 * DOWN),
+            v_b32_0.animate.shift(1 * DOWN),
+            v_b32_1.animate.shift(2 * DOWN),
+        )
+        v_slot_0 = VGroup(slot_0, v_b32_0)
+        v_slot_1 = VGroup(slot_1, v_b32_1)
+        self.play(
+            v_slot_0.animate.scale(0.5 / 0.35), v_slot_1.animate.scale(0.5 / 0.35)
+        )
 
 
 def create_boxes(vals):
@@ -356,7 +359,7 @@ class ArrayScene3(Scene):
             w = v_boxes.width
             x = pos[0]
             y = pos[1]
-            slot = Text(f"0x{2 * i}0").scale(0.5).next_to(v_boxes, LEFT)
+            slot = Text(f"0x{2 * i}0").scale(0.5 * 0.5 / 0.35).next_to(v_boxes, LEFT)
 
             rows.append(boxes)
             text_rows.append(texts)
