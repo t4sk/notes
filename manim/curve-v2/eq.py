@@ -18,11 +18,9 @@ class CurveEqIntro(Scene):
         ### Positions ###
         VGroup(curve_v2_eq, k0_eq, k_eq).arrange(DOWN, buff = 1)
 
-        self.play(
-            Write(curve_v2_eq),
-            Write(k0_eq),
-            Write(k_eq),
-        )
+        self.play(Write(curve_v2_eq))
+        self.play(Write(k0_eq))
+        self.play(Write(k_eq))
         self.wait()
 
         self.play(
