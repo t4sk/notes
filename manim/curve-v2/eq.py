@@ -1,5 +1,37 @@
 from manim import *
 
+class CurveEqIntro(Scene):
+    def construct(self):
+        curve_v2_eq = MathTex(
+            "A", "K", "D^{N-1}\\sum_{i=1}^{N}{x_i} + \\prod_{i=1}^N{x_i}",
+            "=", 
+            "A", "K", "D^N + \\left(\\frac{D}{N}\\right)^N"
+        )
+
+        k0_eq = MathTex(
+            "K_0", "=", "\\frac{\\prod_{i=1}^N{x_i} }{\\left(\\frac{D}{N}\\right)^N}"
+        )
+        k_eq = MathTex(
+            "K", "=", "K_0", "\left(\\frac{\gamma}{\gamma + 1 - ", "K_0", "}\\right)^2"
+        )
+
+        ### Positions ###
+        VGroup(curve_v2_eq, k0_eq, k_eq).arrange(DOWN, buff = 1)
+
+        self.play(
+            Write(curve_v2_eq),
+            Write(k0_eq),
+            Write(k_eq),
+        )
+        self.wait()
+
+        self.play(
+            FadeOut(curve_v2_eq),
+            FadeOut(k0_eq),
+            FadeOut(k_eq),
+        )
+        self.wait()
+
 class CurveEq(Scene):
     def construct(self):
         """
