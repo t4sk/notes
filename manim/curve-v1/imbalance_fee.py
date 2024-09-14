@@ -19,7 +19,7 @@ class Count(Animation):
 def lin(y0, y1, x0, x1, x):
     return (y1 - y0) / (x1 - x0) * (x - x0) + y0
 
-def d_line(chart, max_bal, b, tex):
+def d_line(chart, max_b, b, tex):
     # Show d0
     # Manim coordinates
     y_max = chart.y_axis.get_top()[1]
@@ -27,8 +27,8 @@ def d_line(chart, max_bal, b, tex):
     x_min = chart.x_axis.get_left()[0]
     x_max = chart.x_axis.get_right()[0]
     # y = Manim coordinates, x = liquidity 
-    y = lin(y_min, y_max, 0, max_bal, b)
-    d_line = Line(start=[x_min, y, 0], end=[x_max, y, 0], color=WHITE)
+    y = lin(y_min, y_max, 0, max_b, b)
+    d_line = Line(start=[x_min, y, 0], end=[x_max, y, 0], color = WHITE)
     d_line.set_opacity(0.5)
 
     d_tex = MathTex(*tex, font_size = 36) 
@@ -36,10 +36,47 @@ def d_line(chart, max_bal, b, tex):
 
     return (d_line, d_tex)
 
+def h_line(chart, i, max_b, b, texs, color):
+    # Show d0
+    # Manim coordinates
+    y_max = chart.y_axis.get_top()[1]
+    y_min = chart.y_axis.get_bottom()[1]
+    x_min = chart.bars[i].get_left()[0]
+    x_max = chart.bars[i].get_right()[0]
+    # y = Manim coordinates, x = liquidity 
+    y = lin(y_min, y_max, 0, max_b, b)
+    line = Line(start=[x_min, y, 0], end=[x_max, y, 0], color = color)
+    line.set_opacity(0.5)
+
+    tex = MathTex(*texs, font_size = 36) 
+    tex.next_to(line.get_end(), RIGHT, buff = 0.2)
+
+    return (line, tex)
+
+def v_line(chart, i, max_b, b0, b1, tex):
+    # Show d0
+    # Manim coordinates
+    y_max = chart.y_axis.get_top()[1]
+    y_min = chart.y_axis.get_bottom()[1]
+    x_right = chart.bars[i].get_right()[0]
+    # y = Manim coordinates, x = liquidity 
+    y0 = lin(y_min, y_max, 0, max_b, b0)
+    y1 = lin(y_min, y_max, 0, max_b, b1)
+    print("HERE", y0, y1, y_min, y_max, chart.y_axis.get_max())
+    d_line = Line(start=[x_right, y0, 0], end=[x_right, y1, 0], color = RED)
+    d_line.set_opacity(0.5)
+    d_line.shift(RIGHT * 0.2)
+
+    d_tex = MathTex(*tex, font_size = 36) 
+    d_tex.next_to(d_line.get_center(), RIGHT, buff = 0.2)
+
+    return (d_line, d_tex)
+
 
 class Bar(Scene):
     def wait(self): 
-        super().wait()
+        if False:
+            super().wait()
 
     def construct(self):
         bals0=[0, 0, 0]
@@ -60,10 +97,12 @@ class Bar(Scene):
             count = Count(num, b0, b1)
             count_anims.append(count)
 
+        bar_colors = ["orange", "blue", "green"]
+
         chart = BarChart(
             bals0,
             bar_names = ["DAI", "USDC", "USDT"],
-            bar_colors = ["orange", "blue", "green"],
+            bar_colors = bar_colors,
             bar_fill_opacity = 0.2,
             x_length = 10, 
             y_range=[0, MAX_BAL, 50],
@@ -87,7 +126,7 @@ class Bar(Scene):
         self.wait()
 
         # Show d0
-        (d0_line, d0_tex) = d_line(chart, MAX_BAL, d0 /3, ["\\frac{D_{0}}{3}", "\\approx", f'{round(d0 / 3)}'])
+        (d0_line, d0_tex) = d_line(chart, MAX_BAL, d0 / 3, ["\\frac{D_{0}}{3}", "\\approx", f'{round(d0 / 3)}'])
 
         self.play(Create(d0_line))
         self.play(Write(d0_tex))
@@ -121,6 +160,30 @@ class Bar(Scene):
         self.wait()
 
         # Fade d0 and d1 lines
-        self.play(FadeOut(d0_tex, d1_tex))
-        self.play(FadeOut(d0_line, d1_line))
+        self.play(FadeOut(d0_tex, d1_tex, d0_line, d1_line))
+        # self.play(FadeOut(d0_line, d1_line))
+        self.wait()
+
+        # Show ideal balances
+        h_lines = []
+        h_texs = []
+        for i in range(len(i_bals)):
+            b = i_bals[i]
+            (line, tex) = h_line(chart, i, MAX_BAL, b, [f'{round(b)}'], bar_colors[i])
+            h_lines.append(line)
+            h_texs.append(tex)
+            self.play(Create(line))
+            self.play(Write(tex))
+            self.wait()
+        self.wait()
+
+        # Animate difference in balances
+        self.play(Circumscribe(h_texs[0]))
+        self.play(Circumscribe(count_anims[0].num))
+        bi = i_bals[0]
+        b = bals2[0]
+        (line, tex) = v_line(chart, 0, MAX_BAL, bi, b, [f'{abs(round(b - bi))}'])
+        self.play(Create(line))
+        self.play(Write(tex))
+
 
