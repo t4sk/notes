@@ -72,6 +72,7 @@ def v_line(chart, i, max_b, b0, b1, tex):
     return (d_line, d_tex)
 
 
+# TODO: round numbers for calculation?
 class Bar(Scene):
     def wait(self): 
         if False:
@@ -79,17 +80,23 @@ class Bar(Scene):
 
     def construct(self):
         N = 3
-        bals0=[0, 0, 0]
-        bals1=[100, 90, 110]
-        bals2=[400, 90, 110]
+        bals0 = [0, 0, 0]
+        bals1 = [100, 90, 110]
+        bals2 = [400, 90, 110]
         MAX_BAL = bals2[0]
 
         d0 = 299.8991189141142
         d1 = 581.8477119377197
+        # TODO: calc d2
+        d2 = 570.8477119377197
+        f = 0.01
 
         # ideal balances
-        i_bals = [d1 / d0 * b for b in bals1]
-        diff = [b - bi for (b, bi) in zip(bals2, i_bals)]
+        i_bals = [math.floor(d1 / d0 * b) for b in bals1]
+        diffs = [b - bi for (b, bi) in zip(bals2, i_bals)]
+
+        fees = [round(abs(d) * f * 100) / 100 for d in diffs]
+        bals3 = [b - f for (b, f) in zip(bals2, fees)]
 
         count_anims = []
         for (b0, b1) in zip(bals0, bals1):
@@ -178,6 +185,8 @@ class Bar(Scene):
         self.wait()
 
         # Animate difference in balances
+        y_lines = []
+        y_texs = []
         for i in range(N):
             self.play(Circumscribe(h_texs[i]))
             self.play(Circumscribe(count_anims[i].num))
@@ -186,8 +195,51 @@ class Bar(Scene):
             bi = i_bals[i]
             b = bals2[i]
             (line, tex) = v_line(chart, i, MAX_BAL, bi, b, [f'{abs(round(b - bi))}'])
+            y_lines.append(line)
+            y_texs.append(tex)
+
             self.play(Create(line))
             self.play(Write(tex))
             self.wait()
 
+        # Fee
+        fee = MathTex("fee", "=", f'{f}')
+        fee.to_corner(UP)
+        self.play(Write(fee))
+        self.wait()
 
+        # Calculate imbalance fee
+        for i in range(N):
+            self.play(Circumscribe(y_texs[i]))
+            self.wait()
+
+            # round to 2 decimals
+            fee_eq = MathTex(f'{round(abs(diffs[i]))}', "\\times", "fee", "=", f'{fees[i]}')
+            fee_eq.shift(UP + RIGHT)
+            self.play(Write(fee_eq))
+
+            self.play(Circumscribe(count_anims[i].num))
+            self.wait()
+
+            self.play(FadeOut(y_lines[i], y_texs[i]))
+            self.wait()
+
+            count_anims[i].start = bals2[i]
+            count_anims[i].end = bals3[i]
+
+            self.play(count_anims[i], run_time=1, rate_func=linear)
+            self.wait()
+
+            self.play(FadeOut(fee_eq))
+            self.wait()
+
+        # Fade out h lines and texs
+        self.play(FadeOut(*h_lines, *h_texs))
+        self.wait()
+
+        # Show d2
+        (d2_line, d2_tex) = d_line(chart, MAX_BAL, d2 / 3, ["\\frac{D_{2}}{3}", "\\approx", f'{round(d2 / 3)}'])
+
+        self.play(Create(d2_line))
+        self.play(Write(d2_tex))
+        self.wait()
