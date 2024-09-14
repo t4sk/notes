@@ -55,15 +55,14 @@ def h_line(chart, i, max_b, b, texs, color):
 
 def v_line(chart, i, max_b, b0, b1, tex):
     # Show d0
-    # Manim coordinates
-    y_max = chart.y_axis.get_top()[1]
-    y_min = chart.y_axis.get_bottom()[1]
+    # Manim coordinates (assumes bars[0] is at max height)
+    y_max = chart.bars[0].get_top()[1]
+    y_min = chart.bars[0].get_bottom()[1]
     x_right = chart.bars[i].get_right()[0]
     # y = Manim coordinates, x = liquidity 
     y0 = lin(y_min, y_max, 0, max_b, b0)
     y1 = lin(y_min, y_max, 0, max_b, b1)
-    print("HERE", y0, y1, y_min, y_max, chart.y_axis.get_max())
-    d_line = Line(start=[x_right, y0, 0], end=[x_right, y1, 0], color = RED)
+    d_line = Line(start=[x_right, y0, 0], end=[x_right, y1, 0], color = PINK)
     d_line.set_opacity(0.5)
     d_line.shift(RIGHT * 0.2)
 
@@ -79,6 +78,7 @@ class Bar(Scene):
             super().wait()
 
     def construct(self):
+        N = 3
         bals0=[0, 0, 0]
         bals1=[100, 90, 110]
         bals2=[400, 90, 110]
@@ -112,7 +112,7 @@ class Bar(Scene):
 
         def updater(chart):
             chart.change_bar_values([c.num.get_value() for c in count_anims])
-            for i in range(len(count_anims)):
+            for i in range(N):
                 count_anims[i].num.next_to(chart.bars[i], UP, buff = 0.2)
 
         chart.add_updater(updater)
@@ -133,7 +133,7 @@ class Bar(Scene):
         self.wait()
 
         # SHow bals2
-        for i in range(len(count_anims)):
+        for i in range(N):
             count_anim = count_anims[i]
             count_anim.start = bals1[i]
             count_anim.end = bals2[i]
@@ -167,7 +167,7 @@ class Bar(Scene):
         # Show ideal balances
         h_lines = []
         h_texs = []
-        for i in range(len(i_bals)):
+        for i in range(N):
             b = i_bals[i]
             (line, tex) = h_line(chart, i, MAX_BAL, b, [f'{round(b)}'], bar_colors[i])
             h_lines.append(line)
@@ -178,12 +178,16 @@ class Bar(Scene):
         self.wait()
 
         # Animate difference in balances
-        self.play(Circumscribe(h_texs[0]))
-        self.play(Circumscribe(count_anims[0].num))
-        bi = i_bals[0]
-        b = bals2[0]
-        (line, tex) = v_line(chart, 0, MAX_BAL, bi, b, [f'{abs(round(b - bi))}'])
-        self.play(Create(line))
-        self.play(Write(tex))
+        for i in range(N):
+            self.play(Circumscribe(h_texs[i]))
+            self.play(Circumscribe(count_anims[i].num))
+            self.wait()
+
+            bi = i_bals[i]
+            b = bals2[i]
+            (line, tex) = v_line(chart, i, MAX_BAL, bi, b, [f'{abs(round(b - bi))}'])
+            self.play(Create(line))
+            self.play(Write(tex))
+            self.wait()
 
 
