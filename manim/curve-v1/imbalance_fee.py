@@ -22,7 +22,8 @@ def lin(y0, y1, x0, x1, x):
 def d_line(chart, max_b, b, tex):
     # Show d0
     # Manim coordinates
-    y_max = chart.y_axis.get_top()[1]
+    # y_axis top != bar chart max height, being lazy and add buffer to top
+    y_max = chart.y_axis.get_top()[1] * 0.999
     y_min = chart.y_axis.get_bottom()[1]
     x_min = chart.x_axis.get_left()[0]
     x_max = chart.x_axis.get_right()[0]
@@ -39,7 +40,8 @@ def d_line(chart, max_b, b, tex):
 def h_line(chart, i, max_b, b, texs, color):
     # Show d0
     # Manim coordinates
-    y_max = chart.y_axis.get_top()[1]
+    # y_axis top != bar chart max height, being lazy and add buffer to top
+    y_max = chart.y_axis.get_top()[1] * 0.999
     y_min = chart.y_axis.get_bottom()[1]
     x_min = chart.bars[i].get_left()[0]
     x_max = chart.bars[i].get_right()[0]
@@ -72,11 +74,10 @@ def v_line(chart, i, max_b, b0, b1, tex):
     return (d_line, d_tex)
 
 
-# TODO: round numbers for calculation?
-class Bar(Scene):
+class AddLiqImbalanceFee(Scene):
     def wait(self): 
-        if False:
-            super().wait()
+        pass
+        # super().wait()
 
     def construct(self):
         N = 3
@@ -85,10 +86,9 @@ class Bar(Scene):
         bals2 = [400, 90, 110]
         MAX_BAL = bals2[0]
 
-        d0 = 299.8991189141142
-        d1 = 581.8477119377197
-        # TODO: calc d2
-        d2 = 570.8477119377197
+        d0 = 299
+        d1 = 581
+        d2 = 576
         f = 0.01
 
         # ideal balances
@@ -161,7 +161,7 @@ class Bar(Scene):
         self.wait()
 
         # Show d1 / d0
-        d_ratio = MathTex("\\frac{D_{1}}{D_{0}}", "\\approx", f'{d1 / d0:.2f}')
+        d_ratio = MathTex("\\frac{D_{1}}{D_{0}}", "\\approx", "\\frac{{{}}}{{{}}}".format(d1, d0), "\\approx", f'{d1 / d0:.2f}')
         d_ratio.to_corner(UP + RIGHT)
         self.play(Write(d_ratio))
         self.wait()
