@@ -76,8 +76,8 @@ def v_line(chart, i, max_b, b0, b1, tex):
 
 class AddLiqImbalanceFee(Scene):
     def wait(self): 
-        pass
-        # super().wait()
+        # pass
+        super().wait()
 
     def construct(self):
         N = 3
