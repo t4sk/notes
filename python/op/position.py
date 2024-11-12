@@ -1,5 +1,4 @@
-def bit_not(x, bits):
-    return (1 << bits) - 1 - x
+from lib import bit_not
 
 class Position:
     @staticmethod
