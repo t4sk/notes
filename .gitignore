@@ -2,3 +2,5 @@
 tmp
 .env
 __pycache__
+*.gv
+*.gv.pdf
