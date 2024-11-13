@@ -47,6 +47,6 @@ def walk(root, dot):
         walk(root.right, dot)
 
 def vis(root):
-    dot = graphviz.Digraph()
+    dot = graphviz.Graph()
     walk(root, dot)
     dot.render(view=True)
