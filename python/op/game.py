@@ -253,10 +253,10 @@ class FaultDisputeGame:
         # TODO
 
     def _find_trace_ancestor(self, pos, start_idx, is_global):
-        trace_ancestor_pos = Position.trace_ancestor(pos) if is_global else Position.trace_ancestor_bounded(SPLIT_DEPTH)
+        trace_ancestor_pos = Position.trace_ancestor(pos) if is_global else Position.trace_ancestor_bounded(pos, SPLIT_DEPTH)
 
         ancestor = self.claim_data[start_idx]
-        while Position.position(ancestor) != trace_ancestor_pos:
+        while ancestor.position != trace_ancestor_pos:
             ancestor = self.claim_data[ancestor.parent_index]
         return ancestor
 
