@@ -1,6 +1,6 @@
 from collections import defaultdict
-from lib import U32_MAX
-from game_types import GameStatus, OutputRoot
+from lib import U32_MAX, first_8_bits
+from game_types import GameStatus, OutputRoot, VMStatus
 from udt import Clock
 from position import Position
 
@@ -44,7 +44,7 @@ class FaultDisputeGame:
         self.claims = defaultdict(bool)
         # challenge index => [claim_data indexes]
         self.subgames = defaultdict(list)
-        self.status = "IN_PROGRESS"
+        self.status = GameStatus.IN_PROGRESS
         # clain idex => bool
         self.resolved_subgames = defaultdict(bool)
         # claim index => ResolutionCheckpoint
@@ -105,6 +105,7 @@ class FaultDisputeGame:
         assert self.status == GameStatus.IN_PROGRESS
 
         parent = self.claim_data[challenge_idx]
+        print(parent.claim, disputed)
         assert parent.claim == disputed
         
         parent_pos = parent.position
@@ -231,6 +232,7 @@ class FaultDisputeGame:
                 subgame_root_claim.countered_by = countered
     
     def get_required_bond(self, pos):
+        # TODO
         return 0
 
     def get_challenger_duration(self, claim_idx, **kwargs):
@@ -250,7 +252,14 @@ class FaultDisputeGame:
     ):
         disputed_leaf_pos = parent_pos + 1
         disputed = self._find_trace_ancestor(disputed_leaf_pos, parent_index, True)
-        # TODO
+
+        vm_status = VMStatus(first_8_bits(root_claim))
+
+        if is_attack or Position.depth(disputed.position) % 2 == SPLIT_DEPTH % 2:
+            if not vm_status in [VMStatus.INVALID, VMStatus.PANIC]:
+                raise "unexpected root claim"
+        elif vm_status != VMStatus.VALID:
+            raise "unexpected root claim"
 
     def _find_trace_ancestor(self, pos, start_idx, is_global):
         trace_ancestor_pos = Position.trace_ancestor(pos) if is_global else Position.trace_ancestor_bounded(pos, SPLIT_DEPTH)
