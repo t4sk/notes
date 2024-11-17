@@ -1,13 +1,13 @@
 from collections import defaultdict
-from lib import U32_MAX, first_8_bits
+from lib import U32_MAX, U128_MAX, first_8_bits
 from game_types import GameStatus, OutputRoot, VMStatus
-from udt import Clock
+from udt import Clock, Claim
 from position import Position
 
 ABSOLUTE_PRESTATE = "0"
 MAX_GAME_DEPTH = 73
 SPLIT_DEPTH = 30
-MAX_CLOCK_DURATION = 3.5 * 24 * 3600
+MAX_CLOCK_DURATION = int(3.5 * 24 * 3600)
 CLOCK_EXTENSION = 3 * 3600
 CHALLENGE_PERIOD = 24 * 3600
 
@@ -69,7 +69,7 @@ class FaultDisputeGame:
         )
 
     def step(self, claim_idx, is_attack, state_data, proof, **kwargs):
-        assert self.status == "IN_PROGRESS"
+        assert self.status == GameStatus.IN_PROGRESS
 
         parent = self.claim_data[claim_idx]
         parent_pos = parent.position
@@ -105,7 +105,6 @@ class FaultDisputeGame:
         assert self.status == GameStatus.IN_PROGRESS
 
         parent = self.claim_data[challenge_idx]
-        print(parent.claim, disputed)
         assert parent.claim == disputed
         
         parent_pos = parent.position
@@ -145,7 +144,7 @@ class FaultDisputeGame:
         next_clock = Clock.wrap(next_duration, kwargs["block_timestamp"])
 
         claim_hash = Claim.hash_claim_pos(claim, next_pos, challenge_idx)
-        if self.claims.get(claim_hash, False):
+        if self.claims[claim_hash]:
             raise "claim already exists"
         self.claims[claim_hash] = True
 
@@ -164,7 +163,7 @@ class FaultDisputeGame:
         self.subgames[challenge_idx].append(len(self.claim_data) - 1)
 
     def challenge_root_l2_block(self, output_root_proof, header_rlp, **kwargs):
-        assert self.status != "IN_PROGRESS"
+        assert self.status != GameStatus.IN_PROGRESS
         assert not self.l2_block_num_challenged
         assert Hashing.hash_output_root_proof(output_root_proof) == self.root_claim
 
@@ -173,21 +172,25 @@ class FaultDisputeGame:
         self.l2_block_num_challenged = True
 
     def resolve(self, **kwargs):
-        assert self.status == "IN_PROGRESS"
-        assert self.resolved_subgames.get(0, False)
+        assert self.status == GameStatus.IN_PROGRESS
+        assert self.resolved_subgames[0]
         
-        self.status = "DEFENDER_WINS" if self.claim_data[0].countered_by == None else "CHALLENGER_WINS"
+        if self.claim_data[0].countered_by == None:
+            self.status = GameStatus.DEFENDER_WINS 
+        else:
+            self.status = GameStatus.CHALLENGER_WINS
         # skip - anchor state registry
     
     def resolve_claim(self, claim_idx, num_to_resolve, **kwargs):
-        assert self.status == "IN_PROGRESS"
+        assert self.status == GameStatus.IN_PROGRESS
         subgame_root_claim = self.claim_data[claim_idx]
         challenge_dur = self.get_challenger_duration(claim_idx, **kwargs)
 
+        print(challenge_dur, MAX_CLOCK_DURATION)
         assert challenge_dur >= MAX_CLOCK_DURATION
-        assert not self.resolved_subgames.get(claim_idx, False)
+        assert not self.resolved_subgames[claim_idx]
         
-        challenge_indexes = self.subgames.get(claim_idx, [])
+        challenge_indexes = self.subgames[claim_idx]
         challenge_len = len(challenge_indexes)
 
         if challenge_len == 0 and claim_idx != 0:
@@ -197,7 +200,7 @@ class FaultDisputeGame:
             self.resolved_subgames[claim_idx] = True
             return
             
-        checkpoint = self.resolution_checkpoints.get(claim_idx, ResolutionCheckpoint())
+        checkpoint = self.resolution_checkpoints[claim_idx]
 
         if not checkpoint.initial_checkpoint_complete:
             checkpoint.leftmost_position = U128_MAX
@@ -209,7 +212,7 @@ class FaultDisputeGame:
         final_cursor = min(last_to_resolve, challenge_len)
         for i in range(checkpoint.subgame_index, final_cursor):
             challenge_idx = challenge_indexes[i]
-            assert self.resolved_subgames.get(challenge_idx, False)
+            assert self.resolved_subgames[challenge_idx]
 
             claim = self.claim_data[challenge_idx]
             if claim.countered_by is None and checkpoint.leftmost_position > claim.position:
@@ -245,7 +248,10 @@ class FaultDisputeGame:
             parent_clock = self.claim_data[subgame_root_claim.parent_index].clock
 
         challenge_duration = Clock.duration(parent_clock) + kwargs["block_timestamp"] - Clock.timestamp(subgame_root_claim.clock)
-        return min(challenge_duration, MAX_CLOCK_DURATION)
+
+        print("HERE", Clock.duration(parent_clock), kwargs["block_timestamp"], Clock.timestamp(subgame_root_claim.clock))
+        
+        return min(int(challenge_duration), MAX_CLOCK_DURATION)
 
     def _verify_exec_bisection_root(
         self, root_claim, parent_idx, parent_pos, is_attack, **kwargs
