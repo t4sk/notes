@@ -186,7 +186,7 @@ class FaultDisputeGame:
         subgame_root_claim = self.claim_data[claim_idx]
         challenge_dur = self.get_challenger_duration(claim_idx, **kwargs)
 
-        print(challenge_dur, MAX_CLOCK_DURATION)
+        print(challenge_dur)
         assert challenge_dur >= MAX_CLOCK_DURATION
         assert not self.resolved_subgames[claim_idx]
         
@@ -247,11 +247,17 @@ class FaultDisputeGame:
         if subgame_root_claim.parent_index != U32_MAX:
             parent_clock = self.claim_data[subgame_root_claim.parent_index].clock
 
-        challenge_duration = Clock.duration(parent_clock) + kwargs["block_timestamp"] - Clock.timestamp(subgame_root_claim.clock)
+        challenge_dur = Clock.duration(parent_clock) + kwargs["block_timestamp"] - Clock.timestamp(subgame_root_claim.clock)
 
-        print("HERE", Clock.duration(parent_clock), kwargs["block_timestamp"], Clock.timestamp(subgame_root_claim.clock))
-        
-        return min(int(challenge_duration), MAX_CLOCK_DURATION)
+        print(
+            "claim idx", claim_idx,
+            "claim timestamp", Clock.timestamp(subgame_root_claim.clock),
+            "block", kwargs["block_timestamp"],
+            "parent dur",  Clock.duration(parent_clock),
+            "challenge dur", challenge_dur
+        )
+
+        return min(int(challenge_dur), MAX_CLOCK_DURATION)
 
     def _verify_exec_bisection_root(
         self, root_claim, parent_idx, parent_pos, is_attack, **kwargs
