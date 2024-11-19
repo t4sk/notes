@@ -249,14 +249,6 @@ class FaultDisputeGame:
 
         challenge_dur = Clock.duration(parent_clock) + kwargs["block_timestamp"] - Clock.timestamp(subgame_root_claim.clock)
 
-        print(
-            "claim idx", claim_idx,
-            "claim timestamp", Clock.timestamp(subgame_root_claim.clock),
-            "block", kwargs["block_timestamp"],
-            "parent dur",  Clock.duration(parent_clock),
-            "challenge dur", challenge_dur
-        )
-
         return min(int(challenge_dur), MAX_CLOCK_DURATION)
 
     def _verify_exec_bisection_root(
