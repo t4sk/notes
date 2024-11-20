@@ -84,7 +84,7 @@ class FaultDisputeGame:
                 pre_state_claim = ABSOLUTE_PRESTATE
             else:
                 pre_state_claim = self._find_trace_ancestor(
-                    parent_pos + 1,
+                    parent_pos - 1,
                     parent.parent_index,
                     False
                 ).claim
@@ -95,7 +95,7 @@ class FaultDisputeGame:
                 parent_pos + 1,
                 parent.parent_index,
                 False
-            ).claim
+            )
 
         assert keccak256(state_data) << 8 == pre_state_claim << 8
 
