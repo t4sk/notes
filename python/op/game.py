@@ -11,6 +11,16 @@ MAX_CLOCK_DURATION = int(3.5 * 24 * 3600)
 CLOCK_EXTENSION = 3 * 3600
 CHALLENGE_PERIOD = 24 * 3600
 
+class VM:
+    def __init__(self):
+        self.post_state = ""
+
+    def set_post_state(self, post_state):
+        self.post_state = post_state
+
+    def step(self, state_data, proof, uuid):
+        return self.post_state
+
 class ClaimData:
     def __init__(self, **kwargs):
         self.parent_index = kwargs["parent_index"]
@@ -35,7 +45,7 @@ class ResolutionCheckpoint:
         return str(vars(self))
 
 class FaultDisputeGame:
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.status = GameStatus.IN_PROGRESS
         self.l2_block_num_challenged = False
         self.l2_block_num_challenger = None
@@ -50,6 +60,7 @@ class FaultDisputeGame:
         # claim index => ResolutionCheckpoint
         self.resolution_checkpoints = defaultdict(ResolutionCheckpoint)
         self.starting_output_root = None
+        self.vm = kwargs["vm"]
 
     def initialize(self, **kwargs):
         self.starting_output_root = OutputRoot(
@@ -99,8 +110,19 @@ class FaultDisputeGame:
 
         assert keccak256(state_data) << 8 == pre_state_claim << 8
 
-        # TODO:
+        uuid = self._find_local_context(claim_idx)
 
+        valid_step = self.vm.step(state_data, proof, uuid) == post_state.claim
+        parent_post_agree = (Position.depth(parent_pos) - Position.depth(post_state.position)) % 2 == 0
+
+        assert parent_post_agree != valid_step, "valid step"
+        assert parent.countered_by is None, "already countered"
+        parent.countered_by = kwargs["msg_sender"]
+
+    # TODO:
+    def _find_local_context(self, claim_idx):
+        pass
+    
     def move(self, disputed, challenge_idx, claim, is_attack, **kwargs):
         assert self.status == GameStatus.IN_PROGRESS
 
@@ -186,7 +208,6 @@ class FaultDisputeGame:
         subgame_root_claim = self.claim_data[claim_idx]
         challenge_dur = self.get_challenger_duration(claim_idx, **kwargs)
 
-        print(challenge_dur)
         assert challenge_dur >= MAX_CLOCK_DURATION
         assert not self.resolved_subgames[claim_idx]
         
