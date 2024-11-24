@@ -118,10 +118,6 @@ class FaultDisputeGame:
         assert parent_post_agree != valid_step, "valid step"
         assert parent.countered_by is None, "already countered"
         parent.countered_by = kwargs["msg_sender"]
-
-    # TODO:
-    def _find_local_context(self, claim_idx):
-        pass
     
     def move(self, disputed, challenge_idx, claim, is_attack, **kwargs):
         assert self.status == GameStatus.IN_PROGRESS
@@ -294,7 +290,9 @@ class FaultDisputeGame:
             ancestor = self.claim_data[ancestor.parent_index]
         return ancestor
 
-
+    # TODO:
+    def _find_local_context(self, claim_idx):
+        pass
 
 
 
