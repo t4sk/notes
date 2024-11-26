@@ -1,4 +1,6 @@
 from collections import defaultdict
+from web3 import Web3
+
 from lib import U32_MAX, U128_MAX, first_8_bits
 from game_types import GameStatus, OutputRoot, VMStatus
 from udt import Clock, Claim
@@ -290,35 +292,69 @@ class FaultDisputeGame:
             ancestor = self.claim_data[ancestor.parent_index]
         return ancestor
 
-    # TODO:
+    def _find_starting_and_disputed_outputs(self, start_idx):
+        claim_idx = start_idx
+        claim = self.claim_data[claim_idx]
+        assert Position.depth(claim.position) > SPLIT_DEPTH
+
+        current_depth = 0
+        exec_root_claim = claim
+        while (current_depth := Position.depth(claim.position)) > SPLIT_DEPTH:
+            parent_idx = claim.parent_idx
+            
+            if current_depth == SPLIT_DEPTH + 1:
+                exec_root_claim = claim
+            
+            claim = self.claim_data[parent_idx]
+            claim_idx = parent_idx
+
+        (exec_root_pos, output_pos) = (exec_root_claim.position, claim.position)
+        was_attack = Position.parent(exec_root_pos) == output_pos
+        
+        if was_attack:
+            starting_claim = None
+            starting_pos = 0
+            if Position.index_at_depth(output_pos) > 0:
+                starting = self._find_trace_ancestor(output_pos - 1, claim_idx, True)
+                (starting_claim, starting_pos) = (starting.claim, starting.position)
+            else:
+                starting_claim = self.starting_output_root.root
+            (disputed_claim, disputed_pos) = (claim.claim, claim.position)
+            return (
+                starting_claim,
+                starting_pos,
+                disputed_claim,
+                disputed_pos
+            )
+        else:
+            disputed = self._find_trace_ancestor(output_pos + 1, claim_idx, True)
+            return (
+                claim.claim,
+                claim.position,
+                disputed.claim,
+                disputed.position
+            )
+
     def _find_local_context(self, claim_idx):
-        pass
+        (
+            starting_claim,
+            starting_pos,
+            disputed_claim,
+            disputed_pos
+        ) = self._find_starting_and_disputed_outputs(claim_idx)
+        return self._compute_local_context(
+            starting_claim,
+            starting_pos,
+            disputed_claim,
+            disputed_pos
+        )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def _compute_local_context(self, starting_claim, starting_pos, disputed_claim, disputed_pos):
+        if starting_pos == 0:
+            return Web3.solidity_keccak(["bytes32", "uint128"], [disputed_claim, disputed_pos]).hex()
+        else:
+            return Web3.solidity_keccak([
+                "bytes32", "uint128", "bytes32", "uint128"
+            ], [
+                starting_claim, starting_pos, disputed_claim, disputed_pos
+            ]).hex()
