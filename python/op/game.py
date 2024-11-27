@@ -7,8 +7,10 @@ from udt import Clock, Claim
 from position import Position
 
 ABSOLUTE_PRESTATE = "0"
-MAX_GAME_DEPTH = 73
-SPLIT_DEPTH = 30
+# MAX_GAME_DEPTH = 73
+# SPLIT_DEPTH = 30
+MAX_GAME_DEPTH = 4
+SPLIT_DEPTH = 2
 MAX_CLOCK_DURATION = int(3.5 * 24 * 3600)
 CLOCK_EXTENSION = 3 * 3600
 CHALLENGE_PERIOD = 24 * 3600
@@ -274,7 +276,7 @@ class FaultDisputeGame:
         self, root_claim, parent_idx, parent_pos, is_attack, **kwargs
     ):
         disputed_leaf_pos = parent_pos + 1
-        disputed = self._find_trace_ancestor(disputed_leaf_pos, parent_index, True)
+        disputed = self._find_trace_ancestor(disputed_leaf_pos, parent_idx, True)
 
         vm_status = VMStatus(first_8_bits(root_claim))
 
