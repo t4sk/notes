@@ -1,12 +1,12 @@
 from collections import defaultdict
 from web3 import Web3
 
-from lib import U32_MAX, U128_MAX, first_8_bits
+from lib import U32_MAX, U128_MAX, first_8_bits, keccak256_str
 from game_types import GameStatus, OutputRoot, VMStatus
 from udt import Clock, Claim
 from position import Position
 
-ABSOLUTE_PRESTATE = "0"
+ABSOLUTE_PRESTATE = keccak256_str("0x00")
 # MAX_GAME_DEPTH = 73
 # SPLIT_DEPTH = 30
 MAX_GAME_DEPTH = 4
@@ -16,8 +16,8 @@ CLOCK_EXTENSION = 3 * 3600
 CHALLENGE_PERIOD = 24 * 3600
 
 class VM:
-    def __init__(self):
-        self.post_state = ""
+    def __init__(self, **kwargs):
+        self.post_state = "0x00"
 
     def set_post_state(self, post_state):
         self.post_state = post_state
@@ -112,7 +112,8 @@ class FaultDisputeGame:
                 False
             )
 
-        assert keccak256(state_data) << 8 == pre_state_claim << 8
+        # Ignore 0x + first 1 byte
+        assert keccak256_str(state_data)[4:] == pre_state_claim[4:]
 
         uuid = self._find_local_context(claim_idx)
 
@@ -302,7 +303,7 @@ class FaultDisputeGame:
         current_depth = 0
         exec_root_claim = claim
         while (current_depth := Position.depth(claim.position)) > SPLIT_DEPTH:
-            parent_idx = claim.parent_idx
+            parent_idx = claim.parent_index
             
             if current_depth == SPLIT_DEPTH + 1:
                 exec_root_claim = claim
