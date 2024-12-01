@@ -119,6 +119,7 @@ class FaultDisputeGame:
 
         valid_step = self.vm.step(state_data, proof, uuid) == post_state.claim
         parent_post_agree = (Position.depth(parent_pos) - Position.depth(post_state.position)) % 2 == 0
+        print(parent_post_agree, valid_step, parent_pos, post_state.position)
 
         assert parent_post_agree != valid_step, "valid step"
         assert parent.countered_by is None, "already countered"
