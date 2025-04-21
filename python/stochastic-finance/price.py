@@ -1,5 +1,8 @@
+import csv
 import yfinance as yf
-from lib import is_date, date_to_str, str_to_date
+import matplotlib.pyplot as plt
+from typing import List, Tuple
+from lib import is_date, date_to_str, str_to_date, parse_float
 
 # https://github.com/ranaroussi/yfinance
 
@@ -31,8 +34,7 @@ class YahooFinanceAdapter:
         self.yf_ticker = yf.Ticker(ticker)
         self.interval = "1d"
 
-    def fetch(self, date_range: tuple):
-        print("HERE")
+    def fetch(self, date_range: Tuple[str, str]) -> List[Price]:
         df = self.yf_ticker.history(
             start=date_range[0], end=date_range[1], interval=self.interval
         )
@@ -52,3 +54,68 @@ class YahooFinanceAdapter:
                 volume=d["Volume"]
             ))
         return prices
+
+
+def read_csv(file_path: str, skip):
+    prices = []
+    with open(file_path, newline="\n", encoding="utf8", errors="errors") as csvfile:
+        reader = csv.reader(csvfile, delimiter=",", quotechar="|")
+
+        for i in range(skip):
+            next(reader, None)
+
+        for i, row in enumerate(reader):
+            # print(i, row)
+            p = Price(
+                date=str_to_date(row[0]),
+                open=parse_float(row[1]),
+                close=parse_float(row[2]),
+                high=parse_float(row[3]),
+                low=parse_float(row[4]),
+                volume=int(row[5])
+            )
+            prices.append(p)
+    return prices
+
+
+def save_csv(file_path: str, prices: List[Price]):
+    rows = [
+        [
+            "date",
+            "open",
+            "close",
+            "high",
+            "low",
+            "volume",
+        ]
+    ]
+    for p in prices:
+        rows.append(
+            [
+                date_to_str(p.date),
+                p.open,
+                p.close,
+                p.high,
+                p.low,
+                p.volume,
+            ]
+        )
+
+    with open(file_path, "w", newline="\n", encoding="utf8", errors="errors") as file:
+        writer = csv.writer(
+            file, delimiter=",", quotechar="|", quoting=csv.QUOTE_MINIMAL
+        )
+
+        for row in rows:
+            writer.writerow(row)
+
+        print(f"Saved to {file_path}")
+
+def plot(prices: List[Price]):
+    plt.style.use("seaborn")
+    
+    x = [p.date for p in prices]
+    y = [p.close for p in prices]
+    
+    plt.plot(x, y)
+    plt.show()

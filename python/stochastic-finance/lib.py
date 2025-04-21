@@ -13,3 +13,8 @@ def date_to_str(date, fmt=DATE_FORMAT):
 
 def is_date(date):
     return type(date) is datetime
+
+def parse_float(s):
+    if len(s) == 0:
+        return 0
+    return float(s)
