@@ -2,12 +2,78 @@ from manim import *
 import hashlib
 
 
+def hash_leaf(leaf: str) -> str:
+    # return f'h({leaf})'
+    return hashlib.sha256(leaf.encode()).hexdigest()
+
+
 def hash_pair(left: str, right: str) -> str:
+    # return f'h({left}, {right})'
     return hashlib.sha256((left + right).encode()).hexdigest()
 
 
-def hash_leaf(leaf: str) -> str:
-    return hashlib.sha256(leaf.encode()).hexdigest()
+def cut(s: str) -> str:
+    return s[:5] + "..."
+
+
+def calc_root(leaves: list[str]) -> list[list[str]]:
+    tree = [[hash_leaf(l) for l in leaves]]
+    tree[0].sort()
+
+    n = len(tree[0])
+
+    while n > 1:
+        tree.append([])
+        for i in range(0, n, 2):
+            left = tree[-2][i]
+            right = tree[-2][min(i + 1, n - 1)]
+            if left > right:
+                left, right = right, left
+            tree[-1].append(hash_pair(left, right))
+        n = (n + (n % 2)) // 2
+
+    tree.reverse()
+
+    return tree
+
+
+def get_proof(leaves: list[str], index: int) -> list[str]:
+    proof = []
+
+    hashes = [hash_leaf(l) for l in leaves]
+    hashes.sort()
+
+    n = len(hashes)
+    k = index
+
+    while n > 1:
+        j = k - 1 if k & 1 else min(k + 1, n - 1)
+        h = hashes[j]
+        proof.append(h)
+        k >>= 1
+
+        for i in range(0, n, 2):
+            left = hashes[i]
+            right = hashes[min(i + 1, n - 1)]
+            if left > right:
+                left, right = right, left
+            hashes[i >> 1] = hash_pair(left, right)
+        n = (n + (n & 1)) >> 1
+
+    return proof
+
+
+def verify(proof: list[str], root: str, leaf: str) -> bool:
+    h = hash_leaf(leaf)
+
+    for p in proof:
+        left = h
+        right = p
+        if left > right:
+            left, right = right, left
+        h = hash_pair(left, right)
+
+    return h == root
 
 
 def Rect(txt: str, **kwargs):
@@ -23,8 +89,6 @@ def Rect(txt: str, **kwargs):
     rect.move_to(text.get_center())
     return VGroup(rect, text)
 
-def calc_root(leaves: str[]) -> str[][]:
-    pass
 
 class MerkleTree(Scene):
     def show_border(self):
@@ -41,31 +105,51 @@ class MerkleTree(Scene):
         self.show_border()
 
         leaves = ["A", "B", "C", "D", "E", "F", "G"]
+        hash_leaves = [hash_leaf(l) for l in leaves]
+        hash_leaves.sort()
+
+        indexes = [hash_leaves.index(hash_leaf(l)) for l in leaves]
+        hashes = calc_root(leaves)
+        # Append hash(G) since number of leaves are odd
+        if len(leaves) % 2 == 1:
+            hashes[-1].append(hashes[-1][-1])
+
         boxes = VGroup(*[Rect(l, width=0.8, height=0.8) for l in leaves]).arrange(
             RIGHT, buff=0.2
         )
 
-        hashes = [[]]
-        hashes[0] = [hash_leaf(l) for l in leaves]
-        hashes[0].append(hashes[0][-1])
-        hash_leaves_group = VGroup(*[Rect(h) for h in hashes[0]]).arrange(
-            RIGHT, buff=0.2
-        )
+        tree = VGroup(
+            *[
+                VGroup(*[Rect(cut(h)) for h in level]).arrange(RIGHT, buff=0.2)
+                for level in hashes
+            ],
+            boxes
+        ).arrange(DOWN, buff=0.5)
 
-        tree = VGroup(hash_leaves_group, boxes).arrange(DOWN, buff=1)
-        tree.to_edge(DOWN)
+        for (box, leaf_hash) in zip(boxes, tree[-2]):
+            box.next_to(leaf_hash, DOWN)
+
+        for i in reversed(range(1, len(tree) - 1)):
+            for j in range(0, len(tree[i]), 2):
+                top = tree[i - 1][j // 2]
+                mid_x = (
+                    tree[i][j].get_center()[0] + tree[i][j + 1].get_center()[0]
+                ) / 2
+                yz = top.get_center()[1:]
+                top.move_to([mid_x, *yz])
+
+        # tree.to_edge(DOWN)
+
+        self.play(FadeIn(tree))
+        return
 
         # Show array
         # boxes.to_edge(DOWN)
-        self.add(boxes)
+        self.add(FadeIn(tree))
         self.wait(1)
+        return
 
         # TODO: animate spread boxes
-
-        self.play(FadeIn(hash_leaves_group))
-        self.wait(1)
-
-        return
 
         leaf_hashes = [
             hashlib.sha256(l.encode()).hexdigest()[:6].upper() for l in leaves
