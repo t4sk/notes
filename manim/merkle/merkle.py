@@ -104,6 +104,7 @@ class MerkleTree(Scene):
     def construct(self):
         self.show_border()
 
+        # leaves = sorted(["A", "B", "C", "D", "E", "F", "G"], key=lambda l: hash_leaf(l))
         leaves = ["A", "B", "C", "D", "E", "F", "G"]
         hash_leaves = [hash_leaf(l) for l in leaves]
         hash_leaves.sort()
@@ -126,9 +127,11 @@ class MerkleTree(Scene):
             boxes
         ).arrange(DOWN, buff=0.5)
 
+        # Position leaf centered below leaf hashes
         for (box, leaf_hash) in zip(boxes, tree[-2]):
             box.next_to(leaf_hash, DOWN)
 
+        # Position hashes
         for i in reversed(range(1, len(tree) - 1)):
             for j in range(0, len(tree[i]), 2):
                 top = tree[i - 1][j // 2]
@@ -138,9 +141,48 @@ class MerkleTree(Scene):
                 yz = top.get_center()[1:]
                 top.move_to([mid_x, *yz])
 
-        # tree.to_edge(DOWN)
+        # Leaf to leaf hash lines
+        leaf_lines = []
+        for (box, leaf_hash) in zip(boxes, tree[-2]):
+            line = Line(
+                start=box.get_top(),
+                end=leaf_hash.get_bottom(),
+                color=BLUE,
+                buff=0,
+                stroke_width=4,
+            )
+            leaf_lines.append(line)
+
+        for leaf_line in leaf_lines:
+            self.add(leaf_line)
+
+        # Lines
+        lines = []
+        for i in range(0, len(tree) - 2):
+            for j in range(0, len(tree[i])):
+                # print((i + 1, 2 * j), (i + 1, 2 * j + 1))
+                left = Line(
+                    start=tree[i + 1][2 * j].get_top(),
+                    end=tree[i][j].get_bottom(),
+                    color=BLUE,
+                    buff=0,
+                    stroke_width=4,
+                )
+                right = Line(
+                    start=tree[i + 1][2 * j + 1].get_top(),
+                    end=tree[i][j].get_bottom(),
+                    color=BLUE,
+                    buff=0,
+                    stroke_width=4,
+                )
+                lines.append((left, right))
+
+        for (left, right) in lines:
+            self.add(left)
+            self.add(right)
 
         self.play(FadeIn(tree))
+
         return
 
         # Show array
