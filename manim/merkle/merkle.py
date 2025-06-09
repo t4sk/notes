@@ -30,7 +30,7 @@ def calc_root(leaves: list[str]) -> list[list[str]]:
             if left > right:
                 left, right = right, left
             tree[-1].append(hash_pair(left, right))
-        n = (n + (n % 2)) // 2
+        n = (n + (n & 1)) >> 1
 
     tree.reverse()
 
@@ -104,9 +104,11 @@ class MerkleTree(Scene):
     def construct(self):
         self.show_border()
 
-        # leaves = sorted(["A", "B", "C", "D", "E", "F", "G"], key=lambda l: hash_leaf(l))
         leaves = ["A", "B", "C", "D", "E", "F", "G"]
         hash_leaves = [hash_leaf(l) for l in leaves]
+        # print(list(zip(leaves, hash_leaves)))
+
+        leaves = sorted(["A", "B", "C", "D", "E", "F", "G"], key=lambda l: hash_leaf(l))
         hash_leaves.sort()
 
         indexes = [hash_leaves.index(hash_leaf(l)) for l in leaves]
@@ -183,60 +185,34 @@ class MerkleTree(Scene):
 
         self.play(FadeIn(tree))
 
-        return
+        tree_group = VGroup(tree, *leaf_lines, *lines)
 
-        # Show array
-        # boxes.to_edge(DOWN)
-        self.add(FadeIn(tree))
-        self.wait(1)
-        return
-
-        # TODO: animate spread boxes
-
-        leaf_hashes = [
-            hashlib.sha256(l.encode()).hexdigest()[:6].upper() for l in leaves
-        ]
-
-        leaf_nodes = [Text(h, font_size=30) for h in leaf_hashes]
-        for i, node in enumerate(leaf_nodes):
-            node.move_to(LEFT * 3 + RIGHT * 2 * i + DOWN * 2)
-
-        self.play(*[Write(node) for node in leaf_nodes])
-        self.wait(1)
-
-        # Pairwise hashes at level 1
-        level1_hashes = []
-        level1_nodes = []
-        level1_edges = []
-
-        for i in range(0, 4, 2):
-            h = hash_pair(leaf_hashes[i], leaf_hashes[i + 1])
-            level1_hashes.append(h)
-            text = Text(h, font_size=30).move_to(
-                (leaf_nodes[i].get_center() + leaf_nodes[i + 1].get_center()) / 2 + UP
-            )
-            level1_nodes.append(text)
-
-            # Draw edges
-            edge1 = Line(leaf_nodes[i].get_top(), text.get_bottom())
-            edge2 = Line(leaf_nodes[i + 1].get_top(), text.get_bottom())
-            level1_edges.extend([edge1, edge2])
-
-            self.play(Write(text), Create(edge1), Create(edge2))
-            self.wait(0.5)
-
-        # Root hash
-        root_hash = hash_pair(level1_hashes[0], level1_hashes[1])
-        root_node = Text(root_hash, font_size=30).move_to(
-            (level1_nodes[0].get_center() + level1_nodes[1].get_center()) / 2 + UP
+        self.play(
+            tree_group.animate.scale(0.5).to_edge(LEFT),
         )
 
-        edge3 = Line(level1_nodes[0].get_top(), root_node.get_bottom())
-        edge4 = Line(level1_nodes[1].get_top(), root_node.get_bottom())
+        arr = VGroup(*[h.copy() for h in tree[-2]])
+        self.play(arr.animate.to_edge(RIGHT))
 
-        self.play(Write(root_node), Create(edge3), Create(edge4))
-        self.wait(2)
+        n = len(arr)
+        k = len(tree) - 3
 
-        # Optional: highlight root
-        self.play(root_node.animate.set_color(RED))
-        self.wait(2)
+        while n > 1:
+            for i in range(0, n, 2):
+                left = arr[i]
+                right = arr[min(i + 1, n - 1)]
+                parent = arr[i // 2]
+
+                for c in [GREEN, BLUE]:
+                    self.play(left.animate.set_color(c), right.animate.set_color(c))
+                self.play(parent.animate.set_color(RED))
+
+            n = (n + (n & 1)) >> 1
+
+            self.play(arr[n:].animate.set_opacity(0.1))
+            self.play(arr[:n].animate.set_color(BLUE))
+
+            self.play(
+                arr.animate.move_to([arr.get_center()[0], tree[k].get_center()[1], 0])
+            )
+            k -= 1
