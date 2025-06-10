@@ -90,6 +90,9 @@ def Rect(txt: str, **kwargs):
     return VGroup(rect, text)
 
 
+TREE_SCALE = 0.5
+
+
 class MerkleTree(Scene):
     def show_border(self):
         border = Rectangle(
@@ -188,7 +191,7 @@ class MerkleTree(Scene):
         tree_group = VGroup(tree, *leaf_lines, *lines)
 
         self.play(
-            tree_group.animate.scale(0.5).to_edge(LEFT),
+            tree_group.animate.scale(TREE_SCALE).to_edge(LEFT),
         )
 
         arr = VGroup(*[h.copy() for h in tree[-2]])
@@ -206,6 +209,10 @@ class MerkleTree(Scene):
                 for c in [GREEN, BLUE]:
                     self.play(left.animate.set_color(c), right.animate.set_color(c))
                 self.play(parent.animate.set_color(RED))
+
+                text = Text(tree[k][i // 2][1].text, font_size=20).scale(TREE_SCALE)
+                text.move_to(parent[1].get_center())
+                self.play(Transform(parent[1], text))
 
             n = (n + (n & 1)) >> 1
 
