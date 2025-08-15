@@ -59,7 +59,7 @@ class F:
         return (self.v % self.p) != (r.v % self.p)
 
     def __neg__(self):
-        return self.wrap((self.p - x) % self.p)
+        return self.wrap((self.p - self.v) % self.p)
 
     def __str__(self):
         return str(self.v)
