@@ -20,7 +20,7 @@ P = 1 + 407 * (1 << 119)
 # Field
 class F:
     def __init__(self, v: int, p: int = P):
-        self.v = v
+        self.v = v % p
         self.p = p
 
     def wrap(self, v: int):

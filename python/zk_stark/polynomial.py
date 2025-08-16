@@ -103,11 +103,43 @@ class Polynomial:
     def __repr__(self):
         return str(self.cs)
 
-def poly_eval(p: Polynomial, x, f = lambda x: F(x, P)):
-    x = wrap(x, f)
-    y = f(0)
-    xi = f(1)
-    for c in p.cs:
-        y += c * xi
-        xi *= x
-    return y
+    def eval(self, x):
+        f = self.f
+        x = wrap(x, f)
+        y = f(0)
+        xi = f(1)
+        for c in self.cs:
+            y += c * xi
+            xi *= x
+        return y
+
+# Lagrange interpolatin
+# Polynomial with L(xi) = yi for (x0, y0), (x1, y1), ... , (xn, yn)
+def interp(xs, ys, f = lambda x: F(x, P)):
+    assert len(xs) == len(ys)
+
+    xs = [wrap(x, f) for x in xs]
+    ys = [wrap(y, f) for y in ys]
+
+    z = f(0)
+    p = Polynomial([], f)
+    x = Polynomial([0, 1], f)
+    for i in range(len(xs)):
+        l = Polynomial([ys[i]], f)
+        for j in range(len(xs)):
+            if j != i:
+                xj = Polynomial([xs[j]], f)
+                d = Polynomial([xs[i] - xs[j]], f)
+                l *= (x - xj) / d
+        p += l
+
+    return p
+
+# Polynomial that are 0 at xs
+def zpoly(xs, f = lambda x: F(x, P)):
+    x = Polynomial([0, 1], f)
+    p = Polynomial([], f)
+    for xi in xs:
+        xi = Polynomial([xi], f)
+        p += (x - xi)
+    return p
