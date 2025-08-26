@@ -4,7 +4,7 @@
 - Polynomial
 - Modular arithmetic, finite field
 - Group, generator
-- Roots of unity
+- Roots of unity (z^n = 1, n > 0)
 - FFT, inverse FFT
 - Merkle tree
 - Why RS code? Why not regular polynomial? -> structured redundancy
@@ -22,8 +22,6 @@ N points determines the unique polynomial P
 ```
 
 ### Commit phase
-- TODO: https://encrypt.a41.io/zk/stark/fri
-- TODO: https://dev.risczero.com/proof-system/stark-by-hand
 
 ```
 1. Evaluate polynomial f0(x) at w^0, w^1, ..., w^(N-1)
@@ -35,9 +33,63 @@ N points determines the unique polynomial P
 4. Verifier sends a challenge B0
 5. Prover calculates the folded polynomial
    5.1 Split f0(x) = f0_even(x^2) + x * f0_odd(x^2)
+        f0_even(x) = (f(x) + f(-x)) / 2
+        f0_odd(x)  = (f(x) - f(-x))
    5.2 Fold f1(x) = f0_even(x) + B0 * f0_odd(x)
 6. Repeat 1 to 5 with f1 and domain ((w^0)^2, (w^1)^2, ...) = (w^0, w^2, ..)
    until the polynomial is reduced to a constant
 ```
 
 ### Query phase
+
+```
+1. Verifier sends random challenge x to the prover
+2. Start at i = 0, prover sends fi(x) and fi(-x) and Merkle proof
+3. Verfifier checks Merkle proof
+4. Verifier uses fi(x) and fi(-x) to create f(i+1)(x^2)
+   fi(x)  = fi_even(x^2) + x * fi_odd(x^2)
+   fi(-x) = fi_even(x^2) - x * fi_odd(x^2)
+   f(i+1)(x^2) = fi_even(x^2) + Bi * fi_odd(x^2)
+5. Repeat 2 to 4, evaluate at +/-x^2, +/-x^4, +/-x^8, ...
+```
+
+### TODO: problem with commiting to f(x)
+- TODO: probability of accepting a fraud
+
+### g(x,y) evaluation table
+TODO: boost fraud detection? + polynomial reduction
+```
+g(x, y) = f0_even(y) + x * f0_odd(y)
+
+         x | w^0 | w^1 | w^2 | ...
+y (w^0)^2  |
+  (w^1)^2  |
+  (w^2)^2  |
+    ...    |
+
+g(x, x^2) = f(x) = diagnol
+
+Pick x = B0
+g(x0, x^2) = f0_even(x^2) + B0 * f0_odd(x^2) = column, deg(g) <= N / 2
+           = f1(x^2)
+
+Pick y = y0
+g(x, y0) = f0_even(y0) + x * f0_odd(y0) = row, linear equation deg(g) <= 1
+         2 point determine a line
+
+TOOD: implications if prover commits to the whole table?
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
