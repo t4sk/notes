@@ -54,10 +54,10 @@ N points determines the unique polynomial P
 ```
 
 ### TODO: problem with commiting to f(x)
-- TODO: probability of accepting a fraud
+- TODO: high probability of accepting a fraud
 
 ### g(x,y) evaluation table
-TODO: boost fraud detection? + polynomial reduction
+TODO: why it boosts fraud detection? + polynomial reduction
 ```
 g(x, y) = f0_even(y) + x * f0_odd(y)
 
@@ -70,19 +70,21 @@ y (w^0)^2  |
 g(x, x^2) = f(x) = diagnol
 
 Pick x = B0
-g(x0, x^2) = f0_even(x^2) + B0 * f0_odd(x^2) = column, deg(g) <= N / 2
-           = f1(x^2)
+g(B0, y) = f0_even(y) + B0 * f0_odd(y) 
+         = column, deg(g) <= N / 2
+         = f1(y)
 
 Pick y = y0
-g(x, y0) = f0_even(y0) + x * f0_odd(y0) = row, linear equation deg(g) <= 1
-         2 point determine a line
+g(x, y0) = f0_even(y0) + x * f0_odd(y0) 
+         = row, linear equation deg(g) <= 1
+         2 point determine a line -> 2 point in a row is sufficient to recover all the points in that row
 
 TOOD: implications if prover commits to the whole table?
 ```
 
+TODO: cheat example?
 
-
-
+TODO: quotienting?
 
 
 
