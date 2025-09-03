@@ -2,10 +2,12 @@
 - Reed Solomon code
 - Hamming distance
 - Polynomial
+- Lagrange interpolation
 - Modular arithmetic, finite field
 - Group, generator
 - Roots of unity (z^n = 1, n > 0)
 - FFT, inverse FFT
+- Low degree testing
 - Merkle tree
 - Why RS code? Why not regular polynomial? -> structured redundancy
 - Split + fold
@@ -58,6 +60,7 @@ N points determines the unique polynomial P
 
 ### g(x,y) evaluation table
 TODO: why it boosts fraud detection? + polynomial reduction
+TODO: probability of fraud detection in polynomial vs bivariate polynomial
 ```
 g(x, y) = f0_even(y) + x * f0_odd(y)
 
@@ -69,21 +72,22 @@ y (w^0)^2  |
 
 g(x, x^2) = f(x) = diagnol
 
+Column, deg(g) <= N / 2
 Pick x = B0
 g(B0, y) = f0_even(y) + B0 * f0_odd(y) 
-         = column, deg(g) <= N / 2
+
          = f1(y)
 
+Row, linear equation deg(g) <= 1
 Pick y = y0
 g(x, y0) = f0_even(y0) + x * f0_odd(y0) 
-         = row, linear equation deg(g) <= 1
-         2 point determine a line -> 2 point in a row is sufficient to recover all the points in that row
+         2 points determine a line -> 2 points in a row is sufficient to recover all the points in that row
 
 TOOD: implications if prover commits to the whole table?
 ```
 
 TODO: cheat example?
-
+TODO: low degree testing
 TODO: quotienting?
 
 
