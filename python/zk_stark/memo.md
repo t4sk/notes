@@ -35,10 +35,8 @@ N points determines the unique polynomial P
 4. Verifier sends a challenge B0
 5. Prover calculates the folded polynomial
    5.1 Split f0(x) = f0_even(x^2) + x * f0_odd(x^2)
-        f0_even(x) = (f(x) + f(-x)) / 2
-        f0_odd(x)  = (f(x) - f(-x))
    5.2 Fold f1(x) = f0_even(x) + B0 * f0_odd(x)
-6. Repeat 1 to 5 with f1 and domain ((w^0)^2, (w^1)^2, ...) = (w^0, w^2, ..)
+6. Repeat 1 to 5 with f1 and domain ((w^0)^2, (w^1)^2, ...)
    until the polynomial is reduced to a constant
 ```
 
@@ -52,6 +50,7 @@ N points determines the unique polynomial P
    fi(x)  = fi_even(x^2) + x * fi_odd(x^2)
    fi(-x) = fi_even(x^2) - x * fi_odd(x^2)
    f(i+1)(x^2) = fi_even(x^2) + Bi * fi_odd(x^2)
+               = (fi(x) + fi(-x)) / 2 + Bi * (fi(x) - fi(-x)) / 2x
 5. Repeat 2 to 4, evaluate at +/-x^2, +/-x^4, +/-x^8, ...
 ```
 
