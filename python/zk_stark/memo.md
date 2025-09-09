@@ -45,12 +45,13 @@ N points determines the unique polynomial P
 ```
 1. Verifier sends random challenge x to the prover
 2. Start at i = 0, prover sends fi(x) and fi(-x) and Merkle proof
-3. Verfifier checks Merkle proof
+3. Verfifier checks Merkle proofs for fi(x) and fi(-x)
 4. Verifier uses fi(x) and fi(-x) to create f(i+1)(x^2)
    fi(x)  = fi_even(x^2) + x * fi_odd(x^2)
    fi(-x) = fi_even(x^2) - x * fi_odd(x^2)
    f(i+1)(x^2) = fi_even(x^2) + Bi * fi_odd(x^2)
                = (fi(x) + fi(-x)) / 2 + Bi * (fi(x) - fi(-x)) / 2x
+   Check that f(i+1)(x^2) provided in the next step matches the calculation above
 5. Repeat 2 to 4, evaluate at +/-x^2, +/-x^4, +/-x^8, ...
 ```
 
