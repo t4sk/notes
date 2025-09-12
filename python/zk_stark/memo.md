@@ -1,10 +1,10 @@
 - Codeword
 - Reed Solomon code
 - Hamming distance
-- Polynomial
+- Polynomial, degree
 - Lagrange interpolation
-- Modular arithmetic, finite field
-- Group, generator
+- Modular arithmetic, finite field, prime field of order 2^n + 1
+- Group, subgroup, generator
 - Roots of unity (z^n = 1, n > 0)
 - FFT, inverse FFT
 - Low degree testing
