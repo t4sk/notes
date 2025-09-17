@@ -57,10 +57,15 @@ N points determines the unique polynomial P
 
 ### TODO: problem with commiting to f(x)
 - TODO: high probability of accepting a fraud
+- need d + k queries for (1 - p)^k probability of accepting a fraud
 
 ### g(x,y) evaluation table
 TODO: why it boosts fraud detection? + polynomial reduction
 TODO: probability of fraud detection in polynomial vs bivariate polynomial
+TODO: example of polynomial of high degree
+TODO: example of distance decay?
+small errors -> identify an unique polynomial
+
 ```
 g(x, y) = f0_even(y) + x * f0_odd(y)
 

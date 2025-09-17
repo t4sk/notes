@@ -1,12 +1,12 @@
 import hashlib
 
 def hash_leaf(leaf: str) -> str:
-    return f'h({leaf})'
-    # return hashlib.sha256(leaf.encode()).hexdigest()
+    # return f'h({leaf})'
+    return hashlib.sha256(leaf.encode()).hexdigest()
 
 def hash_pair(left: str, right: str) -> str:
-    return f'h({left}, {right})'
-    # return hashlib.sha256((left + right).encode()).hexdigest()
+    # return f'h({left}, {right})'
+    return hashlib.sha256((left + right).encode()).hexdigest()
 
 def commit(hs: list[str]) -> str:
     tree = [hs[:]]
@@ -17,7 +17,7 @@ def commit(hs: list[str]) -> str:
             left = tree[-2][i]
             right = tree[-2][min(i + 1, n - 1)]
             tree[-1].append(hash_pair(left, right))
-        n = (n + (n & 1)) >> 1
+        n = (n + 1) >> 1
     return tree[-1][0]    
 
 def open(hs: list[str], index: int) -> list[str]:
@@ -35,7 +35,7 @@ def open(hs: list[str], index: int) -> list[str]:
             left = hs[i]
             right = hs[min(i + 1, n - 1)]
             hs[i >> 1] = hash_pair(left, right)
-        n = (n + (n & 1)) >> 1
+        n = (n + 1) >> 1
     return proof
 
 def verify(proof: list[str], root: str, leaf: str, index: int) -> bool:
