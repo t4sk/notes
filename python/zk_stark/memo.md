@@ -65,6 +65,7 @@ TODO: probability of fraud detection in polynomial vs bivariate polynomial
 TODO: example of polynomial of high degree
 TODO: example of distance decay?
 small errors -> identify an unique polynomial
+many errors -> not a RS codeword (or a different RS of polynomial with higher degree?)
 
 ```
 g(x, y) = f0_even(y) + x * f0_odd(y)
@@ -80,7 +81,6 @@ g(x, x^2) = f(x) = diagnol
 Column, deg(g) <= N / 2
 Pick x = B0
 g(B0, y) = f0_even(y) + B0 * f0_odd(y) 
-
          = f1(y)
 
 Row, linear equation deg(g) <= 1
