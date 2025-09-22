@@ -1,1 +1,0 @@
-Code copied from https://github.com/popzxc/merkle-patricia-trie/tree/master
