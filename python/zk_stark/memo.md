@@ -25,6 +25,8 @@ N points determines the unique polynomial P
 
 ### Commit phase
 
+TODO: why check that polynomial is low degree?
+
 ```
 1. Evaluate polynomial f0(x) at w^0, w^1, ..., w^(N-1)
    where w is a root of unity and N is the domain size (use FFT for fast evaluation)
@@ -36,10 +38,21 @@ N points determines the unique polynomial P
 5. Prover calculates the folded polynomial
    5.1 Split f0(x) = f0_even(x^2) + x * f0_odd(x^2)
    5.2 Fold f1(x) = f0_even(x) + B0 * f0_odd(x)
-6. Repeat 1 to 5 with f1 and domain ((w^0)^2, (w^1)^2, ...)
+6. Repeat 1 to 5 with f1 and domain ((w^0)^2, (w^1)^2, ...), half the original domain size,
    until the polynomial is reduced to a constant
 ```
 
+```
+TODO: glue - consistency between folding
+```
+
+```
+TODO: example domain size small enough to do a direct check (honest and dishonest cases)
+- honest prover -> evals of poly of low degree -> direct check at multiple points
+- dishonest prover -> eval of poly (?), dishonest at many points (*) -> high probability of fraud detection?
+- (*) RS code recovers original low degree poly for small errors / incorrect points
+      so dishonest prover will need to cheat at many points
+```
 ### Query phase
 
 ```
