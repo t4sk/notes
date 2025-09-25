@@ -1,5 +1,6 @@
 - Codeword
 - Reed Solomon code
+- TODO: RS code redundancy, error correcting radius, etc..
 - Hamming distance
 - Polynomial, degree
 - Lagrange interpolation
@@ -25,7 +26,7 @@ N points determines the unique polynomial P
 
 ### Commit phase
 
-TODO: why check that polynomial is low degree?
+TODO: why check that polynomial is low degree? <- given RS code, it always identify a polynomial (a poly that passes through all the points provided)
 
 ```
 1. Evaluate polynomial f0(x) at w^0, w^1, ..., w^(N-1)
@@ -53,6 +54,15 @@ TODO: example domain size small enough to do a direct check (honest and dishones
 - (*) RS code recovers original low degree poly for small errors / incorrect points
       so dishonest prover will need to cheat at many points
 ```
+
+```
+TODO: send evaluation of high degree polynomial
+TODO: example 1 iteration of fold (query + direct check)
+A fraudulent prover is successful when the verifier accepts a codeword that does not correspond to a low degree polynomial.
+2 choices (?)
+- Evaluation of higher degree polynomial -> eventually detected?
+- Send different codeword -> must disagree at many points -> high probability of getting caught?
+```
 ### Query phase
 
 ```
@@ -66,6 +76,8 @@ TODO: example domain size small enough to do a direct check (honest and dishones
                = (fi(x) + fi(-x)) / 2 + Bi * (fi(x) - fi(-x)) / 2x
    Check that f(i+1)(x^2) provided in the next step matches the calculation above
 5. Repeat 2 to 4, evaluate at +/-x^2, +/-x^4, +/-x^8, ...
+
+TODO: check at step 4 fails with high probability if fraud? Also, probability of prover to guess the challenge x before commit is low
 ```
 
 ### TODO: problem with commiting to f(x)
