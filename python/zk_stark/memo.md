@@ -1,6 +1,6 @@
 - Codeword
 - Reed Solomon code
-- TODO: RS code redundancy, error correcting radius, etc..
+- TODO: RS code redundancy, error correcting radius, unique code distance etc..
 - Hamming distance
 - Polynomial, degree
 - Lagrange interpolation
