@@ -1,7 +1,9 @@
+- Polynomial
 - Codeword
 - Reed Solomon code
-- TODO: RS code redundancy, error correcting radius, unique code distance etc..
-- Hamming distance
+- TODO: RS code redundancy, error correcting radius, unique decoding distance etc..
+- Hamming weight and distance
+- Proximity gap for RS codes
 - Polynomial, degree
 - Lagrange interpolation
 - Modular arithmetic, finite field, prime field of order 2^n + 1
@@ -27,6 +29,7 @@ N points determines the unique polynomial P
 ### Commit phase
 
 TODO: why check that polynomial is low degree? <- given RS code, it always identify a polynomial (a poly that passes through all the points provided)
+TODO: why low degree polynomial is honest execution trace? Can a dishonest execution trace have a low degree poly?
 
 ```
 1. Evaluate polynomial f0(x) at w^0, w^1, ..., w^(N-1)
