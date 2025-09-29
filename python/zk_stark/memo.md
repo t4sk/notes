@@ -4,11 +4,11 @@
 - TODO: RS code redundancy, error correcting radius, unique decoding distance etc..
 - Hamming weight and distance
 - Proximity gap for RS codes
-- Polynomial, degree
+- Polynomial, degree, how to check if given points recover an polynomial
 - Lagrange interpolation
-- Modular arithmetic, finite field, prime field of order 2^n + 1
+- Modular arithmetic, finite field, prime field of order 2^n + 1, inverse, -1
 - Group, subgroup, generator
-- Roots of unity (z^n = 1, n > 0)
+- Roots of unity (z^n = 1, n > 0), primitive roots of unity
 - FFT, inverse FFT
 - Low degree testing
 - Merkle tree
@@ -17,6 +17,7 @@
 - Commit phase
 - Query phase
 - How is ZKStark zero knowledge? -> masking (shifting polynomial by a random polynomial)
+- Batching
 
 ### Reed Solomon code
 ```
