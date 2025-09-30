@@ -60,33 +60,35 @@ class Polynomial:
     def __neg__(self):
         return Polynomial([-c for c in self.cs], self.f)
     
-    def __add__(self, r):
-        ls = self.cs
-        rs = r.cs
-        cs = [self.z] * max(len(ls), len(rs))
+    def __add__(self, q):
+        # p + q
+        ps = self.cs
+        qs = q.cs
+        cs = [self.z] * max(len(ps), len(qs))
         for i in range(len(cs)):
-            a = get(ls, i, self.z)
-            b = get(rs, i, self.z)
+            a = get(ps, i, self.z)
+            b = get(qs, i, self.z)
             cs[i] = a + b
         return Polynomial(cs, self.f)
 
-    def __sub__(self, r):
-        return self.__add__(-r)
+    def __sub__(self, q):
+        return self.__add__(-q)
 
-    def __mul__(self, r):
+    def __mul__(self, q):
+        # p * q
         m = len(self.cs)
-        n = len(r.cs)
-        ls = self.cs
-        rs = r.cs
+        n = len(q.cs)
+        ps = self.cs
+        qs = q.cs
 
         # degree = len(cs) - 1
-        # degree(self) + degree(r) = len(cs) - 1
-        # len(cs) = degree(self) + degree(r) + 1
-        #         = len(self.cs) - 1 + len(r.cs) - 1 + 1
+        # degree(self) + degree(q) = len(cs) - 1
+        # len(cs) = degree(self) + degree(q) + 1
+        #         = len(self.cs) - 1 + len(q.cs) - 1 + 1
         cs = [self.z] * (m + n - 1)
         for i in range(m):
             for j in range(n):
-                cs[i + j] += ls[i] * rs[j]
+                cs[i + j] += ps[i] * qs[j]
 
         return Polynomial(cs, self.f)
 
@@ -95,11 +97,11 @@ class Polynomial:
         assert r == Polynomial([], self.f), "remainder != 0"
         return q
 
-    def __eq__(self, r):
-        return self.cs == r.cs
+    def __eq__(self, q):
+        return self.cs == q.cs
 
-    def __neq__(self, r):
-        return self.cs != r.cs
+    def __neq__(self, q):
+        return self.cs != q.cs
 
     def __str__(self):
         return str(self.cs)
