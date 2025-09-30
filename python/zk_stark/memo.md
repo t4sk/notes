@@ -1,4 +1,6 @@
-- Polynomial
+- Modular arithmetic, negative, multiplicative inverse, division, finite field, prime field of order 2^n + 1, inverse, -1
+- Polynomial, lagrange interpolation
+- Constraint, composition polynomial
 - Codeword
 - Reed Solomon code
 - TODO: RS code redundancy, error correcting radius, unique decoding distance etc..
@@ -6,7 +8,6 @@
 - Proximity gap for RS codes
 - Polynomial, degree, how to check if given points recover an polynomial
 - Lagrange interpolation
-- Modular arithmetic, finite field, prime field of order 2^n + 1, inverse, -1
 - Group, subgroup, generator
 - Roots of unity (z^n = 1, n > 0), primitive roots of unity
 - FFT, inverse FFT

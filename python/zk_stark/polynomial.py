@@ -1,15 +1,19 @@
+from __future__ import annotations
+from typing import Callable
 from field import F, P
 
+# Generic getter
 def get(xs, i, default_val):
     return xs[i] if i < len(xs) else default_val
 
-def wrap(x, f: lambda x: F(x, P)):
+# Wraps x with f(x)
+def wrap(x, f):
     if isinstance(x, type(f(0))):
         return x
     else:
         return f(x)
 
-def div(p, d):
+def div(p: Polynomial, d: Polynomial) -> (Polynomial, Polynomial):
     assert p.z == d.z
     assert d != Polynomial([], d.f), "div by 0"
 
@@ -34,7 +38,7 @@ def div(p, d):
     return Polynomial(q, f), r
 
 class Polynomial:
-    def __init__(self, cs, f = lambda x: F(x, P)):
+    def __init__(self, cs: list[int] | list[F], f = lambda x: F(x, P)):
         z = f(0)
         # Remove trailing 0s
         cs = cs[:]
@@ -42,7 +46,7 @@ class Polynomial:
             cs.pop()
 
         if len(cs) == 0:
-            cs.append(z)
+            cs = [z]
 
         self.cs = [wrap(c, f) for c in cs]
         self.f = f
@@ -53,7 +57,7 @@ class Polynomial:
         assert l > 0
         return l - 1
 
-    def __neg__( self ):
+    def __neg__(self):
         return Polynomial([-c for c in self.cs], self.f)
     
     def __add__(self, r):

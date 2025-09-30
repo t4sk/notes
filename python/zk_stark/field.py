@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 # Use extended Euclidean algo for calculating multiplicative inverse
-# TODO: how does this work?
-def xgcd(x: int, y: int):
+# TODO: wat dis?
+def xgcd(x: int, y: int) -> (int, int, int):
     old_r, r = (x, y)
     old_s, s = (1, 0)
     old_t, t = (0, 1)
@@ -15,7 +17,8 @@ def xgcd(x: int, y: int):
 
 
 # Must be a prime field with subgroup of power of 2 order
-P = 1 + 407 * (1 << 119)
+# P = 1 + 407 * (1 << 119)
+P = (1 << 4) + 1
 
 # Field
 class F:
@@ -23,40 +26,59 @@ class F:
         self.v = v % p
         self.p = p
 
-    def wrap(self, v: int):
+    def wrap(self, v: int) -> F:
         return F(v, self.p)
 
-    def inv(self):
+    def inv(self) -> F:
         a, _, _ = xgcd(self.v, self.p)
         return self.wrap(a)
 
-    def _check(self, r):
-        assert self.p == r.p
+    def _check(self, x: F):
+        assert self.p == x.p
 
-    def __add__(self, r):
-        self._check(r)
-        return self.wrap((self.v + r.v) % self.p)
+    def __add__(self, x: F):
+        self._check(x)
+        return self.wrap((self.v + x.v) % self.p)
 
-    def __sub__(self, r):
-        self._check(r)
-        return self.wrap((self.v - r.v) % self.p)
+    def __sub__(self, x: F):
+        self._check(x)
+        return self.wrap((self.v - x.v) % self.p)
 
-    def __mul__(self, r):
-        self._check(r)
-        return self.wrap((self.v * r.v) % self.p)
+    def __mul__(self, x: F):
+        self._check(x)
+        return self.wrap((self.v * x.v) % self.p)
 
-    def __truediv__(self, r):
-        self._check(r)
-        assert r.v != 0, "div by 0"
-        return self * r.inv()
+    def __truediv__(self, x: F):
+        self._check(x)
+        assert x.v != 0, "div by 0"
+        return self * x.inv()
 
-    def __eq__(self, r):
-        self._check(r)
-        return (self.v % self.p) == (r.v % self.p)
+    def __pow__(self, exp: int):
+        if exp == 0:
+            return self.wrap(1)
+        
+        if exp < 0:
+            return self.inv() ** (-exp)
+        
+        # Fast exponentiation (square and multiply)
+        y = self.wrap(1)
+        base = self.wrap(self.v)
+        
+        while exp > 0:
+            if exp % 2 == 1:
+                y *= base
+            base *= base
+            exp //= 2
+        
+        return y
 
-    def __neq__(self, r):
-        self._check(r)
-        return (self.v % self.p) != (r.v % self.p)
+    def __eq__(self, x):
+        self._check(x)
+        return (self.v % self.p) == (x.v % self.p)
+
+    def __neq__(self, x):
+        self._check(x)
+        return (self.v % self.p) != (x.v % self.p)
 
     def __neg__(self):
         return self.wrap((self.p - self.v) % self.p)
@@ -67,18 +89,20 @@ class F:
     def __repr__(self):
         return str(self.v)
 
-ZERO = F(0)
+Z = F(0)
 # Generator
-G = F(85408008396924667383611388730472331217)
+# G = F(85408008396924667383611388730472331217)
+G = F(3)
 
-# Primitive nth root, x such that x^n = 1 mod p
-def root(n: int) -> F:
-    order = 1 << 119
-    assert 1 <= n <= order, "n > max"
-    assert (n & (n-1)) == 0, "n not power of 2"
+# TODO: remove?
+# Primitive nth root, x such that x^n = 1 mod p, where x = g^k, g is a generator
+# def root(g: int, k: int) -> F:
+#     order = 1 << 119
+#     assert 1 <= k <= order, "n > max"
+#     assert (k & (k-1)) == 0, "n not power of 2"
 
-    r = G
-    while order != n:
-        r *= r
-        order /= 2
-    return r
+#     x = g
+#     while order != n:
+#         x *= x
+#         order //= 2
+#     return x
