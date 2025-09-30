@@ -107,7 +107,8 @@ class Polynomial:
     def __repr__(self):
         return str(self.cs)
 
-    def eval(self, x):
+    # Evaluate polynomial P(x)
+    def __call__(self, x):
         f = self.f
         x = wrap(x, f)
         y = f(0)
