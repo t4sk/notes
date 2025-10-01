@@ -122,7 +122,7 @@ class Polynomial:
 
 # Lagrange interpolatin
 # Polynomial with L(xi) = yi for (x0, y0), (x1, y1), ... , (xn, yn)
-def interp(xs, ys, f = lambda x: F(x, P)):
+def interp(xs, ys, f = lambda x: F(x, P)) -> Polynomial:
     assert len(xs) == len(ys)
 
     xs = [wrap(x, f) for x in xs]
@@ -143,7 +143,7 @@ def interp(xs, ys, f = lambda x: F(x, P)):
     return p
 
 # Polynomial that are 0 at xs
-def zpoly(xs, f = lambda x: F(x, P)):
+def zpoly(xs, f = lambda x: F(x, P)) -> Polynomial:
     x = Polynomial([0, 1], f)
     p = Polynomial([], f)
     for xi in xs:

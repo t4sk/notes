@@ -59,18 +59,20 @@ class F:
         
         if exp < 0:
             return self.inv() ** (-exp)
+
+        return self.wrap(pow(self.v, exp, self.p))
         
         # Fast exponentiation (square and multiply)
-        y = self.wrap(1)
-        base = self.wrap(self.v)
+        # y = self.wrap(1)
+        # base = self.wrap(self.v)
         
-        while exp > 0:
-            if exp % 2 == 1:
-                y *= base
-            base *= base
-            exp //= 2
+        # while exp > 0:
+        #     if exp % 2 == 1:
+        #         y *= base
+        #     base *= base
+        #     exp //= 2
         
-        return y
+        # return y
 
     def __eq__(self, x):
         self._check(x)
@@ -90,19 +92,19 @@ class F:
         return str(self.v)
 
 Z = F(0)
-# Generator
-# G = F(85408008396924667383611388730472331217)
-G = F(3)
 
 # TODO: remove?
-# Primitive nth root, x such that x^n = 1 mod p, where x = g^k, g is a generator
-# def root(g: int, k: int) -> F:
-#     order = 1 << 119
-#     assert 1 <= k <= order, "n > max"
-#     assert (k & (k-1)) == 0, "n not power of 2"
+# Primitive Nth root
+# g such that g^N = 1 mod p
+# and g^k != 1 mod P for all 0 < k < N
+# g generates a cyclic group of order N under multiplication
+def primitive_root(w: int, k: int) -> F:
+    order = 1 << 119
+    assert 1 <= k <= order, "n > max"
+    assert (k & (k-1)) == 0, "n not power of 2"
 
-#     x = g
-#     while order != n:
-#         x *= x
-#         order //= 2
-#     return x
+    x = g
+    while order != n:
+        x *= x
+        order //= 2
+    return x

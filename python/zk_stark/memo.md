@@ -19,6 +19,7 @@
 - Query phase
 - How is ZKStark zero knowledge? -> masking (shifting polynomial by a random polynomial)
 - Batching
+- Why prime field?
 
 ### Reed Solomon code
 ```
