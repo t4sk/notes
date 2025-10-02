@@ -8,7 +8,7 @@
 - Proximity gap for RS codes
 - Polynomial, degree, how to check if given points recover an polynomial
 - Lagrange interpolation
-- Group, subgroup, generator
+- Group, subgroup, generator, Fermat's little theorem
 - Roots of unity (z^n = 1, n > 0), primitive roots of unity
 - FFT, inverse FFT
 - Low degree testing
