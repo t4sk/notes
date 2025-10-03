@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Callable
-from field import F, P
+from field import F
 
 # Generic getter
 def get(xs, i, default_val):
@@ -38,7 +38,7 @@ def div(p: Polynomial, d: Polynomial) -> (Polynomial, Polynomial):
     return Polynomial(q, f), r
 
 class Polynomial:
-    def __init__(self, cs: list[int] | list[F], f = lambda x: F(x, P)):
+    def __init__(self, cs: list[int] | list[F], f = lambda x: x):
         z = f(0)
         # Remove trailing 0s
         cs = cs[:]
@@ -116,7 +116,7 @@ class Polynomial:
         if isinstance(x, list):
             return [self(wrap(xi, self.f)) for xi in x]
 
-        # x is scalar
+        # x is int
         f = self.f
         x = wrap(x, f)
         y = f(0)
@@ -128,7 +128,7 @@ class Polynomial:
 
 # Lagrange interpolatin
 # Polynomial with L(xi) = yi for (x0, y0), (x1, y1), ... , (xn, yn)
-def interp(xs, ys, f = lambda x: F(x, P)) -> Polynomial:
+def interp(xs, ys, f = lambda x: x) -> Polynomial:
     assert len(xs) == len(ys)
 
     xs = [wrap(x, f) for x in xs]
@@ -149,7 +149,7 @@ def interp(xs, ys, f = lambda x: F(x, P)) -> Polynomial:
     return p
 
 # Polynomial that are 0 at xs
-def zpoly(xs, f = lambda x: F(x, P)) -> Polynomial:
+def zpoly(xs, f = lambda x: x) -> Polynomial:
     x = Polynomial([0, 1], f)
     p = Polynomial([], f)
     for xi in xs:

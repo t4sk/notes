@@ -16,14 +16,9 @@ def xgcd(x: int, y: int) -> (int, int, int):
 
     return old_s, old_t, old_r # a, b, g
 
-
-# Must be a prime field with subgroup of power of 2 order
-# P = 1 + 407 * (1 << 119)
-P = (1 << 4) + 1
-
 # Field
 class F:
-    def __init__(self, v: int, p: int = P):
+    def __init__(self, v: int, p: int):
         self.v = v % p
         self.p = p
 
@@ -62,18 +57,6 @@ class F:
             return self.inv() ** (-exp)
 
         return self.wrap(pow(self.v, exp, self.p))
-        
-        # Fast exponentiation (square and multiply)
-        # y = self.wrap(1)
-        # base = self.wrap(self.v)
-        
-        # while exp > 0:
-        #     if exp % 2 == 1:
-        #         y *= base
-        #     base *= base
-        #     exp //= 2
-        
-        # return y
 
     def __eq__(self, x):
         self._check(x)
@@ -91,8 +74,6 @@ class F:
 
     def __repr__(self):
         return str(self.v)
-
-Z = F(0)
 
 def find_generator(p: int) -> int | None:
     """
