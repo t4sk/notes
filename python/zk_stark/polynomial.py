@@ -111,6 +111,12 @@ class Polynomial:
 
     # Evaluate polynomial P(x)
     def __call__(self, x):
+        # x is a list
+        # TODO: use FFT?
+        if isinstance(x, list):
+            return [self(wrap(xi, self.f)) for xi in x]
+
+        # x is scalar
         f = self.f
         x = wrap(x, f)
         y = f(0)
