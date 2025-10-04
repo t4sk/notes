@@ -28,7 +28,6 @@ def open(hs: list[str], index: int) -> list[str]:
     while n > 1:
         h = hs[k - 1 if k & 1 else min(k + 1, n - 1)]
         proof.append(h)
-
         k >>= 1
         
         for i in range(0, n, 2):

@@ -101,11 +101,13 @@ def check_generator(g: int, p: int):
 # Nth primitive root of unity
 def get_primitive_root(g: int, p: int, n: int) -> int:
     w = pow(g, (p - 1) // n, p)
-    # Check r is a primitive Nth root
+    # Check w is a primitive Nth root
+    s = {1}
     for i in range(1, n):
         x = pow(w, i, p)
         # print(f'{w}^{i} = {x}')
         assert x != 1
+        assert x not in s
+        s.add(x)
     assert pow(w, n, p) == 1
     return w
-    
