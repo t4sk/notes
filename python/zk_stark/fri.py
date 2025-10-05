@@ -35,6 +35,7 @@ class Prover:
         self.N: int = N
         self.w: int = w
         self.poly: Polynomial = poly
+        # TODO: remove iop
         self.iop = iop
         # Function to wrap x: int into F(x, P)
         self.wrap = lambda x: F(x, P)
@@ -86,7 +87,7 @@ class Prover:
             wi *= wi
             fi = f_fold        
 
-    def prove(self, idx: int):
+    def prove(self, idx: int) -> (list[(F, F)], list[(list[str], list[str])]):
         """
         1. Verifier sends random challenge x to the prover
         2. Start at i = 0, prover sends fi(x) and fi(-x) and Merkle proof
@@ -107,35 +108,96 @@ class Prover:
         """
         i = 0
         n = self.N
-        wi = self.w
+        vals: list[(F, F)] = []
+        proofs: list[(list[str], list[str])] = []
 
         while n > 0:
-            assert idx < n, f'index {idx} > {n}"
+            assert idx < n, f'index {idx} > {n}'
             # fi(x) and fi(-x)
+            codeword = self.codewords[i]
             idx_plus = idx
             idx_minus = (n // 2 + idx) % n
-            f_plus = self.codewords[i][idx_plus]
-            f_minus = self.codewords[i][idx_minus]
+            f_plus = codeword[idx_plus]
+            f_minus = codeword[idx_minus]
+            vals.append((f_plus, f_minus))
+
             # Merkle proof
-            hs = merkle.hash_leaf(str(c)) for c in codeword]
+            # TODO: merge leaves fi(x) and fi(-x) into a single leaf with a tuple?
+            hs = [merkle.hash_leaf(str(c)) for c in codeword]
             proof_plus = merkle.open(hs, idx_plus)
             proof_minus = merkle.open(hs, idx_minus)
+            proofs.append((proof_plus, proof_minus))
 
             # Next loop
             i += 1
             n //= 2
-            # TODO where are the next indexes?y
-            # 0 1 2 3 4 5 6 7 (8)
-            # 0 2 4 6 (4)
-            
+            if n > 0:
+                idx %= n
+
+        return (vals, proofs)
 
 class Verifier:
-    def query(self, idx: int):
-        pass
+    def __init__(self, **kwargs):
+        # Prime
+        P = kwargs["P"]
+        # Initial domain size
+        N = kwargs["N"]
+        # Primitive Nth root
+        w = kwargs["w"]
+        merkle_roots = kwargs["merkle_roots"]
+        challenges = kwargs["challenges"]
 
-    def verify(self):
-        pass
+        assert N < P, f'{N} >= {P}'
+        assert is_prime(P), f'{P} is not prime'
+        assert is_pow2(N), f'{N} is not a power of 2'
+        
+        assert len(merkle_roots) == len(challenges)
 
+        self.P: int = P
+        self.N: int = N
+        self.w: int = w
+        # Function to wrap x: int into F(x, P)
+        self.wrap = lambda x: F(x, P)
+        self.merkle_roots: list[str] = merkle_roots
+        self.challenges: list[F] = challenges
+
+    def verify(self, idx: int, vals: list[(F, F)], proofs: list[(list[str], list[str])]):
+        """
+        3. Verfifier checks Merkle proofs for fi(x) and fi(-x)
+        4. Verifier uses fi(x) and fi(-x) to create f(i+1)(x^2)
+           fi(x)  = fi_even(x^2) + x * fi_odd(x^2)
+           fi(-x) = fi_even(x^2) - x * fi_odd(x^2)
+           f(i+1)(x^2) = fi_even(x^2) + Bi * fi_odd(x^2)
+                       = (fi(x) + fi(-x)) / 2 + Bi * (fi(x) - fi(-x)) / 2x
+           Check that f(i+1)(x^2) provided in the next step matches the calculation above
+        """
+        assert len(vals) == len(proofs) == len(self.merkle_roots)
+
+        i = 0
+        n = self.N
+        x = pow(self.w, idx, self.P)
+        fold = None
+
+        while n > 0:
+            merkle_root = self.merkle_roots[i]
+            (f_plus, f_minus) = vals[i]
+            (p_plus, p_minus) = proofs[i]
+            (idx_plus, idx_minus) = (idx, (n // 2 + idx) % n)
+            for (f, p, j) in zip([f_plus, f_minus], [p_plus, p_minus], [idx_plus, idx_minus]):
+                assert merkle.verify(p, merkle_root, merkle.hash_leaf(str(f)), j)
+
+            if i > 0:
+                assert fold == f_plus
+
+            # Next loop
+            c = self.challenges[i]
+            # TODO: how to check fold for last iter?
+            fold = (f_plus + f_minus) / 2 + c * (f_plus - f_minus) / (2 * x)
+            i += 1
+            n //= 2
+            x *= x
+            if n > 0:
+                idx %= n
 
 
 

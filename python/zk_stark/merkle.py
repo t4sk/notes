@@ -37,8 +37,8 @@ def open(hs: list[str], index: int) -> list[str]:
         n = (n + 1) >> 1
     return proof
 
-def verify(proof: list[str], root: str, leaf: str, index: int) -> bool:
-    h = leaf
+def verify(proof: list[str], root: str, leaf_hash: str, index: int) -> bool:
+    h = leaf_hash
     i = index
     for p in proof:
         (left, right) = (h, p) if i & 1 == 0 else (p, h)
