@@ -29,27 +29,50 @@ class F:
         a, _, _ = xgcd(self.v, self.p)
         return self.wrap(a)
 
-    def _check(self, x: F):
+    def check(self, x: int | F) -> F:
+        if isinstance(x, int):
+            return F(x, self.p)
         assert self.p == x.p
+        return x
 
-    def __add__(self, x: F):
-        self._check(x)
+    # F + (int | F)
+    def __add__(self, x: int | F) -> F:
+        x = self.check(x)
         return self.wrap((self.v + x.v) % self.p)
 
-    def __sub__(self, x: F):
-        self._check(x)
+    # (int | F) + F
+    def __radd__(self, x: int | F) -> F:
+        # Addition is commutative
+        return self.__add__(x)
+
+    # F - (int | F)
+    def __sub__(self, x: int | F) -> F:
+        x = self.check(x)
         return self.wrap((self.v - x.v) % self.p)
 
-    def __mul__(self, x: F):
-        self._check(x)
+    # (int | F) - F
+    def __rsub__(self, x: int | F) -> F:
+        x = self.check(x)
+        return x.__sub__(self)
+
+    def __mul__(self, x: int | F) -> F:
+        x = self.check(x)
         return self.wrap((self.v * x.v) % self.p)
 
-    def __truediv__(self, x: F):
-        self._check(x)
+    def __rmul__(self, x: int | F) -> F:
+        # Multiplication is commutative
+        return self.__mul__(x)
+    
+    def __truediv__(self, x: int | F) -> F:
+        x = self.check(x)
         assert x.v != 0, "div by 0"
         return self * x.inv()
 
-    def __pow__(self, exp: int):
+    def __rtruediv__(self, x):
+        x = self.check(x)
+        return x.__truediv__(self)
+
+    def __pow__(self, exp: int) -> F:
         if exp == 0:
             return self.wrap(1)
         
@@ -58,12 +81,12 @@ class F:
 
         return self.wrap(pow(self.v, exp, self.p))
 
-    def __eq__(self, x):
-        self._check(x)
+    def __eq__(self, x: int | F):
+        x = self.check(x)
         return (self.v % self.p) == (x.v % self.p)
 
-    def __neq__(self, x):
-        self._check(x)
+    def __neq__(self, x: int | F):
+        x = self.check(x)
         return (self.v % self.p) != (x.v % self.p)
 
     def __neg__(self):

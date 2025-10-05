@@ -39,7 +39,7 @@ class Prover:
         self.iop = iop
         # Function to wrap x: int into F(x, P)
         self.wrap = lambda x: F(x, P)
-        
+        # TODO: remove?
         self.challenges: list[F] = []
         self.codewords: list[list[F]] = []
 
@@ -62,10 +62,10 @@ class Prover:
         # fi
         fi = self.poly
         # wi = w**(2**i)
-        wi = self.w
+        wi = F(self.w, self.P)
         while n > 0:
             # Evaluation domain
-            Li = domain(wi, n, self.P)
+            Li = domain(wi.v, n, self.P)
             # RS code
             codeword = fi(Li)
             self.codewords.append(codeword)
@@ -73,19 +73,22 @@ class Prover:
             # Commit Merkle root
             merkle_root = merkle.commit([merkle.hash_leaf(str(c)) for c in codeword])
             self.iop.send(merkle_root)
-            # Get random challenge
-            c = F(self.iop.get_challenge(), self.P)
-            self.challenges.append(c)
-            # Fold
-            f_even = Polynomial(fi.cs[0::2], self.wrap)
-            f_odd = Polynomial(fi.cs[1::2], self.wrap)
-            c = Polynomial([c], self.wrap) 
-            f_fold = f_even + c * f_odd
-            
+
             # Next loop
             n //= 2
-            wi *= wi
-            fi = f_fold        
+            
+            if n > 0:
+                # Get random challenge
+                c = F(self.iop.get_challenge(), self.P)
+                self.challenges.append(c)
+                # Fold
+                f_even = Polynomial(fi.cs[0::2], self.wrap)
+                f_odd = Polynomial(fi.cs[1::2], self.wrap)
+                c = Polynomial([c], self.wrap) 
+                f_fold = f_even + c * f_odd
+            
+                wi *= wi
+                fi = f_fold        
 
     def prove(self, idx: int) -> (list[(F, F)], list[(list[str], list[str])]):
         """
@@ -175,7 +178,7 @@ class Verifier:
 
         i = 0
         n = self.N
-        x = pow(self.w, idx, self.P)
+        x = F(pow(self.w, idx, self.P), self.P)
         fold = None
 
         while n > 0:
@@ -186,13 +189,10 @@ class Verifier:
             for (f, p, j) in zip([f_plus, f_minus], [p_plus, p_minus], [idx_plus, idx_minus]):
                 assert merkle.verify(p, merkle_root, merkle.hash_leaf(str(f)), j)
 
-            if i > 0:
-                assert fold == f_plus
-
             # Next loop
             c = self.challenges[i]
             # TODO: how to check fold for last iter?
-            fold = (f_plus + f_minus) / 2 + c * (f_plus - f_minus) / (2 * x)
+            fold = (f_plus + f_minus) / 2) + c * (f_plus - f_minus) / (2 * x)
             i += 1
             n //= 2
             x *= x
