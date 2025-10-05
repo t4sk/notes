@@ -1,6 +1,7 @@
 import merkle
 from field import F
 from polynomial import Polynomial
+import polynomial
 from utils import is_pow2, is_prime
 
 def domain(w: int, n: int, p: int):
@@ -25,9 +26,9 @@ class Prover:
         # Interactive oracle proof
         iop = kwargs["iop"]
 
+        assert N < P
         assert is_prime(P), f'{P} is not prime'
         assert is_pow2(N), f'{N} is not a power of 2'
-        assert poly.degree() + 1 < N < P
 
         assert poly.z == F(0, P), f'Incorrect polynomial field'
 
@@ -64,7 +65,8 @@ class Prover:
         fi = self.poly
         # wi = w**(2**i)
         wi = F(self.w, self.P)
-        while n > 0:
+        # At n = 2, codeword represents a constant function (polynomial of degree 0)
+        while n > 1:
             # Evaluation domain
             Li = domain(wi.v, n, self.P)
             # RS code
@@ -79,7 +81,7 @@ class Prover:
             # Next loop
             n //= 2
             
-            if n > 0:
+            if n > 1:
                 # Get random challenge
                 c = F(self.iop.get_challenge(), self.P)
                 self.challenges.append(c)
@@ -92,7 +94,7 @@ class Prover:
                 wi *= wi
                 fi = f_fold        
 
-    def prove(self, idx: int) -> (list[(F, F)], list[(list[str], list[str])]):
+    def prove(self, idx: int) -> (list[(F, F)], list[(list[str], list[str])], list[F]):
         """
         1. Verifier sends random challenge x to the prover
         2. Start at i = 0, prover sends fi(x) and fi(-x) and Merkle proof
@@ -104,6 +106,7 @@ class Prover:
                        = (fi(x) + fi(-x)) / 2 + Bi * (fi(x) - fi(-x)) / 2x
            Check that f(i+1)(x^2) provided in the next step matches the calculation above
         5. Repeat 2 to 4, evaluate at +/-x^2, +/-x^4, +/-x^8, ...
+        6. When fi is a codeword with small length, do a direct check (interpolate a polynomial from the codeword and check the degree)
 
         TODO: comment about correlated method of query / proving
 
@@ -116,7 +119,7 @@ class Prover:
         vals: list[(F, F)] = []
         proofs: list[(list[str], list[str])] = []
 
-        while n > 0:
+        while n > 1:
             assert idx < n, f'index {idx} > {n}'
             # fi(x) and fi(-x)
             codeword = self.codewords[i]
@@ -135,11 +138,11 @@ class Prover:
 
             # Next loop
             n //= 2
-            if n > 0:
+            if n > 1:
                 i += 1
                 idx %= n
 
-        return (vals, proofs)
+        return (vals, proofs, self.codewords[-1])
 
 class Verifier:
     def __init__(self, **kwargs):
@@ -166,7 +169,7 @@ class Verifier:
         self.merkle_roots: list[str] = merkle_roots
         self.challenges: list[F] = challenges
 
-    def verify(self, idx: int, vals: list[(F, F)], proofs: list[(list[str], list[str])]):
+    def verify(self, idx: int, vals: list[(F, F)], proofs: list[(list[str], list[str])], codeword: list[F]):
         """
         TODO: verify with x not in L?
         3. Verfifier checks Merkle proofs for fi(x) and fi(-x)
@@ -176,6 +179,8 @@ class Verifier:
            f(i+1)(x^2) = fi_even(x^2) + Bi * fi_odd(x^2)
                        = (fi(x) + fi(-x)) / 2 + Bi * (fi(x) - fi(-x)) / 2x
            Check that f(i+1)(x^2) provided in the next step matches the calculation above
+        6. When fi is a codeword with small length, do a direct check (interpolate a polynomial from the codeword and check the degree)
+        TODO: fix comments
         """
         assert len(vals) == len(proofs) == len(self.merkle_roots)
 
@@ -184,7 +189,7 @@ class Verifier:
         x = F(pow(self.w, idx, self.P), self.P)
         fold = None
 
-        while n > 0:
+        while n > 1:
             merkle_root = self.merkle_roots[i]
             # fi(x) and fi(-x)
             (f_plus, f_minus) = vals[i]
@@ -193,6 +198,7 @@ class Verifier:
             (idx_plus, idx_minus) = (idx, (n // 2 + idx) % n)
 
             # Check Merkle proofs of fi(x) and fi(-x)
+            # TODO: last check is redundant?
             for (f, p, j) in zip([f_plus, f_minus], [p_plus, p_minus], [idx_plus, idx_minus]):
                 assert merkle.verify(p, merkle_root, merkle.hash_leaf(str(f)), j)
 
@@ -202,17 +208,19 @@ class Verifier:
 
             # Next loop
             n //= 2
-            if n > 0:
+            # Used by direct check of the codeword
+            x *= x
+            if n > 1:
                 # Calculate fold
                 c = self.challenges[i]
                 fold = (f_plus + f_minus) / 2 + c * (f_plus - f_minus) / (2 * x)
                 i += 1
                 idx %= n
-                x *= x
 
-
-
-
+        # TODO: check codeword length
+        assert merkle.commit([merkle.hash_leaf(str(c)) for c in codeword]) == self.merkle_roots[-1]
+        # p = polynomial.interp(?, codeword, lambda x: F(x, self.P))
+        # assert p.degree <= ?
 
 
 
