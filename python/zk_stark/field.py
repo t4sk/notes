@@ -55,23 +55,28 @@ class F:
         x = self.check(x)
         return x.__sub__(self)
 
+    # F * (int | F)
     def __mul__(self, x: int | F) -> F:
         x = self.check(x)
         return self.wrap((self.v * x.v) % self.p)
 
+    # (int | F) * F
     def __rmul__(self, x: int | F) -> F:
         # Multiplication is commutative
         return self.__mul__(x)
-    
+
+    # F / (int | F)
     def __truediv__(self, x: int | F) -> F:
         x = self.check(x)
         assert x.v != 0, "div by 0"
         return self * x.inv()
 
+    # (int | F) / F
     def __rtruediv__(self, x):
         x = self.check(x)
         return x.__truediv__(self)
 
+    # F**int
     def __pow__(self, exp: int) -> F:
         if exp == 0:
             return self.wrap(1)

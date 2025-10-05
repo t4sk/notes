@@ -5,7 +5,7 @@ from utils import is_pow2, is_prime
 
 def domain(w: int, n: int, p: int):
     """
-    w is primitive nth root mod p
+    w is primitive n th root mod p
     p is prime
     """
     d = [pow(w, i, p) for i in range(0, n)]
@@ -35,11 +35,12 @@ class Prover:
         self.N: int = N
         self.w: int = w
         self.poly: Polynomial = poly
-        # TODO: remove iop
+        # TODO: remove?
         self.iop = iop
         # Function to wrap x: int into F(x, P)
         self.wrap = lambda x: F(x, P)
-        # TODO: remove?
+
+        self.merkle_roots: list[str] = []
         self.challenges: list[F] = []
         self.codewords: list[list[F]] = []
 
@@ -72,6 +73,7 @@ class Prover:
 
             # Commit Merkle root
             merkle_root = merkle.commit([merkle.hash_leaf(str(c)) for c in codeword])
+            self.merkle_roots.append(merkle_root)
             self.iop.send(merkle_root)
 
             # Next loop
@@ -132,9 +134,9 @@ class Prover:
             proofs.append((proof_plus, proof_minus))
 
             # Next loop
-            i += 1
             n //= 2
             if n > 0:
+                i += 1
                 idx %= n
 
         return (vals, proofs)
@@ -154,7 +156,7 @@ class Verifier:
         assert is_prime(P), f'{P} is not prime'
         assert is_pow2(N), f'{N} is not a power of 2'
         
-        assert len(merkle_roots) == len(challenges)
+        assert len(challenges) == len(merkle_roots) - 1
 
         self.P: int = P
         self.N: int = N
@@ -166,6 +168,7 @@ class Verifier:
 
     def verify(self, idx: int, vals: list[(F, F)], proofs: list[(list[str], list[str])]):
         """
+        TODO: verify with x not in L?
         3. Verfifier checks Merkle proofs for fi(x) and fi(-x)
         4. Verifier uses fi(x) and fi(-x) to create f(i+1)(x^2)
            fi(x)  = fi_even(x^2) + x * fi_odd(x^2)
@@ -183,21 +186,29 @@ class Verifier:
 
         while n > 0:
             merkle_root = self.merkle_roots[i]
+            # fi(x) and fi(-x)
             (f_plus, f_minus) = vals[i]
+            # Proofs of fi(x) and fi(-x)
             (p_plus, p_minus) = proofs[i]
             (idx_plus, idx_minus) = (idx, (n // 2 + idx) % n)
+
+            # Check Merkle proofs of fi(x) and fi(-x)
             for (f, p, j) in zip([f_plus, f_minus], [p_plus, p_minus], [idx_plus, idx_minus]):
                 assert merkle.verify(p, merkle_root, merkle.hash_leaf(str(f)), j)
 
+            # Check fold
+            if fold is not None:
+                assert fold == f_plus, 'fold != f[i+1](x^2)'
+
             # Next loop
-            c = self.challenges[i]
-            # TODO: how to check fold for last iter?
-            fold = (f_plus + f_minus) / 2) + c * (f_plus - f_minus) / (2 * x)
-            i += 1
             n //= 2
-            x *= x
             if n > 0:
+                # Calculate fold
+                c = self.challenges[i]
+                fold = (f_plus + f_minus) / 2 + c * (f_plus - f_minus) / (2 * x)
+                i += 1
                 idx %= n
+                x *= x
 
 
 
