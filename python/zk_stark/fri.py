@@ -2,7 +2,7 @@ import merkle
 from field import F
 from polynomial import Polynomial
 import polynomial
-from utils import is_pow2, is_prime
+from utils import is_pow2, is_prime, log2
 
 def domain(w: int, n: int, p: int):
     """
@@ -10,7 +10,8 @@ def domain(w: int, n: int, p: int):
     p is prime
     """
     d = [pow(w, i, p) for i in range(0, n)]
-    assert len(set(d)) == n, f'|d| != {n}'
+    s = sed(d)
+    assert len(s) == n, f'|d| = {len(s} != {n}'
     return d
 
 class Prover:
@@ -25,10 +26,20 @@ class Prover:
         poly = kwargs["poly"]
         # Interactive oracle proof
         iop = kwargs["iop"]
+        # Expansion factor from message length M to RS code length N
+        # exp_factor * M = N
+        exp_factor = kwargs["exp_factor"]
+        # Max degree of polynomial after all folds
+        max_poly_degree = kwargs["max_poly_degree"]
 
         assert N < P
         assert is_prime(P), f'{P} is not prime'
         assert is_pow2(N), f'{N} is not a power of 2'
+        assert 0 < exp_factor, "exp factor <= 0"
+        assert 0 <= max_poly_degree, "max poly degree < 0"
+
+        # poly degree <= M - 1 = N / exp_factor - 1 
+        # 2**k = N -> k = log2(N)
 
         assert poly.z == F(0, P), f'Incorrect polynomial field'
 
@@ -66,6 +77,8 @@ class Prover:
         # wi = w**(2**i)
         wi = F(self.w, self.P)
         # At n = 2, codeword represents a constant function (polynomial of degree 0)
+        # M = message length
+        # N = codeword length = M * exp_factor = (poly degree + 1) * exp_factor
         while n > 1:
             # Evaluation domain
             Li = domain(wi.v, n, self.P)
@@ -154,11 +167,18 @@ class Verifier:
         w = kwargs["w"]
         merkle_roots = kwargs["merkle_roots"]
         challenges = kwargs["challenges"]
+        # Expansion factor from message length M to RS code length N
+        # exp_factor * M = N
+        exp_factor = kwargs["exp_factor"]
+        # Max degree of the polynomial after all folds
+        max_poly_degree = kwargs["max_poly_degree"]
 
         assert N < P, f'{N} >= {P}'
         assert is_prime(P), f'{P} is not prime'
         assert is_pow2(N), f'{N} is not a power of 2'
-        
+        assert 0 < exp_factor, "exp factor <= 0"
+        assert 0 <= max_poly_degree, "max poly degree < 0"
+
         assert len(challenges) == len(merkle_roots) - 1
 
         self.P: int = P
@@ -168,6 +188,8 @@ class Verifier:
         self.wrap = lambda x: F(x, P)
         self.merkle_roots: list[str] = merkle_roots
         self.challenges: list[F] = challenges
+        self.exp_factor = exp_factor
+        self.max_poly_degree = max_poly_degree
 
     def verify(self, idx: int, vals: list[(F, F)], proofs: list[(list[str], list[str])], codeword: list[F]):
         """
@@ -187,6 +209,8 @@ class Verifier:
         i = 0
         n = self.N
         x = F(pow(self.w, idx, self.P), self.P)
+        # Used in last check of the codeword
+        w = F(self.w, self.P)
         fold = None
 
         while n > 1:
@@ -208,20 +232,22 @@ class Verifier:
 
             # Next loop
             n //= 2
-            # Used by direct check of the codeword
-            x *= x
             if n > 1:
                 # Calculate fold
                 c = self.challenges[i]
                 fold = (f_plus + f_minus) / 2 + c * (f_plus - f_minus) / (2 * x)
+                x *= x
+                w *= w
                 i += 1
                 idx %= n
 
-        # TODO: check codeword length
+        # Check codeword length
+        # Message length M -> poly degree <= M - 1 -> RS code length N
+        # N = M * exp_factor
+        assert len(codeword) == (self.max_poly_degree + 1) * self.exp_factor
+        # Check Merkle root
         assert merkle.commit([merkle.hash_leaf(str(c)) for c in codeword]) == self.merkle_roots[-1]
-        # p = polynomial.interp(?, codeword, lambda x: F(x, self.P))
-        # assert p.degree <= ?
-
-
-
-
+        # Interpolate polynomial and check the degree
+        p = polynomial.interp(domain(w.v, len(codeword), self.P), codeword, lambda x: F(x, self.P))
+        assert p.degree() <= self.max_poly_degree, f'interpolated polynomial degree = {p.degree()} > max = {self.max_poly_degree}'
+        assert p(codeword) == codeword, f'polynomial evaluation {p(codeword)} != {codeword}' 

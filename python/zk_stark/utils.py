@@ -1,6 +1,11 @@
 def is_pow2(x: int) -> bool:
     return x > 0 and (x & (x - 1)) == 0
 
+def log2(x: int) -> int:
+    assert is_pow2(x), f'{x} is not a power of 2'
+    # Position of the most significant bit
+    return x.bit_length() - 1
+
 def is_prime(x: int) -> bool:
     if x < 2:
         return False
