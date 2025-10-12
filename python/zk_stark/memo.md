@@ -1,4 +1,6 @@
 - Modular arithmetic, negative, multiplicative inverse, division, finite field, prime field of order 2^n + 1, inverse, -1
+- Field, multiplicative group, how to find generator for multiplicative group?
+- Starkware primitive Nth root of unity N = 2^192, P = 2^251 + 17*2^192 + 1
 - Polynomial, lagrange interpolation
 - Constraint, composition polynomial
 - Codeword

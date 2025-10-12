@@ -4,6 +4,7 @@ from polynomial import Polynomial
 import polynomial
 from utils import is_pow2, is_prime, log2
 
+# TODO - update domain
 def domain(w: int, n: int, p: int):
     """
     w is primitive n th root mod p

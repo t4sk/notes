@@ -6,6 +6,17 @@ def log2(x: int) -> int:
     # Position of the most significant bit
     return x.bit_length() - 1
 
+# Returns largest k such that 2**k divides x
+def find_largest_pow_2(x: int) -> int:
+    if x == 0:
+        return 0
+
+    k = 0
+    while x % 2 == 0:
+        x //= 2
+        k += 1
+    return k
+
 def is_prime(x: int) -> bool:
     if x < 2:
         return False
