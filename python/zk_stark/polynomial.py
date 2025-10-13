@@ -2,9 +2,11 @@ from __future__ import annotations
 from typing import Callable
 from field import F
 
+
 # Generic getter
 def get(xs, i, default_val):
     return xs[i] if i < len(xs) else default_val
+
 
 # Wraps x with f(x)
 def wrap(x, f):
@@ -12,6 +14,7 @@ def wrap(x, f):
         return x
     else:
         return f(x)
+
 
 def div(p: Polynomial, d: Polynomial) -> (Polynomial, Polynomial):
     assert p.z == d.z
@@ -26,7 +29,7 @@ def div(p: Polynomial, d: Polynomial) -> (Polynomial, Polynomial):
 
     q = [z] * (m - n + 1)
     r = Polynomial(p.cs[:], f)
-    
+
     for i in range(m - n + 1):
         if r.degree() < n:
             break
@@ -37,8 +40,9 @@ def div(p: Polynomial, d: Polynomial) -> (Polynomial, Polynomial):
 
     return Polynomial(q, f), r
 
+
 class Polynomial:
-    def __init__(self, cs: list[int] | list[F], f = lambda x: x):
+    def __init__(self, cs: list[int] | list[F], f=lambda x: x):
         z = f(0)
         # Remove trailing 0s
         cs = cs[:]
@@ -59,7 +63,7 @@ class Polynomial:
 
     def __neg__(self):
         return Polynomial([-c for c in self.cs], self.f)
-    
+
     def __add__(self, q):
         # p + q
         ps = self.cs
@@ -126,10 +130,11 @@ class Polynomial:
             xi *= x
         return y
 
+
 # Lagrange interpolatin
 # Polynomial with L(xi) = yi for (x0, y0), (x1, y1), ... , (xn, yn)
 # TODO: use inverse FFT?
-def interp(xs, ys, f = lambda x: x) -> Polynomial:
+def interp(xs, ys, f=lambda x: x) -> Polynomial:
     assert len(xs) == len(ys)
 
     xs = [wrap(x, f) for x in xs]
@@ -149,11 +154,12 @@ def interp(xs, ys, f = lambda x: x) -> Polynomial:
 
     return p
 
+
 # Polynomial that are 0 at xs
-def zpoly(xs, f = lambda x: x) -> Polynomial:
+def zpoly(xs, f=lambda x: x) -> Polynomial:
     x = Polynomial([0, 1], f)
     p = Polynomial([], f)
     for xi in xs:
         xi = Polynomial([xi], f)
-        p += (x - xi)
+        p += x - xi
     return p

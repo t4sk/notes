@@ -4,7 +4,7 @@ from polynomial import Polynomial
 import polynomial
 from utils import is_pow2, is_prime, log2
 
-# TODO - update domain
+
 def domain(w: int, n: int, p: int):
     """
     w is primitive n th root mod p
@@ -12,8 +12,9 @@ def domain(w: int, n: int, p: int):
     """
     d = [pow(w, i, p) for i in range(0, n)]
     s = set(d)
-    assert len(s) == n, f'|d| = {len(s)} != {n}'
+    assert len(s) == n, f"|d| = {len(s)} != {n}"
     return d
+
 
 class Prover:
     def __init__(self, **kwargs):
@@ -32,13 +33,13 @@ class Prover:
         exp_factor = kwargs["exp_factor"]
 
         assert N < P
-        assert is_prime(P), f'P = {P} is not prime'
-        assert is_pow2(N), f'N = {N} is not a power of 2'
-        assert 2 <= exp_factor, f'exp factor = {exp_factor} < 2'
+        assert is_prime(P), f"P = {P} is not prime"
+        assert is_pow2(N), f"N = {N} is not a power of 2"
+        assert 2 <= exp_factor, f"exp factor = {exp_factor} < 2"
         # Since N = exp_factor * M is a power of 2, exp_factor must also be a power of 2
-        assert is_pow2(exp_factor), f'exp_factor = {exp_factor} is a power of 2'
+        assert is_pow2(exp_factor), f"exp_factor = {exp_factor} is a power of 2"
 
-        assert poly.z == F(0, P), f'Incorrect polynomial field'
+        assert poly.z == F(0, P), f"Incorrect polynomial field"
 
         self.P: int = P
         self.N: int = N
@@ -127,7 +128,7 @@ class Prover:
         proofs: list[(list[str], list[str])] = []
 
         while n > 1:
-            assert idx < n, f'index {idx} > {n}'
+            assert idx < n, f"index {idx} > {n}"
             # fi(x) and fi(-x)
             codeword = self.codewords[i]
             idx_plus = idx
@@ -151,6 +152,7 @@ class Prover:
 
         return (vals, proofs, self.codewords[-1])
 
+
 class Verifier:
     def __init__(self, **kwargs):
         # Prime
@@ -165,12 +167,12 @@ class Verifier:
         # exp_factor * M = N
         exp_factor = kwargs["exp_factor"]
 
-        assert N < P, f'{N} >= {P}'
-        assert is_prime(P), f'{P} is not prime'
-        assert is_pow2(N), f'{N} is not a power of 2'
-        assert 2 <= exp_factor, f'exp factor = {exp_factor} < 2'
+        assert N < P, f"{N} >= {P}"
+        assert is_prime(P), f"{P} is not prime"
+        assert is_pow2(N), f"{N} is not a power of 2"
+        assert 2 <= exp_factor, f"exp factor = {exp_factor} < 2"
         # Since N = exp_factor * M is a power of 2, exp_factor must also be a power of 2
-        assert is_pow2(exp_factor), f'exp_factor = {exp_factor} is a power of 2'
+        assert is_pow2(exp_factor), f"exp_factor = {exp_factor} is a power of 2"
 
         # Merkle root of the first codeword (f[0](L[0])) has no challenge
         assert len(merkle_roots) == len(challenges) + 1
@@ -184,7 +186,13 @@ class Verifier:
         self.challenges: list[F] = challenges
         self.exp_factor = exp_factor
 
-    def verify(self, idx: int, vals: list[(F, F)], proofs: list[(list[str], list[str])], codeword: list[F]):
+    def verify(
+        self,
+        idx: int,
+        vals: list[(F, F)],
+        proofs: list[(list[str], list[str])],
+        codeword: list[F],
+    ):
         """
         TODO: verify with x not in L?
         3. Verfifier checks Merkle proofs for fi(x) and fi(-x)
@@ -216,12 +224,14 @@ class Verifier:
 
             # Check Merkle proofs of fi(x) and fi(-x)
             # TODO: last check is redundant?
-            for (f, p, j) in zip([f_plus, f_minus], [p_plus, p_minus], [idx_plus, idx_minus]):
+            for f, p, j in zip(
+                [f_plus, f_minus], [p_plus, p_minus], [idx_plus, idx_minus]
+            ):
                 assert merkle.verify(p, merkle_root, merkle.hash_leaf(str(f)), j)
 
             # Check fold
             if fold is not None:
-                assert fold == f_plus, 'fold != f[i+1](x^2)'
+                assert fold == f_plus, "fold != f[i+1](x^2)"
 
             # Next loop
             n //= 2
@@ -239,8 +249,15 @@ class Verifier:
         # N = M * exp_factor (here poly degree = 0)
         assert len(codeword) == self.exp_factor
         # Check Merkle root
-        assert merkle.commit([merkle.hash_leaf(str(c)) for c in codeword]) == self.merkle_roots[-1]
+        assert (
+            merkle.commit([merkle.hash_leaf(str(c)) for c in codeword])
+            == self.merkle_roots[-1]
+        )
         # Interpolate a polynomial and check the degree
         p = polynomial.interp(domain(w.v, len(codeword), self.P), codeword, self.wrap)
-        assert p.degree() == 0, f'interpolated polynomial degree = {p.degree()} > max = 0'
-        assert p(codeword) == codeword, f'polynomial evaluation {p(codeword)} != {codeword}'
+        assert (
+            p.degree() == 0
+        ), f"interpolated polynomial degree = {p.degree()} > max = 0"
+        assert (
+            p(codeword) == codeword
+        ), f"polynomial evaluation {p(codeword)} != {codeword}"

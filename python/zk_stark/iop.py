@@ -1,9 +1,11 @@
 # Interactive oracle proof
 import hashlib
 
+
 def fiat_shamir(s: str) -> int:
     h = hashlib.sha256(s.encode()).digest()
-    return int.from_bytes(h, 'big')
+    return int.from_bytes(h, "big")
+
 
 class Writer:
     def __init__(self):
@@ -18,5 +20,7 @@ class Writer:
         self.challenges.append(c)
         return c
 
+
 class Reader:
     pass
+
