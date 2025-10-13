@@ -2,10 +2,11 @@ import merkle
 from field import F
 from polynomial import Polynomial
 import polynomial
+from fft import fft, ifft
 from utils import is_pow2, is_prime, log2
 
 
-def domain(w: int, n: int, p: int):
+def domain(w: int, n: int, p: int) -> list[int]:
     """
     w is primitive n th root mod p
     p is prime
@@ -14,6 +15,28 @@ def domain(w: int, n: int, p: int):
     s = set(d)
     assert len(s) == n, f"|d| = {len(s)} != {n}"
     return d
+
+
+def padd(xs, n, x):    
+    if len(xs) < n:
+        xs.extend([x] * (n - len(xs)))
+    return xs    
+
+
+# Evaluates polynomial using FFT
+def eval_poly(f: Polynomial, ws: list[int], p: int) -> list[F]:
+    cs = [c.unwrap() for c in f.cs]
+    # Evaluation domain is larger than degree of polynomial so padd with 0
+    cs = padd(cs, len(ws), 0) 
+    ys = fft(cs, ws, p)
+    return [F(y, p) for y in ys]
+
+    
+# Interpolates polynomial using inverse FFT
+def interp_poly(ys: list[int | F], ws: list[int], p: int) -> Polynomial:
+    ys = [y if isinstance(y, int) else y.unwrap() for y in ys]
+    cs = ifft(ys, ws, p)
+    return Polynomial(cs, lambda x: F(x, p))
 
 
 class Prover:
@@ -78,7 +101,7 @@ class Prover:
             # Evaluation domain
             Li = domain(wi.v, n, self.P)
             # RS code
-            codeword = fi(Li)
+            codeword = eval_poly(fi, Li, self.P)
             self.codewords.append(codeword)
 
             # Commit Merkle root
@@ -180,8 +203,6 @@ class Verifier:
         self.P: int = P
         self.N: int = N
         self.w: int = w
-        # Function to wrap x: int into F(x, P)
-        self.wrap = lambda x: F(x, P)
         self.merkle_roots: list[str] = merkle_roots
         self.challenges: list[F] = challenges
         self.exp_factor = exp_factor
@@ -254,7 +275,7 @@ class Verifier:
             == self.merkle_roots[-1]
         )
         # Interpolate a polynomial and check the degree
-        p = polynomial.interp(domain(w.v, len(codeword), self.P), codeword, self.wrap)
+        p = interp_poly(codeword, domain(w.unwrap(), len(codeword), self.P), self.P)
         assert (
             p.degree() == 0
         ), f"interpolated polynomial degree = {p.degree()} > max = 0"

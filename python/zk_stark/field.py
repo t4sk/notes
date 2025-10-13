@@ -26,6 +26,9 @@ class F:
 
     def wrap(self, v: int) -> F:
         return F(v, self.p)
+        
+    def unwrap(self) -> int:
+        return self.v
 
     def check(self, x: int | F) -> F:
         if isinstance(x, int):

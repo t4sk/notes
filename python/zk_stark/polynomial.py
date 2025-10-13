@@ -116,7 +116,6 @@ class Polynomial:
     # Evaluate polynomial P(x)
     def __call__(self, x):
         # x is a list
-        # TODO: use FFT?
         if isinstance(x, list):
             return [self(wrap(xi, self.f)) for xi in x]
 
@@ -133,8 +132,7 @@ class Polynomial:
 
 # Lagrange interpolatin
 # Polynomial with L(xi) = yi for (x0, y0), (x1, y1), ... , (xn, yn)
-# TODO: use inverse FFT?
-def interp(xs, ys, f=lambda x: x) -> Polynomial:
+def interp(xs: list[int | F], ys: list[int | F], f=lambda x: x) -> Polynomial:
     assert len(xs) == len(ys)
 
     xs = [wrap(x, f) for x in xs]

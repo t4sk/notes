@@ -11,7 +11,7 @@ def fft_rec(f: list[int], ws: list[int], p: int) -> list[int]:
     """
     n = len(f)
     assert n & (n - 1) == 0, f"{n} is not a power of 2"
-    assert len(ws) == n
+    assert len(ws) == n, f'{len(ws)} != {n}'
 
     if n == 1:
         return f
@@ -42,7 +42,7 @@ def fft_rec(f: list[int], ws: list[int], p: int) -> list[int]:
 def fft(f: list[int], ws: list[int], p: int) -> list[int]:
     n = len(f)
     assert n & (n - 1) == 0, f"{n} is not a power of 2"
-    assert len(ws) == n
+    assert len(ws) == n, f'{len(ws)} != {n}'
 
     ys = [0] * n
 

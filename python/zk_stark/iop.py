@@ -19,8 +19,3 @@ class Writer:
         c = fiat_shamir(str(self.merkle_roots))
         self.challenges.append(c)
         return c
-
-
-class Reader:
-    pass
-
