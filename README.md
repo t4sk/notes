@@ -1,8 +1,8 @@
 # notes
 
-# Merkle tree algorithms
+# Merkle Tree
 
-- [Merkle tree algorithms](./excalidraw/algo/merkle-algo.png)
+- [Algorithm](./excalidraw/algo/merkle-algo.png)
 - [Code](./python/algo/merkle.ipynb)
 
 # Fast Fourier Transform
