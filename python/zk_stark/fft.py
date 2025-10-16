@@ -47,20 +47,20 @@ def fft(f: list[int], ws: list[int], p: int) -> list[int]:
     ys = [0] * n
 
     # Map final positions of evens and odds to ys
-    # Bit reversal one index at a time
-    # Original index i encodes path to final index j
-    for i in range(0, n):
-        t = i
-        k = n
-        j = 0
-
-        while k > 1:
-            j <<= 1
-            if t & 1:
-                j += 1
-            t >>= 1
-            k >>= 1
-        ys[i] = f[j]
+    # Bit reversal
+    # Starting index = reverse of final index
+    rev = 0
+    for i in range(N):
+        ys[i] = f[rev]
+        # Carry from left to right
+        mask = N >> 1
+        while rev & mask:
+            # Set 0 where mask has a 1
+            rev &= ~mask
+            # Shift 1 to the right
+            mask >>= 1
+        # Put 1 at the correct bit position after carry
+        rev |= mask
 
     # Merge
     k = n

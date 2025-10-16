@@ -1,6 +1,17 @@
 # notes
 
+# Merkle tree algorithms
+
 - [Merkle tree algorithms](./excalidraw/algo/merkle-algo.png)
+- [Code](./python/algo/merkle.ipynb)
+
+# Fast Fourier Transform
+
+- [Intro](./excalidraw/algo/fft/fft-intro.png)
+- [Definitions](./excalidraw/algo/fft/fft-definitions.png)
+- [Algorithm](./excalidraw/algo/fft/fft-algo.png)
+- [Bit reversal](./excalidraw/algo/fft/fft-bit-reversal.png)
+- [Code](./python/algo/fft.ipynb)
 
 # ZKStark
 

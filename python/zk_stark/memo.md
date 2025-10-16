@@ -2,6 +2,8 @@
 - Field, multiplicative group, how to find generator for multiplicative group?
 - Starkware primitive Nth root of unity N = 2^192, P = 2^251 + 17*2^192 + 1
 - Polynomial, lagrange interpolation
+- polynomial roots and division p(x) = f(x) / (x - a0)(x - a1)...(x-an)
+- f and g poly degree = d -> intersect at most d points
 - Constraint, composition polynomial
 - Codeword
 - Reed Solomon code
@@ -128,6 +130,37 @@ TOOD: implications if prover commits to the whole table?
 TODO: cheat example?
 TODO: low degree testing
 TODO: quotienting?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
