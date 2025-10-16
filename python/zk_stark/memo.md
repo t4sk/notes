@@ -25,6 +25,7 @@
 - How is ZKStark zero knowledge? -> masking (shifting polynomial by a random polynomial)
 - Batching
 - Why prime field?
+- Composition, constraint and validity polynomial
 
 ### Reed Solomon code
 ```
