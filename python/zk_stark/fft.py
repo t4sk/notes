@@ -50,10 +50,10 @@ def fft(f: list[int], ws: list[int], p: int) -> list[int]:
     # Bit reversal
     # Starting index = reverse of final index
     rev = 0
-    for i in range(N):
+    for i in range(n):
         ys[i] = f[rev]
         # Carry from left to right
-        mask = N >> 1
+        mask = n >> 1
         while rev & mask:
             # Set 0 where mask has a 1
             rev &= ~mask
