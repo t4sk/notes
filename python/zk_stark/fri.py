@@ -17,9 +17,9 @@ def domain(w: int, n: int, p: int) -> list[int]:
     return d
 
 
-def padd(xs, n, x):    
-    if len(xs) < n:
-        xs.extend([x] * (n - len(xs)))
+def padd(xs, n, x):
+    assert len(xs) <= n
+    xs.extend([x] * (n - len(xs)))
     return xs    
 
 
@@ -49,6 +49,7 @@ class Prover:
         w = kwargs["w"]
         # Interactive oracle proof
         iop = kwargs["iop"]
+        # TODO: remove exp factor?
         # Expansion factor from message length M to RS code length N
         # exp_factor * M = N
         exp_factor = kwargs["exp_factor"]
