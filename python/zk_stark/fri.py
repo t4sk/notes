@@ -47,8 +47,6 @@ class Prover:
         N = kwargs["N"]
         # Primitive Nth root
         w = kwargs["w"]
-        # Polynomial
-        poly = kwargs["poly"]
         # Interactive oracle proof
         iop = kwargs["iop"]
         # Expansion factor from message length M to RS code length N
@@ -62,21 +60,15 @@ class Prover:
         # Since N = exp_factor * M is a power of 2, exp_factor must also be a power of 2
         assert is_pow2(exp_factor), f"exp_factor = {exp_factor} is a power of 2"
 
-        assert poly.z == F(0, P), f"Incorrect polynomial field"
-
         self.P: int = P
         self.N: int = N
         self.w: int = w
-        self.poly: Polynomial = poly
-        # TODO: remove?
         self.iop = iop
-        # Function to wrap x: int into F(x, P)
-        self.wrap = lambda x: F(x, P)
         self.merkle_roots: list[str] = []
         self.challenges: list[F] = []
         self.codewords: list[list[F]] = []
 
-    def commit(self):
+    def commit(self, codeword: list[F]):
         """
         1. Evaluate polynomial f0(x) at w^0, w^1, ..., w^(N-1)
            where w is a Nth primitive root of unity (use FFT for fast evaluation)
@@ -90,18 +82,17 @@ class Prover:
         6. Repeat 1 to 5 with f1 and domain ((w^0)^2, (w^1)^2, ...), half the original domain size,
            until the polynomial is reduced to a constant
         """
+        assert len(codeword) == self.N
+
         # Domain size
         n = self.N
-        # fi
-        fi = self.poly
         # primitive Nth root
         w = F(self.w, self.P)
         # Evaluation domain
         Li = domain(w.v, n, self.P)
         # At n = 2 -> codeword length = 2 -> message length = n / exp_factor <= 1 -> function is a constant function (polynomial of degree 0)
         while n > 1:
-            # RS code
-            codeword = eval_poly(fi, Li, self.P)
+            # Reed Solomon code
             self.codewords.append(codeword)
 
             # Commit Merkle root
@@ -111,18 +102,27 @@ class Prover:
 
             # Next loop
             n //= 2
-
             if n > 1:
                 # Get random challenge
                 c = F(self.iop.get_challenge(), self.P)
                 self.challenges.append(c)
                 # Fold
-                f_even = Polynomial(fi.cs[0::2], self.wrap)
-                f_odd = Polynomial(fi.cs[1::2], self.wrap)
-                c = Polynomial([c], self.wrap)
-                f_fold = f_even + c * f_odd
+                # f_even(x^2) = (f(x) + f(-x)) / 2
+                # f_odd(x^2) = (f(x) - f(-x)) / 2x
+                # f_fold(x^2) = f_even(x^2) + c * f_odd(x^2)
+                # Evaluations of f_fold(w^(2i))
+                f_folds = []
+                for i in range(n):
+                    x = Li[i]
+                    f_plus = codeword[i]
+                    f_minus = codeword[n + i]
+                    f_even = (f_plus + f_minus) / 2
+                    f_odd = (f_plus - f_minus) / (2 * x)
+                    f_fold = f_even + c * f_odd
+                    f_folds.append(f_fold)
+                codeword = f_folds
 
-                fi = f_fold
+                # w^i -> w^(2i) 
                 Li = Li[0::2]
 
     def prove(self, idx: int) -> (list[(F, F)], list[(list[str], list[str])], list[F]):
@@ -161,7 +161,6 @@ class Prover:
             vals.append((f_plus, f_minus))
 
             # Merkle proof
-            # TODO: merge leaves fi(x) and fi(-x) into a single leaf with a tuple?
             hs = [merkle.hash_leaf(str(c)) for c in codeword]
             proof_plus = merkle.open(hs, idx_plus)
             proof_minus = merkle.open(hs, idx_minus)
@@ -171,6 +170,11 @@ class Prover:
             n //= 2
             if n > 1:
                 i += 1
+                # w^i -> w^(2i % N)
+                # n = 8, [w0, w1, w2, w3, w4, w5, w6, w7]
+                # n = 4, [w0, w2, w4, w6]
+                # n = 2, [w0, w4]
+                # Next iteration maps upper half to lower half -> index i to i % (n / 2)
                 idx %= n
 
         return (vals, proofs, self.codewords[-1])
@@ -240,18 +244,18 @@ class Verifier:
             # fi(x) and fi(-x)
             (f_plus, f_minus) = vals[i]
             # Proofs of fi(x) and fi(-x)
-            (p_plus, p_minus) = proofs[i]
+            (proof_plus, proof_minus) = proofs[i]
             (idx_plus, idx_minus) = (idx, (n // 2 + idx) % n)
 
             # Check Merkle proofs of fi(x) and fi(-x)
             # TODO: last check is redundant?
             for f, p, j in zip(
-                [f_plus, f_minus], [p_plus, p_minus], [idx_plus, idx_minus]
+                [f_plus, f_minus], [proof_plus, proof_minus], [idx_plus, idx_minus]
             ):
                 assert merkle.verify(p, merkle_root, merkle.hash_leaf(str(f)), j)
 
             # Check fold
-            if fold is not None:
+            if i > 0:
                 assert fold == f_plus, "fold != f[i+1](x^2)"
 
             # Next loop
@@ -267,7 +271,8 @@ class Verifier:
 
         # Check codeword length
         # Message length M -> poly degree <= M - 1 -> RS code length N
-        # N = M * exp_factor (here poly degree = 0)
+        # N = M * exp_factor (here poly degree = 0 so M = 1)
+        # TODO: fix
         assert len(codeword) == self.exp_factor
         # Check Merkle root
         assert (
