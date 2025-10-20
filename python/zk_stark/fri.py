@@ -8,8 +8,8 @@ from utils import is_pow2, is_prime, log2
 
 def domain(w: int, n: int, p: int) -> list[int]:
     """
-    w is primitive n th root mod p
-    p is prime
+    w = primitive n th root mod p
+    p = prime
     """
     d = [pow(w, i, p) for i in range(0, n)]
     s = set(d)
@@ -94,12 +94,12 @@ class Prover:
         n = self.N
         # fi
         fi = self.poly
-        # wi = w**(2**i)
-        wi = F(self.w, self.P)
+        # primitive Nth root
+        w = F(self.w, self.P)
+        # Evaluation domain
+        Li = domain(w.v, n, self.P)
         # At n = 2 -> codeword length = 2 -> message length = n / exp_factor <= 1 -> function is a constant function (polynomial of degree 0)
         while n > 1:
-            # Evaluation domain
-            Li = domain(wi.v, n, self.P)
             # RS code
             codeword = eval_poly(fi, Li, self.P)
             self.codewords.append(codeword)
@@ -122,8 +122,8 @@ class Prover:
                 c = Polynomial([c], self.wrap)
                 f_fold = f_even + c * f_odd
 
-                wi *= wi
                 fi = f_fold
+                Li = Li[0::2]
 
     def prove(self, idx: int) -> (list[(F, F)], list[(list[str], list[str])], list[F]):
         """
