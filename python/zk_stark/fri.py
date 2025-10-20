@@ -49,7 +49,6 @@ class Prover:
         w = kwargs["w"]
         # Interactive oracle proof
         iop = kwargs["iop"]
-        # TODO: remove exp factor?
         # Expansion factor from message length M to RS code length N
         # exp_factor * M = N
         exp_factor = kwargs["exp_factor"]
@@ -64,6 +63,7 @@ class Prover:
         self.P: int = P
         self.N: int = N
         self.w: int = w
+        self.exp_factor = exp_factor
         self.iop = iop
         self.merkle_roots: list[str] = []
         self.challenges: list[F] = []
@@ -91,8 +91,11 @@ class Prover:
         w = F(self.w, self.P)
         # Evaluation domain
         Li = domain(w.v, n, self.P)
-        # At n = 2 -> codeword length = 2 -> message length = n / exp_factor <= 1 -> function is a constant function (polynomial of degree 0)
-        while n > 1:
+        # m = message length -> polynomial degree < m
+        # n = m * exp_factor
+        # m = 1 -> polynomial degree < 1
+        # At n = exp_factor -> polynomial degree = 0
+        while n >= self.exp_factor:
             # Reed Solomon code
             self.codewords.append(codeword)
 
@@ -103,7 +106,7 @@ class Prover:
 
             # Next loop
             n //= 2
-            if n > 1:
+            if n >= self.exp_factor:
                 # Get random challenge
                 c = F(self.iop.get_challenge(), self.P)
                 self.challenges.append(c)
@@ -151,7 +154,7 @@ class Prover:
         vals: list[(F, F)] = []
         proofs: list[(list[str], list[str])] = []
 
-        while n > 1:
+        while n > self.exp_factor:
             assert idx < n, f"index {idx} > {n}"
             # fi(x) and fi(-x)
             codeword = self.codewords[i]
@@ -169,7 +172,7 @@ class Prover:
 
             # Next loop
             n //= 2
-            if n > 1:
+            if n > self.exp_factor:
                 i += 1
                 # w^i -> w^(2i % N)
                 # n = 8, [w0, w1, w2, w3, w4, w5, w6, w7]
@@ -208,9 +211,9 @@ class Verifier:
         self.P: int = P
         self.N: int = N
         self.w: int = w
+        self.exp_factor = exp_factor
         self.merkle_roots: list[str] = merkle_roots
         self.challenges: list[F] = challenges
-        self.exp_factor = exp_factor
 
     def verify(
         self,
@@ -231,16 +234,19 @@ class Verifier:
         6. When fi is a codeword with small length, do a direct check (interpolate a polynomial from the codeword and check the degree)
         TODO: fix comments
         """
-        assert len(vals) == len(proofs) == len(self.merkle_roots)
+        # Last Merkle root is directly calculated from the provided codeword
+        assert len(vals) == len(proofs) == len(self.merkle_roots) - 1
+        # Check codeword length
+        # Message length M -> poly degree < M -> RS code length N
+        # N = M * exp_factor (here poly degree = 0 so M = 1)
+        assert len(codeword) == self.exp_factor
 
         i = 0
         n = self.N
         x = F(pow(self.w, idx, self.P), self.P)
-        # Used in last check of the codeword
-        w = F(self.w, self.P)
         fold = None
 
-        while n > 1:
+        while n > self.exp_factor:
             merkle_root = self.merkle_roots[i]
             # fi(x) and fi(-x)
             (f_plus, f_minus) = vals[i]
@@ -261,27 +267,21 @@ class Verifier:
 
             # Next loop
             n //= 2
-            if n > 1:
+            if n > self.exp_factor:
                 # Calculate fold
                 c = self.challenges[i]
                 fold = (f_plus + f_minus) / 2 + c * (f_plus - f_minus) / (2 * x)
                 x *= x
-                w *= w
                 i += 1
                 idx %= n
 
-        # Check codeword length
-        # Message length M -> poly degree <= M - 1 -> RS code length N
-        # N = M * exp_factor (here poly degree = 0 so M = 1)
-        # TODO: fix
-        assert len(codeword) == self.exp_factor
         # Check Merkle root
         assert (
             merkle.commit([merkle.hash_leaf(str(c)) for c in codeword])
             == self.merkle_roots[-1]
         )
         # Interpolate a polynomial and check the degree
-        p = interp_poly(codeword, domain(w.unwrap(), len(codeword), self.P), self.P)
+        p = interp_poly(codeword, domain(pow(self.w, 2**(i+1), self.P), len(codeword), self.P), self.P)
         assert (
             p.degree() == 0
         ), f"interpolated polynomial degree = {p.degree()} > max = 0"
