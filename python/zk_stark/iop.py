@@ -7,15 +7,45 @@ def fiat_shamir(s: str) -> int:
     return int.from_bytes(h, "big")
 
 
-class Writer:
-    def __init__(self):
-        self.merkle_roots: list[str] = []
-        self.challenges: list[int] = []
+class Msg:
+    def __init__(self, **kwargs):
+        self.type = kwargs["msg_type"]
+        self.data = kwargs.get("data", None)
 
-    def send(self, merkle_root: str):
-        self.merkle_roots.append(merkle_root)
 
-    def get_challenge(self) -> int:
-        c = fiat_shamir(str(self.merkle_roots))
-        self.challenges.append(c)
-        return c
+class Prover:
+    def __init__(self, fri_prover):
+        self.fri_prover = fri_prover
+
+    def reply(self, msg: Msg):
+        match msg.type:
+            case "prove":
+                return self.fri_prover.prove(msg.data)
+            case _:
+                raise ValueError(f'Invalid msg type: {msg.type}')
+        return None
+            
+
+class Verifier:
+    def __init__(self, fri_verifier):
+        self.fri_verifier = fri_verifier
+
+    def reply(self, msg: Msg):
+        match msg.type:
+            case "merkle_root":
+                self.fri_verifier.push("merkle_root", msg.data)
+            case "get_challenge":
+                c = fiat_shamir(str(self.fri_verifier.merkle_roots))
+                self.fri_verifier.push("challenge", c)
+                return c
+            case _:
+                raise ValueError(f'Invalid msg type: {msg.type}')
+        return None
+
+
+class Channel:
+    def __init__(self, receiver):
+        self.receiver = receiver
+
+    def send(self, msg: Msg):
+        return self.receiver.reply(msg)

@@ -3,6 +3,7 @@ from field import F
 from polynomial import Polynomial
 import polynomial
 from fft import fft, ifft
+from iop import Channel, Msg
 from utils import is_pow2, is_prime, log2
 
 
@@ -47,8 +48,6 @@ class Prover:
         N = kwargs["N"]
         # Primitive Nth root
         w = kwargs["w"]
-        # Interactive oracle proof
-        iop = kwargs["iop"]
         # Expansion factor from message length M to RS code length N
         # exp_factor * M = N
         exp_factor = kwargs["exp_factor"]
@@ -64,12 +63,11 @@ class Prover:
         self.N: int = N
         self.w: int = w
         self.exp_factor = exp_factor
-        self.iop = iop
         self.merkle_roots: list[str] = []
         self.challenges: list[F] = []
         self.codewords: list[list[F]] = []
 
-    def commit(self, codeword: list[F]):
+    def commit(self, codeword: list[F], iop_chan: Channel):
         """
         1. Evaluate polynomial f0(x) at w^0, w^1, ..., w^(N-1)
            where w is a Nth primitive root of unity (use FFT for fast evaluation)
@@ -102,13 +100,14 @@ class Prover:
             # Commit Merkle root
             merkle_root = merkle.commit([merkle.hash_leaf(str(c)) for c in codeword])
             self.merkle_roots.append(merkle_root)
-            self.iop.send(merkle_root)
+            iop_chan.send(Msg(msg_type="merkle_root", data=merkle_root))
 
             # Next loop
             n //= 2
             if n >= self.exp_factor:
                 # Get random challenge
-                c = F(self.iop.get_challenge(), self.P)
+                c = iop_chan.send(Msg(msg_type="get_challenge"))
+                c = F(c, self.P)
                 self.challenges.append(c)
                 # Fold
                 # f_even(x^2) = (f(x) + f(-x)) / 2
@@ -192,8 +191,6 @@ class Verifier:
         N = kwargs["N"]
         # Primitive Nth root
         w = kwargs["w"]
-        merkle_roots = kwargs["merkle_roots"]
-        challenges = kwargs["challenges"]
         # Expansion factor from message length M to RS code length N
         # exp_factor * M = N
         exp_factor = kwargs["exp_factor"]
@@ -205,15 +202,27 @@ class Verifier:
         # Since N = exp_factor * M is a power of 2, exp_factor must also be a power of 2
         assert is_pow2(exp_factor), f"exp_factor = {exp_factor} is a power of 2"
 
-        # Merkle root of the first codeword (f[0](L[0])) has no challenge
-        assert len(merkle_roots) == len(challenges) + 1
-
         self.P: int = P
         self.N: int = N
         self.w: int = w
         self.exp_factor = exp_factor
-        self.merkle_roots: list[str] = merkle_roots
-        self.challenges: list[F] = challenges
+        self.merkle_roots: list[str] = []
+        self.challenges: list[F] = []
+
+    def push(self, key: str, val: str | F):
+        match key:
+            case "merkle_root":
+                self.merkle_roots.append(val)
+            case "challenge":
+                self.challenges.append(val)
+            case _:
+                raise ValueError(f'Invalid key: {key}')
+
+    
+    def query(self, idx: int, iop_chan: Channel):
+        (vals, proofs, codeword) = iop_chan.send(Msg(msg_type="prove", data = idx))
+        self.verify(idx, vals, proofs, codeword)
+
 
     def verify(
         self,
@@ -234,12 +243,16 @@ class Verifier:
         6. When fi is a codeword with small length, do a direct check (interpolate a polynomial from the codeword and check the degree)
         TODO: fix comments
         """
+        # Merkle root of the first codeword (f[0](L[0])) has no challenge
+        assert len(self.merkle_roots) == len(self.challenges) + 1
+        
         # Last Merkle root is directly calculated from the provided codeword
         assert len(vals) == len(proofs) == len(self.merkle_roots) - 1
         # Check codeword length
         # Message length M -> poly degree < M -> RS code length N
         # N = M * exp_factor (here poly degree = 0 so M = 1)
         assert len(codeword) == self.exp_factor
+        assert idx < self.N
 
         i = 0
         n = self.N

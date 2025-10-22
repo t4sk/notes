@@ -26,6 +26,7 @@
 - Batching
 - Why prime field?
 - Composition, constraint and validity polynomial
+- Degree adjustment
 
 ### Reed Solomon code
 ```
