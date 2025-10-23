@@ -1,3 +1,11 @@
+import hashlib
+
+
+def fiat_shamir(s: str) -> int:
+    h = hashlib.sha256(s.encode()).digest()
+    return int.from_bytes(h, "big")
+
+
 def is_pow2(x: int) -> bool:
     return x > 0 and (x & (x - 1)) == 0
 

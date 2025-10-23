@@ -3,8 +3,8 @@ from field import F
 from polynomial import Polynomial
 import polynomial
 from fft import fft, ifft
-from iop import Channel, Msg
-from utils import is_pow2, is_prime, log2
+from iop import Channel, Msg, IFriProver, IFriVerifier
+from utils import is_pow2, is_prime, log2, fiat_shamir
 
 
 def domain(w: int, n: int, p: int) -> list[int]:
@@ -40,7 +40,7 @@ def interp_poly(ys: list[int | F], ws: list[int], p: int) -> Polynomial:
     return Polynomial(cs, lambda x: F(x, p))
 
 
-class Prover:
+class Prover(IFriProver):
     def __init__(self, **kwargs):
         # Prime
         P = kwargs["P"]
@@ -66,6 +66,8 @@ class Prover:
         self.merkle_roots: list[str] = []
         self.challenges: list[F] = []
         self.codewords: list[list[F]] = []
+        # Function to wrap x into F
+        self.wrap = lambda x: F(x, P)
 
     def commit(self, codeword: list[F], iop_chan: Channel):
         """
@@ -86,7 +88,7 @@ class Prover:
         # Domain size
         n = self.N
         # primitive Nth root
-        w = F(self.w, self.P)
+        w = self.wrap(self.w)
         # Evaluation domain
         Li = domain(w.v, n, self.P)
         # m = message length -> polynomial degree < m
@@ -107,7 +109,7 @@ class Prover:
             if n >= self.exp_factor:
                 # Get random challenge
                 c = iop_chan.send(Msg(msg_type="get_challenge"))
-                c = F(c, self.P)
+                c = self.wrap(c)
                 self.challenges.append(c)
                 # Fold
                 # f_even(x^2) = (f(x) + f(-x)) / 2
@@ -183,7 +185,7 @@ class Prover:
         return (vals, proofs, self.codewords[-1])
 
 
-class Verifier:
+class Verifier(IFriVerifier):
     def __init__(self, **kwargs):
         # Prime
         P = kwargs["P"]
@@ -208,21 +210,20 @@ class Verifier:
         self.exp_factor = exp_factor
         self.merkle_roots: list[str] = []
         self.challenges: list[F] = []
+        # Function to wrap x into F
+        self.wrap = lambda x: F(x, P)
 
-    def push(self, key: str, val: str | F):
-        match key:
-            case "merkle_root":
-                self.merkle_roots.append(val)
-            case "challenge":
-                self.challenges.append(val)
-            case _:
-                raise ValueError(f'Invalid key: {key}')
+    def push_merkle_root(self, val: str):
+        self.merkle_roots.append(val)
 
-    
+    def get_challenge(self) -> int:
+        c = fiat_shamir(str(self.merkle_roots))
+        self.challenges.append(self.wrap(c))
+        return c
+
     def query(self, idx: int, iop_chan: Channel):
         (vals, proofs, codeword) = iop_chan.send(Msg(msg_type="prove", data = idx))
         self.verify(idx, vals, proofs, codeword)
-
 
     def verify(
         self,
@@ -256,7 +257,7 @@ class Verifier:
 
         i = 0
         n = self.N
-        x = F(pow(self.w, idx, self.P), self.P)
+        x = self.wrap(pow(self.w, idx, self.P))
         fold = None
 
         while n > self.exp_factor:

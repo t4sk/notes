@@ -1,10 +1,23 @@
 # Interactive oracle proof
-import hashlib
+from abc import ABC, abstractmethod
+from field import F
+
+# Interfaces
+class IFriProver(ABC):
+    @abstractmethod
+    def prove(self, idx: int) -> (list[(F, F)], list[(list[str], list[str])], list[F]):
+        pass
 
 
-def fiat_shamir(s: str) -> int:
-    h = hashlib.sha256(s.encode()).digest()
-    return int.from_bytes(h, "big")
+class IFriVerifier(ABC):
+    @abstractmethod
+    def push_merkle_root(self, val: str):
+        pass
+
+    @abstractmethod
+    def get_challenge(self) -> int:
+        pass
+
 
 
 class Msg:
@@ -14,7 +27,7 @@ class Msg:
 
 
 class Prover:
-    def __init__(self, fri_prover):
+    def __init__(self, fri_prover: IFriProver):
         self.fri_prover = fri_prover
 
     def reply(self, msg: Msg):
@@ -27,17 +40,15 @@ class Prover:
             
 
 class Verifier:
-    def __init__(self, fri_verifier):
+    def __init__(self, fri_verifier: IFriVerifier):
         self.fri_verifier = fri_verifier
 
     def reply(self, msg: Msg):
         match msg.type:
             case "merkle_root":
-                self.fri_verifier.push("merkle_root", msg.data)
+                self.fri_verifier.push_merkle_root(msg.data)
             case "get_challenge":
-                c = fiat_shamir(str(self.fri_verifier.merkle_roots))
-                self.fri_verifier.push("challenge", c)
-                return c
+                return self.fri_verifier.get_challenge()
             case _:
                 raise ValueError(f'Invalid msg type: {msg.type}')
         return None
