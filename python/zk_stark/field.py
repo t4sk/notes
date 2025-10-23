@@ -18,7 +18,7 @@ def xgcd(x: int, y: int) -> (int, int, int):
     return old_s, old_t, old_r  # a, b, g
 
 
-# Field
+# Field elements
 class F:
     def __init__(self, v: int, p: int):
         self.v = v % p

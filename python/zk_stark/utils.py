@@ -1,9 +1,16 @@
 import hashlib
+import math
 
 
 def fiat_shamir(s: str) -> int:
     h = hashlib.sha256(s.encode()).digest()
     return int.from_bytes(h, "big")
+
+
+def padd(xs, n, x):
+    assert len(xs) <= n
+    xs.extend([x] * (n - len(xs)))
+    return xs    
 
 
 def is_pow2(x: int) -> bool:
@@ -16,8 +23,18 @@ def log2(x: int) -> int:
     return x.bit_length() - 1
 
 
-# Returns largest k such that 2**k divides x
-def find_largest_pow_2(x: int) -> int:
+# Smallest power of 2 greater than x
+def min_pow2_gt(x: int):
+    assert x >= 0
+    if x == 0:
+        return 1
+    k = math.floor(math.log2(x)) + 1
+    return 2**k
+
+
+# Largest k such that 2**k divides x
+def max_log2(x: int) -> int:
+    assert x >= 0
     if x == 0:
         return 0
 

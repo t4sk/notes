@@ -130,6 +130,13 @@ class Polynomial:
         return y
 
 
+# Polynomial x^n
+def X(n: int, f = lambda x: x) -> Polynomial:
+    cs = [0] * (n + 1)
+    cs[-1] = 1
+    return Polynomial(cs, f)
+
+
 # Lagrange interpolatin
 # Polynomial with L(xi) = yi for (x0, y0), (x1, y1), ... , (xn, yn)
 def interp(xs: list[int | F], ys: list[int | F], f=lambda x: x) -> Polynomial:

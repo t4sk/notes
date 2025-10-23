@@ -4,7 +4,7 @@ from polynomial import Polynomial
 import polynomial
 from fft import fft, ifft
 from iop import Channel, Msg, IFriProver, IFriVerifier
-from utils import is_pow2, is_prime, log2, fiat_shamir
+from utils import is_pow2, is_prime, log2, fiat_shamir, padd
 
 
 def domain(w: int, n: int, p: int) -> list[int]:
@@ -16,12 +16,6 @@ def domain(w: int, n: int, p: int) -> list[int]:
     s = set(d)
     assert len(s) == n, f"|d| = {len(s)} != {n}"
     return d
-
-
-def padd(xs, n, x):
-    assert len(xs) <= n
-    xs.extend([x] * (n - len(xs)))
-    return xs    
 
 
 # Evaluates polynomial using FFT
