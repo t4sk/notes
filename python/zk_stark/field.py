@@ -80,7 +80,7 @@ class F:
         return self * x.inv()
 
     # (int | F) / F
-    def __rtruediv__(self, x):
+    def __rtruediv__(self, x) -> F:
         x = self.check(x)
         return x.__truediv__(self)
 
@@ -94,15 +94,15 @@ class F:
 
         return self.wrap(pow(self.v, exp, self.p))
 
-    def __eq__(self, x: int | F):
+    def __eq__(self, x: int | F) -> bool:
         x = self.check(x)
         return (self.v % self.p) == (x.v % self.p)
 
-    def __neq__(self, x: int | F):
+    def __neq__(self, x: int | F) -> bool:
         x = self.check(x)
         return (self.v % self.p) != (x.v % self.p)
 
-    def __neg__(self):
+    def __neg__(self) -> F:
         return self.wrap((self.p - self.v) % self.p)
 
     def __str__(self):

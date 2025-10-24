@@ -18,7 +18,7 @@ def wrap(x, f):
 
 def div(p: Polynomial, d: Polynomial) -> (Polynomial, Polynomial):
     assert p.z == d.z
-    assert d != Polynomial([], d.f), "div by 0"
+    assert d != 0, "div by 0"
 
     f = p.f
     z = p.z
@@ -60,11 +60,27 @@ class Polynomial:
         l = len(self.cs)
         assert l > 0
         return l - 1
+    
+    def wrap(self, cs: list[int] | list[F]) -> Polynomial:
+        return Polynomial(cs, self.f)
 
-    def __neg__(self):
-        return Polynomial([-c for c in self.cs], self.f)
+    def unwrap(self) -> list[int] | list[F]:
+        return self.cs
 
-    def __add__(self, q):
+    def check(self, p: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
+        if isinstance(p, Polynomial):
+            assert self.z == p.z
+            return p
+        if isinstance(p, list):
+            return self.wrap(p)
+        # int or F
+        return self.wrap([p])
+
+    def __neg__(self) -> Polynomial:
+        return self.wrap([-c for c in self.cs])
+
+    def __add__(self, q: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
+        q = self.check(q)
         # p + q
         ps = self.cs
         qs = q.cs
@@ -73,12 +89,21 @@ class Polynomial:
             a = get(ps, i, self.z)
             b = get(qs, i, self.z)
             cs[i] = a + b
-        return Polynomial(cs, self.f)
+        return self.wrap(cs)
 
-    def __sub__(self, q):
+    def __radd__(self, q: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
+        return self.__add__(q)
+        
+    def __sub__(self, q: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
+        q = self.check(q)
         return self.__add__(-q)
 
-    def __mul__(self, q):
+    def __rsub__(self, q: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
+        q = self.check(q)
+        return q.__sub__(self)
+    
+    def __mul__(self, q: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
+        q = self.check(q)
         # p * q
         m = len(self.cs)
         n = len(q.cs)
@@ -94,17 +119,27 @@ class Polynomial:
             for j in range(n):
                 cs[i + j] += ps[i] * qs[j]
 
-        return Polynomial(cs, self.f)
+        return self.wrap(cs)
 
-    def __truediv__(self, d):
+    def __rmul__(self, q: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
+        return self.__mul__(q)
+
+    def __truediv__(self, d: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
+        d = self.check(d)
         q, r = div(self, d)
-        assert r == Polynomial([], self.f), "remainder != 0"
+        assert r == 0, "remainder != 0"
         return q
 
-    def __eq__(self, q):
+    def __rtruediv__(self, q: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
+        q = self.check(q)
+        return q.__truediv__(self)
+
+    def __eq__(self, q: int | F | list[int] | list[F] | Polynomial) -> bool:
+        q = self.check(q)
         return self.cs == q.cs
 
-    def __neq__(self, q):
+    def __neq__(self, q: int | F | list[int] | list[F] | Polynomial) -> bool:
+        q = self.check(q)
         return self.cs != q.cs
 
     def __str__(self):
@@ -114,7 +149,7 @@ class Polynomial:
         return str(self.cs)
 
     # Evaluate polynomial P(x)
-    def __call__(self, x):
+    def __call__(self, x: int | F | list[int] | list[F]):
         # x is a list
         if isinstance(x, list):
             return [self(wrap(xi, self.f)) for xi in x]
@@ -157,14 +192,4 @@ def interp(xs: list[int | F], ys: list[int | F], f=lambda x: x) -> Polynomial:
                 l *= (x - xj) / d
         p += l
 
-    return p
-
-
-# Polynomial that are 0 at xs
-def zpoly(xs, f=lambda x: x) -> Polynomial:
-    x = Polynomial([0, 1], f)
-    p = Polynomial([], f)
-    for xi in xs:
-        xi = Polynomial([xi], f)
-        p += x - xi
     return p
