@@ -50,4 +50,3 @@ def verify(proof: list[str], root: str, leaf_hash: str, index: int) -> bool:
         h = hash_pair(left, right)
         i >>= 1
     return h == root
-

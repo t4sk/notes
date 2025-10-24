@@ -7,14 +7,13 @@ from iop import Channel, Msg, IFriProver, IFriVerifier
 from utils import is_pow2, is_prime, log2, fiat_shamir, padd
 
 
-def domain(w: int, n: int, p: int) -> list[int]:
+def domain(shift: int, w: int, n: int, p: int) -> list[int]:
     """
     w = primitive n th root mod p
     p = prime
     """
-    d = [pow(w, i, p) for i in range(0, n)]
-    s = set(d)
-    assert len(s) == n, f"|d| = {len(s)} != {n}"
+    d = [(shift * pow(w, i, p)) % p for i in range(0, n)]
+    assert len(set(d)) == n, f"|d| = {len(set(d))} != {n}"
     return d
 
 
@@ -22,11 +21,11 @@ def domain(w: int, n: int, p: int) -> list[int]:
 def eval_poly(f: Polynomial, ws: list[int], p: int) -> list[F]:
     cs = [c.unwrap() for c in f.cs]
     # Evaluation domain is larger than degree of polynomial so padd with 0
-    cs = padd(cs, len(ws), 0) 
+    cs = padd(cs, len(ws), 0)
     ys = fft(cs, ws, p)
     return [F(y, p) for y in ys]
 
-    
+
 # Interpolates polynomial using inverse FFT
 def interp_poly(ys: list[int | F], ws: list[int], p: int) -> Polynomial:
     ys = [y if isinstance(y, int) else y.unwrap() for y in ys]
@@ -42,6 +41,8 @@ class Prover(IFriProver):
         N = kwargs["N"]
         # Primitive Nth root
         w = kwargs["w"]
+        # Shift evaluation domain (typically a generator of F[P])
+        shift = kwargs["shift"]
         # Expansion factor from message length M to RS code length N
         # exp_factor * M = N
         exp_factor = kwargs["exp_factor"]
@@ -52,10 +53,13 @@ class Prover(IFriProver):
         assert 2 <= exp_factor, f"exp factor = {exp_factor} < 2"
         # Since N = exp_factor * M is a power of 2, exp_factor must also be a power of 2
         assert is_pow2(exp_factor), f"exp_factor = {exp_factor} is a power of 2"
+        assert 1 <= w <= P - 1
+        assert 1 <= shift <= P - 1
 
         self.P: int = P
         self.N: int = N
         self.w: int = w
+        self.shift: int = shift
         self.exp_factor = exp_factor
         self.merkle_roots: list[str] = []
         self.challenges: list[F] = []
@@ -81,10 +85,9 @@ class Prover(IFriProver):
 
         # Domain size
         n = self.N
-        # primitive Nth root
-        w = self.wrap(self.w)
+        s = self.shift
         # Evaluation domain
-        Li = domain(w.v, n, self.P)
+        Li = domain(self.shift, self.w, n, self.P)
         # m = message length -> polynomial degree < m
         # n = m * exp_factor
         # m = 1 -> polynomial degree < 1
@@ -103,8 +106,7 @@ class Prover(IFriProver):
             if n >= self.exp_factor:
                 # Get random challenge
                 c = iop_chan.send(Msg(msg_type="get_challenge"))
-                c = self.wrap(c)
-                self.challenges.append(c)
+                self.challenges.append(self.wrap(c))
                 # Fold
                 # f_even(x^2) = (f(x) + f(-x)) / 2
                 # f_odd(x^2) = (f(x) - f(-x)) / 2x
@@ -121,8 +123,9 @@ class Prover(IFriProver):
                     f_folds.append(f_fold)
                 codeword = f_folds
 
-                # w^i -> w^(2i) 
-                Li = Li[0::2]
+                # shift * w^i -> (shift * w^i)^2 = shift^2 * w^(2i)
+                Li = [s * li for li in Li[0::2]]
+                s *= s
 
     def prove(self, idx: int) -> (list[(F, F)], list[(list[str], list[str])], list[F]):
         """
@@ -187,6 +190,8 @@ class Verifier(IFriVerifier):
         N = kwargs["N"]
         # Primitive Nth root
         w = kwargs["w"]
+        # Shift evaluation domain (typically a generator of F[P])
+        shift = kwargs["shift"]
         # Expansion factor from message length M to RS code length N
         # exp_factor * M = N
         exp_factor = kwargs["exp_factor"]
@@ -197,10 +202,13 @@ class Verifier(IFriVerifier):
         assert 2 <= exp_factor, f"exp factor = {exp_factor} < 2"
         # Since N = exp_factor * M is a power of 2, exp_factor must also be a power of 2
         assert is_pow2(exp_factor), f"exp_factor = {exp_factor} is a power of 2"
+        assert 1 <= w <= P - 1
+        assert 1 <= shift <= P - 1
 
         self.P: int = P
         self.N: int = N
         self.w: int = w
+        self.shift: int = shift
         self.exp_factor = exp_factor
         self.merkle_roots: list[str] = []
         self.challenges: list[F] = []
@@ -216,7 +224,7 @@ class Verifier(IFriVerifier):
         return c
 
     def query(self, idx: int, iop_chan: Channel):
-        (vals, proofs, codeword) = iop_chan.send(Msg(msg_type="prove", data = idx))
+        (vals, proofs, codeword) = iop_chan.send(Msg(msg_type="prove", data=idx))
         self.verify(idx, vals, proofs, codeword)
 
     def verify(
@@ -240,7 +248,7 @@ class Verifier(IFriVerifier):
         """
         # Merkle root of the first codeword (f[0](L[0])) has no challenge
         assert len(self.merkle_roots) == len(self.challenges) + 1
-        
+
         # Last Merkle root is directly calculated from the provided codeword
         assert len(vals) == len(proofs) == len(self.merkle_roots) - 1
         # Check codeword length
@@ -251,7 +259,7 @@ class Verifier(IFriVerifier):
 
         i = 0
         n = self.N
-        x = self.wrap(pow(self.w, idx, self.P))
+        x = self.wrap(self.shift * pow(self.w, idx, self.P))
         fold = None
 
         while n > self.exp_factor:
@@ -289,7 +297,18 @@ class Verifier(IFriVerifier):
             == self.merkle_roots[-1]
         )
         # Interpolate a polynomial and check the degree
-        p = interp_poly(codeword, domain(pow(self.w, 2**(i+1), self.P), len(codeword), self.P), self.P)
+        # shift * w^j -> (shift * w^j) ^ k = shift^k * w^(j*k)
+        p = interp_poly(
+            codeword,
+            domain(
+                # TODO: check correct shift?
+                pow(self.shift, 2 ** (i + 1), self.P),
+                pow(self.w, 2 ** (i + 1), self.P),
+                len(codeword),
+                self.P,
+            ),
+            self.P,
+        )
         assert (
             p.degree() == 0
         ), f"interpolated polynomial degree = {p.degree()} > max = 0"

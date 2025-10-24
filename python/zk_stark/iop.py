@@ -2,6 +2,7 @@
 from abc import ABC, abstractmethod
 from field import F
 
+
 # Interfaces
 class IFriProver(ABC):
     @abstractmethod
@@ -19,7 +20,6 @@ class IFriVerifier(ABC):
         pass
 
 
-
 class Msg:
     def __init__(self, **kwargs):
         self.type = kwargs["msg_type"]
@@ -35,9 +35,9 @@ class Prover:
             case "prove":
                 return self.fri_prover.prove(msg.data)
             case _:
-                raise ValueError(f'Invalid msg type: {msg.type}')
+                raise ValueError(f"Invalid msg type: {msg.type}")
         return None
-            
+
 
 class Verifier:
     def __init__(self, fri_verifier: IFriVerifier):
@@ -50,7 +50,7 @@ class Verifier:
             case "get_challenge":
                 return self.fri_verifier.get_challenge()
             case _:
-                raise ValueError(f'Invalid msg type: {msg.type}')
+                raise ValueError(f"Invalid msg type: {msg.type}")
         return None
 
 
@@ -60,3 +60,4 @@ class Channel:
 
     def send(self, msg: Msg):
         return self.receiver.reply(msg)
+

@@ -60,7 +60,7 @@ class Polynomial:
         l = len(self.cs)
         assert l > 0
         return l - 1
-    
+
     def wrap(self, cs: list[int] | list[F]) -> Polynomial:
         return Polynomial(cs, self.f)
 
@@ -93,7 +93,7 @@ class Polynomial:
 
     def __radd__(self, q: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
         return self.__add__(q)
-        
+
     def __sub__(self, q: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
         q = self.check(q)
         return self.__add__(-q)
@@ -101,7 +101,7 @@ class Polynomial:
     def __rsub__(self, q: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
         q = self.check(q)
         return q.__sub__(self)
-    
+
     def __mul__(self, q: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
         q = self.check(q)
         # p * q
@@ -133,6 +133,19 @@ class Polynomial:
     def __rtruediv__(self, q: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
         q = self.check(q)
         return q.__truediv__(self)
+
+    def __pow__(self, x: int):
+        assert x >= 0
+        res = self.wrap([1])
+        cur = self
+        while True:
+            if x % 2 != 0:
+                res *= cur
+            x >>= 1
+            if x == 0:
+                break
+            cur *= cur
+        return res
 
     def __eq__(self, q: int | F | list[int] | list[F] | Polynomial) -> bool:
         q = self.check(q)
@@ -166,7 +179,8 @@ class Polynomial:
 
 
 # Polynomial x^n
-def X(n: int, f = lambda x: x) -> Polynomial:
+def X(n: int, f=lambda x: x) -> Polynomial:
+    assert n >= 0
     cs = [0] * (n + 1)
     cs[-1] = 1
     return Polynomial(cs, f)

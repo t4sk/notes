@@ -10,16 +10,16 @@ def fiat_shamir(s: str) -> int:
 def padd(xs, n, x):
     assert len(xs) <= n
     xs.extend([x] * (n - len(xs)))
-    return xs    
+    return xs
 
 
 def is_pow2(x: int) -> bool:
     return x > 0 and (x & (x - 1)) == 0
 
 
-def log2(x: int) -> int:
+# Position of the most significant bit from x = power of 2
+def msb_pow2(x: int) -> int:
     assert is_pow2(x), f"{x} is not a power of 2"
-    # Position of the most significant bit
     return x.bit_length() - 1
 
 
@@ -77,4 +77,3 @@ def find_prime_divisors(n: int) -> list[int]:
         divisors.append(n)
 
     return divisors
-
