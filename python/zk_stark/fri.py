@@ -4,7 +4,7 @@ from polynomial import Polynomial
 import polynomial
 from fft import fft, ifft
 from iop import Channel, Msg, IFriProver, IFriVerifier
-from utils import is_pow2, is_prime, log2, fiat_shamir, padd
+from utils import is_pow2, is_prime, fiat_shamir, padd
 
 
 def domain(shift: int, w: int, n: int, p: int) -> list[int]:
@@ -18,8 +18,11 @@ def domain(shift: int, w: int, n: int, p: int) -> list[int]:
 
 
 # Evaluates polynomial using FFT
-def eval_poly(f: Polynomial, ws: list[int], p: int) -> list[F]:
-    cs = [c.unwrap() for c in f.cs]
+def eval_poly(f: Polynomial, ws: list[int], p: int, shift: int = 1) -> list[F]:
+    # Q(x) = P(ax)
+    # Q(w^i) = P(aw^i)
+    q = f.scale(shift)
+    cs = [c.unwrap() for c in q.cs]
     # Evaluation domain is larger than degree of polynomial so padd with 0
     cs = padd(cs, len(ws), 0)
     ys = fft(cs, ws, p)
@@ -27,10 +30,15 @@ def eval_poly(f: Polynomial, ws: list[int], p: int) -> list[F]:
 
 
 # Interpolates polynomial using inverse FFT
-def interp_poly(ys: list[int | F], ws: list[int], p: int) -> Polynomial:
+def interp_poly(ys: list[int | F], ws: list[int], p: int, shift: int = 1) -> Polynomial:
+    # Q(x) = P(ax)
+    # Q(w^i) = P(aw^i)
+    # Q(x/a) = P(x)
     ys = [y if isinstance(y, int) else y.unwrap() for y in ys]
     cs = ifft(ys, ws, p)
-    return Polynomial(cs, lambda x: F(x, p))
+    q = Polynomial(cs, lambda x: F(x, p))
+    s_inv = F(shift, p).inv()
+    return q.scale(s_inv)
 
 
 class Prover(IFriProver):
@@ -39,7 +47,7 @@ class Prover(IFriProver):
         P = kwargs["P"]
         # Initial domain size
         N = kwargs["N"]
-        # Primitive Nth root
+        # Primitive Nth root of unity
         w = kwargs["w"]
         # Shift evaluation domain (typically a generator of F[P])
         shift = kwargs["shift"]
@@ -188,7 +196,7 @@ class Verifier(IFriVerifier):
         P = kwargs["P"]
         # Initial domain size
         N = kwargs["N"]
-        # Primitive Nth root
+        # Primitive Nth root of unity
         w = kwargs["w"]
         # Shift evaluation domain (typically a generator of F[P])
         shift = kwargs["shift"]
@@ -301,13 +309,13 @@ class Verifier(IFriVerifier):
         p = interp_poly(
             codeword,
             domain(
-                # TODO: check correct shift?
-                pow(self.shift, 2 ** (i + 1), self.P),
+                1,
                 pow(self.w, 2 ** (i + 1), self.P),
                 len(codeword),
                 self.P,
             ),
             self.P,
+            pow(self.shift, 2 ** (i + 1), self.P),
         )
         assert (
             p.degree() == 0

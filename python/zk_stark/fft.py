@@ -94,7 +94,7 @@ def ifft(ys: list[int], ws: list[int], p: int) -> list[int]:
     # Fermat's Little Theorem
     # a^(P - 1) = 1 mod P so a^(P - 2) = a^(-1)
     n_inv = pow(n, p - 2, p)
-    # w^(-i) = w^((N - i) % N)
+    # w^(-i) = w^(N - i)
     ws_inv = [0] * n
     ws_inv[0] = ws[0]
     for i in range(1, n):

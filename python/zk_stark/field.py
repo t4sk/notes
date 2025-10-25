@@ -110,6 +110,10 @@ class F:
 
     def __repr__(self):
         return str(self.v)
+    
+    # Used for set keys
+    def __hash__(self):
+        return hash((self.v, self.p))
 
 
 def find_generator(p: int) -> int | None:

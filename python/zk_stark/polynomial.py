@@ -61,12 +61,16 @@ class Polynomial:
         assert l > 0
         return l - 1
 
+    def scale(self, s: int | F) -> Polynomial:
+        cs = [c * (s**i) for i, c in enumerate(self.cs)]
+        return Polynomial(cs, self.f)
+
     def wrap(self, cs: list[int] | list[F]) -> Polynomial:
         return Polynomial(cs, self.f)
 
     def unwrap(self) -> list[int] | list[F]:
         return self.cs
-
+    
     def check(self, p: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
         if isinstance(p, Polynomial):
             assert self.z == p.z
@@ -186,7 +190,7 @@ def X(n: int, f=lambda x: x) -> Polynomial:
     return Polynomial(cs, f)
 
 
-# Lagrange interpolatin
+# Lagrange interpolatin - very slow
 # Polynomial with L(xi) = yi for (x0, y0), (x1, y1), ... , (xn, yn)
 def interp(xs: list[int | F], ys: list[int | F], f=lambda x: x) -> Polynomial:
     assert len(xs) == len(ys)
