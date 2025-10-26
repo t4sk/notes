@@ -15,7 +15,7 @@ def wrap(x, f):
     else:
         return f(x)
 
-
+# WARNING - this is slow. Dividing 1024 degree polynomial took 5 min 46 s
 def div(p: Polynomial, d: Polynomial) -> (Polynomial, Polynomial):
     assert p.z == d.z
     assert d != 0, "div by 0"
@@ -62,7 +62,11 @@ class Polynomial:
         return l - 1
 
     def scale(self, s: int | F) -> Polynomial:
-        cs = [c * (s**i) for i, c in enumerate(self.cs)]
+        cs = self.cs[:]
+        si = 1
+        for i in range(len(cs)):
+            cs[i] *= si
+            si *= s
         return Polynomial(cs, self.f)
 
     def wrap(self, cs: list[int] | list[F]) -> Polynomial:

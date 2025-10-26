@@ -6,10 +6,10 @@ from fft import fft, ifft
 from iop import Channel, Msg, IFriProver, IFriVerifier
 from utils import is_pow2, is_prime, fiat_shamir, padd
 
-
+# FRI evaluation domain = [(shift * w^i) % p for 0 <= i < n]
 def domain(shift: int, w: int, n: int, p: int) -> list[int]:
     """
-    w = primitive n th root mod p
+    w = primitive n th root of unity mod p
     p = prime
     """
     d = [(shift * pow(w, i, p)) % p for i in range(0, n)]
@@ -19,8 +19,9 @@ def domain(shift: int, w: int, n: int, p: int) -> list[int]:
 
 # Evaluates polynomial using FFT
 def eval_poly(f: Polynomial, ws: list[int], p: int, shift: int = 1) -> list[F]:
-    # Q(x) = P(ax)
-    # Q(w^i) = P(aw^i)
+    # Evaluation domain = [shift * w for w in ws]
+    # Define Q(x) = P(ax)
+    #        Q(w^i) = P(aw^i)
     q = f.scale(shift)
     cs = [c.unwrap() for c in q.cs]
     # Evaluation domain is larger than degree of polynomial so padd with 0
@@ -31,14 +32,27 @@ def eval_poly(f: Polynomial, ws: list[int], p: int, shift: int = 1) -> list[F]:
 
 # Interpolates polynomial using inverse FFT
 def interp_poly(ys: list[int | F], ws: list[int], p: int, shift: int = 1) -> Polynomial:
-    # Q(x) = P(ax)
-    # Q(w^i) = P(aw^i)
-    # Q(x/a) = P(x)
+    # Evaluation domain = [shift * w for w in ws]
+    # Define Q(x) = P(ax)
+    #        Q(w^i) = P(aw^i)
+    #        Q(x/a) = P(x)
     ys = [y if isinstance(y, int) else y.unwrap() for y in ys]
     cs = ifft(ys, ws, p)
     q = Polynomial(cs, lambda x: F(x, p))
     s_inv = F(shift, p).inv()
     return q.scale(s_inv)
+
+
+# Calculate polynomial q = c / z
+def div_poly(c: Polynomial, z: Polynomial, ws: list[int], p: int, shift: int = 1) -> Polynomial:
+    """
+    z(w) = 0 for all w in ws and z(x) != 0 for all x = shift * w
+    """
+    assert c.degree() >= z.degree()
+    cx = eval_poly(c, ws, p, shift)
+    zx = eval_poly(z, ws, p, shift)
+    assert all(y != 0 for y in zx)
+    return interp_poly([ci / zi for (ci, zi) in zip(cx, zx)], ws, p, shift)
 
 
 class Prover(IFriProver):
