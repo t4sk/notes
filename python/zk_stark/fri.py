@@ -1,73 +1,38 @@
 import merkle
-from field import F
+from field import F, generate
 from polynomial import Polynomial
 import polynomial
-from fft import fft, ifft
 from iop import Channel, Msg, IFriProver, IFriVerifier
-from utils import is_pow2, is_prime, fiat_shamir, padd
+from utils import is_pow2, is_prime, fiat_shamir
 
-# FRI evaluation domain = [(shift * w^i) % p for 0 <= i < n]
-def domain(shift: int, w: int, n: int, p: int) -> list[int]:
+# FRI evaluation domain = [(shift * w^i) % p for 0 <= i < n], usually denoted as L
+def domain(shift: int, w: int, n: int, p: int) -> (list[int], list[int]):
     """
     w = primitive n th root of unity mod p
     p = prime
     """
-    d = [(shift * pow(w, i, p)) % p for i in range(0, n)]
-    assert len(set(d)) == n, f"|d| = {len(set(d))} != {n}"
-    return d
-
-
-# Evaluates polynomial using FFT
-def eval_poly(f: Polynomial, ws: list[int], p: int, shift: int = 1) -> list[F]:
-    # Evaluation domain = [shift * w for w in ws]
-    # Define Q(x) = P(ax)
-    #        Q(w^i) = P(aw^i)
-    q = f.scale(shift)
-    cs = [c.unwrap() for c in q.cs]
-    # Evaluation domain is larger than degree of polynomial so padd with 0
-    cs = padd(cs, len(ws), 0)
-    ys = fft(cs, ws, p)
-    return [F(y, p) for y in ys]
-
-
-# Interpolates polynomial using inverse FFT
-def interp_poly(ys: list[int | F], ws: list[int], p: int, shift: int = 1) -> Polynomial:
-    # Evaluation domain = [shift * w for w in ws]
-    # Define Q(x) = P(ax)
-    #        Q(w^i) = P(aw^i)
-    #        Q(x/a) = P(x)
-    ys = [y if isinstance(y, int) else y.unwrap() for y in ys]
-    cs = ifft(ys, ws, p)
-    q = Polynomial(cs, lambda x: F(x, p))
-    s_inv = F(shift, p).inv()
-    return q.scale(s_inv)
-
-
-# Calculate polynomial q = c / z
-def div_poly(c: Polynomial, z: Polynomial, ws: list[int], p: int, shift: int = 1) -> Polynomial:
-    """
-    z(w) = 0 for all w in ws and z(x) != 0 for all x = shift * w
-    """
-    assert c.degree() >= z.degree()
-    cx = eval_poly(c, ws, p, shift)
-    zx = eval_poly(z, ws, p, shift)
-    assert all(y != 0 for y in zx)
-    return interp_poly([ci / zi for (ci, zi) in zip(cx, zx)], ws, p, shift)
+    # Nth roots of unity
+    ws = generate(w, p, n)
+    # Nth roots of unity shifted by shift
+    coset = [(shift * x) % p for x in ws]
+    return (coset, ws)
 
 
 class Prover(IFriProver):
     def __init__(self, **kwargs):
         # Prime
-        P = kwargs["P"]
+        P: int = kwargs["P"]
         # Initial domain size
-        N = kwargs["N"]
+        N: int = kwargs["N"]
         # Primitive Nth root of unity
-        w = kwargs["w"]
+        w: int = kwargs["w"]
         # Shift evaluation domain (typically a generator of F[P])
-        shift = kwargs["shift"]
+        shift: int = kwargs["shift"]
         # Expansion factor from message length M to RS code length N
         # exp_factor * M = N
-        exp_factor = kwargs["exp_factor"]
+        exp_factor: int = kwargs["exp_factor"]
+        # FRI evaluation domain, usually denoted as L
+        eval_domain: list[int] = kwargs["eval_domain"]
 
         assert N < P
         assert is_prime(P), f"P = {P} is not prime"
@@ -77,12 +42,14 @@ class Prover(IFriProver):
         assert is_pow2(exp_factor), f"exp_factor = {exp_factor} is a power of 2"
         assert 1 <= w <= P - 1
         assert 1 <= shift <= P - 1
+        assert len(eval_domain) == N
 
         self.P: int = P
         self.N: int = N
         self.w: int = w
         self.shift: int = shift
         self.exp_factor = exp_factor
+        self.eval_domain: list[int] = eval_domain
         self.merkle_roots: list[str] = []
         self.challenges: list[F] = []
         self.codewords: list[list[F]] = []
@@ -109,7 +76,7 @@ class Prover(IFriProver):
         n = self.N
         s = self.shift
         # Evaluation domain
-        Li = domain(self.shift, self.w, n, self.P)
+        Li = self.eval_domain
         # m = message length -> polynomial degree < m
         # n = m * exp_factor
         # m = 1 -> polynomial degree < 1
