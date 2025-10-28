@@ -110,7 +110,7 @@ class F:
 
     def __repr__(self):
         return str(self.v)
-    
+
     # Used for set keys
     def __hash__(self):
         return hash((self.v, self.p))
@@ -151,7 +151,7 @@ def generate(g: int, n: int, p: int) -> list[int]:
     assert len(set(G)) == n
 
     return G
-    
+
 
 # Primitive Nth root of unity
 def get_primitive_root(g: int, n: int, p: int) -> int:

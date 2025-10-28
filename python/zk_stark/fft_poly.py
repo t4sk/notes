@@ -3,6 +3,7 @@ from polynomial import Polynomial
 from fft import fft, ifft
 from utils import padd
 
+
 # Evaluates polynomial using FFT
 def eval(f: Polynomial, ws: list[int], p: int, shift: int = 1) -> list[F]:
     """
@@ -34,12 +35,14 @@ def interp(ys: list[int | F], ws: list[int], p: int, shift: int = 1) -> Polynomi
 
 
 # Calculate polynomial q = c / z
-def div(c: Polynomial, z: Polynomial, ws: list[int], p: int, shift: int = 1) -> Polynomial:
+def div(
+    c: Polynomial, z: Polynomial, ws: list[int], p: int, shift: int = 1
+) -> Polynomial:
     """
     z(w) = 0 for all w in ws and z(x) != 0 for all x = shift * w
     """
     assert c.degree() >= z.degree()
-    cx = eval_poly(c, ws, p, shift)
-    zx = eval_poly(z, ws, p, shift)
+    cx = eval(c, ws, p, shift)
+    zx = eval(z, ws, p, shift)
     assert all(y != 0 for y in zx)
-    return interp_poly([ci / zi for (ci, zi) in zip(cx, zx)], ws, p, shift)
+    return interp([ci / zi for (ci, zi) in zip(cx, zx)], ws, p, shift)

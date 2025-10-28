@@ -1,7 +1,9 @@
 import merkle
-from field import F, generate
+from field import F
+import field
 from polynomial import Polynomial
 import polynomial
+import fft_poly
 from iop import Channel, Msg, IFriProver, IFriVerifier
 from utils import is_pow2, is_prime, fiat_shamir
 
@@ -277,10 +279,10 @@ class Verifier(IFriVerifier):
         )
         # Interpolate a polynomial and check the degree
         # shift * w^j -> (shift * w^j) ^ k = shift^k * w^(j*k)
-        p = interp_poly(
+        p = fft_poly.interp(
             codeword,
-            domain(
-                1,
+            # TODO: check domain
+            field.generate(
                 pow(self.w, 2 ** (i + 1), self.P),
                 len(codeword),
                 self.P,

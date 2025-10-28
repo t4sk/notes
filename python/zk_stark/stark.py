@@ -3,10 +3,12 @@ from field import F
 import field
 import fft_poly
 import fri
+import merkle
 from iop import Channel, Msg, IStarkProver, IStarkVerifier
 from utils import is_prime, is_pow2, min_pow2_gt, rand_int
 
-class Prover(IStarkVerifier):
+
+class Prover(IStarkProver):
     def __init__(self, **kwargs):
         # Prime number
         P: int = kwargs["P"]
@@ -22,12 +24,13 @@ class Prover(IStarkVerifier):
         assert f.degree() < trace_len
 
         # Expansion factor, exp_factor * trace_len = N = size of eval_domain
-        ext_factor: int = kwargs["ext_factor"]
-        assert is_pow2(ext_factor)
+        exp_factor: int = kwargs["exp_factor"]
+        assert is_pow2(exp_factor)
         N = exp_factor * trace_len
+        assert N < P
 
         # Primitive Nth root of unity
-        w: int = field.get_primitive_root(g, (P - 1) // N, P)
+        w: int = field.get_primitive_root(g, N, P)
         assert pow(w, N, P) == 1
         assert pow(w, N // 2, P) == (-1 % P)
         # Nth roots of unitys
@@ -37,7 +40,9 @@ class Prover(IStarkVerifier):
         # FRI and STARK evaluation domain are shifted by g so that
         # trace_eval_domain and eval_domain are disjoint
         eval_domain = [(g * wi) % P for wi in roots]
-        assert (set(eval_domain) & set(trace_eval_domain)) == set(), f'eval_domain and trace_eval_domain are not disjoint {set(eval_domain) & set(trace_eval_domain)}'
+        assert (
+            set(eval_domain) & set(trace_eval_domain)
+        ) == set(), f"eval_domain and trace_eval_domain are not disjoint {set(eval_domain) & set(trace_eval_domain)}"
 
         # Let G = trace_eval_domain
         #     L = Nth roots of unity
@@ -51,7 +56,7 @@ class Prover(IStarkVerifier):
         constraint_eval_domain: list[int] = kwargs["constraint_eval_domain"]
         assert is_pow2(len(constraint_eval_domain))
         assert trace_len <= len(constraint_eval_domain) <= N
-        
+
         # z(x) = (x - g^0)(x - g^1)...(x - g^(T-1)) = x^T - 1, where T = trace_len
         z: Polynomial = X(trace_len, lambda x: F(x, P)) - 1
 
@@ -60,11 +65,12 @@ class Prover(IStarkVerifier):
 
         self.P: int = P
         self.g: int = g
-        self.ext_factor: int = ext_factor
+        self.exp_factor: int = exp_factor
         self.eval_domain: list[int] = eval_domain
         self.w: int = w
         self.roots: list[int] = roots
         self.N: int = N
+        self.trace_len: int = trace_len
 
         self.f: Polynomial = f
         self.c: Polynomial = c
@@ -79,12 +85,12 @@ class Prover(IStarkVerifier):
         self.q_merkle_root: str | None = None
 
         self.fri_prover: fri.Prover = fri.Prover(
-            N = N,
-            P = P,
-            w = w,
-            shift = g,
-            exp_factor = exp_factor,
-            eval_domain = eval_domain,
+            N=N,
+            P=P,
+            w=w,
+            shift=g,
+            exp_factor=exp_factor,
+            eval_domain=eval_domain,
         )
 
     def fri(self) -> fri.Prover:
@@ -105,14 +111,14 @@ class Prover(IStarkVerifier):
         deg_adj = min_pow2_gt(self.max_degree)
         assert deg_adj > self.max_degree
 
-        (a, b) = iop_chan.send(Msg(mgs_type="stark_degree_adj", data=self.max_degree))
+        (a, b) = iop_chan.send(Msg(msg_type="stark_degree_adj", data=self.max_degree))
         adj = a * X(deg_adj - self.max_degree - 1, lambda x: F(x, self.P)) + b
         q_adj = self.q * adj
         assert is_pow2(q_adj.degree() + 1)
-        assert q_adj.degree() == T - 1
+        assert q_adj.degree() == self.trace_len - 1
 
         self.q_adj = q_adj
-        
+
         # f(L)
         fx = fft_poly.eval(self.f, self.roots, self.P, self.g)
         # q_adj(L)
@@ -122,14 +128,16 @@ class Prover(IStarkVerifier):
         self.f_merkle_root = merkle.commit(self.f_hashes)
         self.q_merkle_root = merkle.commit(self.q_hashes)
 
-        iop_chan.send(Msg(msg_type="stark_merkle_roots", data=(
-            self.f_merkle_root,
-            self.q_merkle_root
-        )))
+        iop_chan.send(
+            Msg(
+                msg_type="stark_merkle_roots",
+                data=(self.f_merkle_root, self.q_merkle_root),
+            )
+        )
 
         self.fri_prover.commit(qx, iop_chan)
 
-    def prove(idx: int) -> (F, F, list[str], list[str]):
+    def prove(self, idx: int) -> (F, F, list[str], list[str]):
         x = self.eval_domain[idx]
         fx = self.f(x)
         qx = self.q_adj(x)
@@ -138,7 +146,7 @@ class Prover(IStarkVerifier):
         return (fx, qx, f_proof, q_proof)
 
 
-class Verifier(IStarkProver):
+class Verifier(IStarkVerifier):
     def __init__(self, **kwargs):
         # Prime number
         P: int = kwargs["P"]
@@ -146,29 +154,39 @@ class Verifier(IStarkProver):
         g: int = kwargs["g"]
 
         # Trace evaluation domain
-        trace_eval_domain: list[int] = kwargs["trace_eval_domain"]
-        trace_len = len(trace_eval_domain)
+        trace_len: int = kwargs["trace_len"]
         assert is_pow2(trace_len)
 
         # Constraint polynomial given a value y = f(x), c(y) must = 0
         c: Polynomial = kwargs["c"]
 
-        # Nth roots of unity
-        roots: list[int] = kwargs["roots"]
-        N = len(roots)
+        # Expansion factor, exp_factor * trace_len = N = size of eval_domain
+        exp_factor: int = kwargs["exp_factor"]
+        assert is_pow2(exp_factor)
+        N = exp_factor * trace_len
+        assert N < P
+
+        # Primitive Nth root of unity
+        w: int = field.get_primitive_root(g, N, P)
+        assert pow(w, N, P) == 1
+        assert pow(w, N // 2, P) == (-1 % P)
+        # Nth roots of unitys
+        roots: list[int] = field.generate(w, N, P)
+        assert len(roots) == N
+
         # FRI and STARK evaluation domain are shifted by g so that
         # trace_eval_domain and eval_domain are disjoint
-        eval_domain = [(g * w) % P for w in roots]
+        eval_domain = [(g * wi) % P for wi in roots]
 
         # z(x) = (x - g^0)(x - g^1)...(x - g^(T-1)) = x^T - 1, where T = trace_len
         z: Polynomial = X(trace_len, lambda x: F(x, P)) - 1
 
         self.P: int = P
         self.g: int = g
-        self.ext_factor: int = ext_factor
+        self.exp_factor: int = exp_factor
         self.eval_domain: list[int] = eval_domain
-        self.w: int = w
         self.N: int = N
+        self.trace_len: int = trace_len
 
         self.c: Polynomial = c
         self.z: Polynomial = z
@@ -182,21 +200,16 @@ class Verifier(IStarkProver):
         self.q_merkle_root: str | None = None
 
         self.fri_verifier: fri.Verifier = fri.Verifier(
-            N = N,
-            P = P,
-            w = w,
-            shift = g,
-            exp_factor = exp_factor
+            N=N, P=P, w=w, shift=g, exp_factor=exp_factor
         )
 
     def fri(self) -> fri.Verifier:
         return self.fri_verifier
 
     def set_adj(self, max_degree: int) -> (int, int):
-        assert self.challenges != (0, 0)
+        assert self.challenges == (0, 0)
         assert self.adj is None
-        # TODO
-        assert max_degree < trace_len
+        assert max_degree < self.trace_len
 
         a = rand_int(1, self.P - 1)
         b = rand_int(1, self.P - 1)
@@ -208,11 +221,12 @@ class Verifier(IStarkProver):
         assert deg_adj > max_degree
 
         (a, b) = self.challenges
-        self.adj = a * X(deg_adj - max_degree - 1, lambda x: F(x, P)) + b
+        self.adj = a * X(deg_adj - max_degree - 1, lambda x: F(x, self.P)) + b
 
         return (a, b)
 
-    def set_merkle_roots(self, f_merkle_root: str, q_merkle_root: str):
+    def set_merkle_roots(self, merkle_roots: (str, str)):
+        (f_merkle_root, q_merkle_root) = merkle_roots
         assert self.adj is not None
         assert self.f_merkle_root is None
         assert self.q_merkle_root is None
@@ -224,8 +238,10 @@ class Verifier(IStarkProver):
         pass
 
     def query(self, idx: int, iop_chan: Channel):
-        (fx, qx, f_proof, q_proof) = iop_chan.send(Msg(msg_type="stark_prove", data=idx))
-        self.verify(idx, fx, qx, f_proof, q_proof)    
+        (fx, qx, f_proof, q_proof) = iop_chan.send(
+            Msg(msg_type="stark_prove", data=idx)
+        )
+        self.verify(idx, fx, qx, f_proof, q_proof)
 
     def verify(self, idx: int, fx: F, qx: F, f_proof: list[str], q_proof: list[str]):
         x = self.eval_domain[idx]
@@ -233,6 +249,11 @@ class Verifier(IStarkProver):
         zx = self.z(x)
         adjx = self.adj(x)
         assert qx * zx == cx * adjx
-    
-        assert merkle.verify(f_proof, self.f_merkle_root, merkle.hash_leaf(str(fx)), idx)
-        assert merkle.verify(q_proof, self.q_merkle_root, merkle.hash_leaf(str(qx)), idx)      
+
+        assert merkle.verify(
+            f_proof, self.f_merkle_root, merkle.hash_leaf(str(fx)), idx
+        )
+        assert merkle.verify(
+            q_proof, self.q_merkle_root, merkle.hash_leaf(str(qx)), idx
+        )
+

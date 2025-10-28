@@ -86,4 +86,3 @@ class Channel:
 
     def send(self, msg: Msg):
         return self.receiver.reply(msg)
-

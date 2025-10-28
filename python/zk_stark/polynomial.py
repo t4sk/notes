@@ -15,6 +15,7 @@ def wrap(x, f):
     else:
         return f(x)
 
+
 # WARNING - this is slow. Dividing 1024 degree polynomial took 5 min 46 s
 def div(p: Polynomial, d: Polynomial) -> (Polynomial, Polynomial):
     assert p.z == d.z
@@ -74,7 +75,7 @@ class Polynomial:
 
     def unwrap(self) -> list[int] | list[F]:
         return self.cs
-    
+
     def check(self, p: int | F | list[int] | list[F] | Polynomial) -> Polynomial:
         if isinstance(p, Polynomial):
             assert self.z == p.z
