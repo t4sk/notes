@@ -5,18 +5,6 @@ import polynomial
 from iop import Channel, Msg, IFriProver, IFriVerifier
 from utils import is_pow2, is_prime, fiat_shamir
 
-# FRI evaluation domain = [(shift * w^i) % p for 0 <= i < n], usually denoted as L
-def domain(shift: int, w: int, n: int, p: int) -> (list[int], list[int]):
-    """
-    w = primitive n th root of unity mod p
-    p = prime
-    """
-    # Nth roots of unity
-    ws = generate(w, p, n)
-    # Nth roots of unity shifted by shift
-    coset = [(shift * x) % p for x in ws]
-    return (coset, ws)
-
 
 class Prover(IFriProver):
     def __init__(self, **kwargs):
@@ -70,6 +58,8 @@ class Prover(IFriProver):
         6. Repeat 1 to 5 with f1 and domain ((w^0)^2, (w^1)^2, ...), half the original domain size,
            until the polynomial is reduced to a constant
         """
+        assert len(self.merkle_roots) == 0
+        assert len(self.codewords) == 0
         assert len(codeword) == self.N
 
         # Domain size
@@ -88,13 +78,13 @@ class Prover(IFriProver):
             # Commit Merkle root
             merkle_root = merkle.commit([merkle.hash_leaf(str(c)) for c in codeword])
             self.merkle_roots.append(merkle_root)
-            iop_chan.send(Msg(msg_type="merkle_root", data=merkle_root))
+            iop_chan.send(Msg(msg_type="fri_merkle_root", data=merkle_root))
 
             # Next loop
             n //= 2
             if n >= self.exp_factor:
                 # Get random challenge
-                c = iop_chan.send(Msg(msg_type="get_challenge"))
+                c = iop_chan.send(Msg(msg_type="fri_get_challenge"))
                 self.challenges.append(self.wrap(c))
                 # Fold
                 # f_even(x^2) = (f(x) + f(-x)) / 2
@@ -213,7 +203,7 @@ class Verifier(IFriVerifier):
         return c
 
     def query(self, idx: int, iop_chan: Channel):
-        (vals, proofs, codeword) = iop_chan.send(Msg(msg_type="prove", data=idx))
+        (vals, proofs, codeword) = iop_chan.send(Msg(msg_type="fri_prove", data=idx))
         self.verify(idx, vals, proofs, codeword)
 
     def verify(

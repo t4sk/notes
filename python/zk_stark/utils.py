@@ -1,10 +1,15 @@
 import hashlib
 import math
+import random
 
 
 def fiat_shamir(s: str) -> int:
     h = hashlib.sha256(s.encode()).digest()
     return int.from_bytes(h, "big")
+
+
+def rand_int(lo: int, hi: int) -> int:
+    return random.randint(lo, hi)
 
 
 def padd(xs, n, x):

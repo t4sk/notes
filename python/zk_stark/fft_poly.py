@@ -10,8 +10,8 @@ def eval(f: Polynomial, ws: list[int], p: int, shift: int = 1) -> list[F]:
     p = prime number
     """
     # Evaluation domain = [shift * w for w in ws]
-    # Define Q(x) = P(ax)
-    #        Q(w^i) = P(aw^i)
+    # Define q(x) = f(ax)
+    #        q(w^i) = f(aw^i)
     q = f.scale(shift)
     cs = [c.unwrap() for c in q.cs]
     # Evaluation domain is larger than degree of polynomial so padd with 0
@@ -23,9 +23,9 @@ def eval(f: Polynomial, ws: list[int], p: int, shift: int = 1) -> list[F]:
 # Interpolates polynomial using inverse FFT
 def interp(ys: list[int | F], ws: list[int], p: int, shift: int = 1) -> Polynomial:
     # Evaluation domain = [shift * w for w in ws]
-    # Define Q(x) = P(ax)
-    #        Q(w^i) = P(aw^i)
-    #        Q(x/a) = P(x)
+    # Define q(x) = f(ax)
+    #        q(w^i) = f(aw^i)
+    #        q(x/a) = f(x)
     ys = [y if isinstance(y, int) else y.unwrap() for y in ys]
     cs = ifft(ys, ws, p)
     q = Polynomial(cs, lambda x: F(x, p))

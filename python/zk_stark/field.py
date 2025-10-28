@@ -132,7 +132,7 @@ def find_generator(p: int) -> int | None:
     return None
 
 
-def generate(g: int, p: int, n: int) -> list[int]:
+def generate(g: int, n: int, p: int) -> list[int]:
     """
     g = generator of F[P, *]
     n = order of subgroup G to generate
@@ -154,7 +154,7 @@ def generate(g: int, p: int, n: int) -> list[int]:
     
 
 # Primitive Nth root of unity
-def get_primitive_root(g: int, p: int, n: int) -> int:
+def get_primitive_root(g: int, n: int, p: int) -> int:
     # F[P, *] = Multiplicative subgroup of F[P] = {1, 2, 3, ..., P - 1}
     # When k divides |F[P, *]|, g^k generates a group of size |F[P, *]| / k
     # |F[P, *]| / k = n -> k = (P - 1) / n

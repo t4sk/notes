@@ -1,12 +1,15 @@
 from polynomial import Polynomial, X
 from field import F
+import field
 import fft_poly
-from utils import is_prime, is_pow2, min_pow2_gt
+import fri
+from iop import Channel, Msg, IStarkProver, IStarkVerifier
+from utils import is_prime, is_pow2, min_pow2_gt, rand_int
 
-class Prover:
+class Prover(IStarkVerifier):
     def __init__(self, **kwargs):
         # Prime number
-        p: int = kwargs["p"]
+        P: int = kwargs["P"]
         # generator of F[P, *] = multiplicative subgroup of prime field P
         g: int = kwargs["g"]
 
@@ -18,39 +21,79 @@ class Prover:
         assert is_pow2(trace_len)
         assert f.degree() < trace_len
 
-        # Constraint polynomial
-        c: Polynomial = kwargs["c"]
-        # Constraint polynomial evaluation domain
-        constraint_eval_domain: list[int] = kwargs["constraint_eval_domain"]
-        assert len(constraint_eval_domain) >= trace_len
-        assert is_pow2(constraint_eval_domain)
+        # Expansion factor, exp_factor * trace_len = N = size of eval_domain
+        ext_factor: int = kwargs["ext_factor"]
+        assert is_pow2(ext_factor)
+        N = exp_factor * trace_len
 
-        # Nth roots of unity
-        roots: list[int] = kwargs["roots"]
-        N = len(roots)
+        # Primitive Nth root of unity
+        w: int = field.get_primitive_root(g, (P - 1) // N, P)
+        assert pow(w, N, P) == 1
+        assert pow(w, N // 2, P) == (-1 % P)
+        # Nth roots of unitys
+        roots: list[int] = field.generate(w, N, P)
+        assert len(roots) == N
+
         # FRI and STARK evaluation domain are shifted by g so that
         # trace_eval_domain and eval_domain are disjoint
-        eval_domain = [(g * w) % p for w in roots]
-
-        assert len(set(eval_domain)) == N, f'|eval_domain| = {len(set(eval_domain))}'
+        eval_domain = [(g * wi) % P for wi in roots]
         assert (set(eval_domain) & set(trace_eval_domain)) == set(), f'eval_domain and trace_eval_domain are not disjoint {set(eval_domain) & set(trace_eval_domain)}'
 
         # Let G = trace_eval_domain
         #     L = Nth roots of unity
         # G and L are subgroups of F[P, *] -> |G| and |L| divides |F[P, *]| = P - 1
-        assert (p - 1) % trace_len == 0
-        assert (p - 1) % N == 0
+        assert (P - 1) % trace_len == 0
+        assert (P - 1) % N == 0
 
-        # Expansion factor, exp_factor * trace_len = N = size of eval_domain
-        ext_factor: int = kwargs["ext_factor"]
-        assert is_pow2(ext_factor)
-        assert ext_factor * trace_len == N
-
+        # Constraint polynomial
+        c: Polynomial = kwargs["c"]
+        # Constraint polynomial evaluation domain
+        constraint_eval_domain: list[int] = kwargs["constraint_eval_domain"]
+        assert is_pow2(len(constraint_eval_domain))
+        assert trace_len <= len(constraint_eval_domain) <= N
+        
         # z(x) = (x - g^0)(x - g^1)...(x - g^(T-1)) = x^T - 1, where T = trace_len
-        z: Polynomial = X(trace_len, lambda x: F(x, p)) - 1
+        z: Polynomial = X(trace_len, lambda x: F(x, P)) - 1
 
         # Quotient polynomial q(x) = c(x) / z(x)
-        q = fft_poly.div(c, z, constraint_eval_domain, p, g)
+        q = fft_poly.div(c, z, constraint_eval_domain, P, g)
+
+        self.P: int = P
+        self.g: int = g
+        self.ext_factor: int = ext_factor
+        self.eval_domain: list[int] = eval_domain
+        self.w: int = w
+        self.roots: list[int] = roots
+        self.N: int = N
+
+        self.f: Polynomial = f
+        self.c: Polynomial = c
+        self.z: Polynomial = z
+        self.q: Polynomial = q
+        self.max_degree: int = q.degree()
+        self.q_adj: Polynomial | None = None
+
+        self.f_hashes: list[str] = []
+        self.q_hashes: list[str] = []
+        self.f_merkle_root: str | None = None
+        self.q_merkle_root: str | None = None
+
+        self.fri_prover: fri.Prover = fri.Prover(
+            N = N,
+            P = P,
+            w = w,
+            shift = g,
+            exp_factor = exp_factor,
+            eval_domain = eval_domain,
+        )
+
+    def fri(self) -> fri.Prover:
+        return self.fri_prover
+
+    def commit(self, iop_chan: Channel):
+        assert self.f_merkle_root is None
+        assert self.q_merkle_root is None
+        assert self.q_adj is None
 
         # Degree adjustment
         # Let max_degree = highest degree of all C[j] where C[j] are constraint polynomials
@@ -59,58 +102,46 @@ class Prover:
         # Given C[j] with degree of C[j] = D[j]
         # Degree adjusted polynomial = C[j](x) * (A[j] * x^(D - D[j] - 1) + B[j])
         # where A[j] and B[j] are random values provided by the verifier
-        max_degree = q.degree()
-        deg_adj = min_pow2_gt(max_degree)
-        assert deg_adj > max_degree
+        deg_adj = min_pow2_gt(self.max_degree)
+        assert deg_adj > self.max_degree
 
-        # TODO: get challenges from verifier
-        a = 1
-        b = 2
-        adj = a * X(deg_adj - max_degree - 1, lambda x: F(x, P)) + b
-        q = q * adj
-        assert is_pow2(q.degree() + 1)
-        assert q.degree() == T - 1
+        (a, b) = iop_chan.send(Msg(mgs_type="stark_degree_adj", data=self.max_degree))
+        adj = a * X(deg_adj - self.max_degree - 1, lambda x: F(x, self.P)) + b
+        q_adj = self.q * adj
+        assert is_pow2(q_adj.degree() + 1)
+        assert q_adj.degree() == T - 1
 
-        self.p: int = p
-        self.g: int = g
-        self.ext_factor: int = ext_factor
-        self.eval_domain: list[int] = eval_domain
-        self.roots: list[int] = roots
-        self.N: int = N
-
-        self.f: Polynomial = f
-        self.c: Polynomial = c
-        self.z: Polynomial = z
-        self.q: Polynomial = q
-
-        self.f_hashes: list[str] = []
-        self.q_hashes: list[str] = []
-        self.f_merkle_root: str | None = None
-        self.q_merkle_root: str | None = None
-
-    def commit(self):
+        self.q_adj = q_adj
+        
         # f(L)
-        fx = fft_poly.eval(self.f.scale(self.g), self.roots, self.p, self.g)
-        # q(L)
-        qx = fft_poly.eval(self.q.scale(self.g), self.roots, self.p, self.g)
+        fx = fft_poly.eval(self.f, self.roots, self.P, self.g)
+        # q_adj(L)
+        qx = fft_poly.eval(self.q_adj, self.roots, self.P, self.g)
         self.f_hashes = [merkle.hash_leaf(str(y)) for y in fx]
         self.q_hashes = [merkle.hash_leaf(str(y)) for y in qx]
         self.f_merkle_root = merkle.commit(self.f_hashes)
         self.q_merkle_root = merkle.commit(self.q_hashes)
 
-    def prove(i: int) -> (int, F, F, list[str], list[str]):
-        x = self.eval_domain[i]
+        iop_chan.send(Msg(msg_type="stark_merkle_roots", data=(
+            self.f_merkle_root,
+            self.q_merkle_root
+        )))
+
+        self.fri_prover.commit(qx, iop_chan)
+
+    def prove(idx: int) -> (F, F, list[str], list[str]):
+        x = self.eval_domain[idx]
         fx = self.f(x)
-        qx = self.q(x)
-        f_proof = merkle.open(self.f_hashes, i)
-        q_proof = merkle.open(self.q_hashes, i)
-        return (x, fx, qx, f_proof, q_proof)
+        qx = self.q_adj(x)
+        f_proof = merkle.open(self.f_hashes, idx)
+        q_proof = merkle.open(self.q_hashes, idx)
+        return (fx, qx, f_proof, q_proof)
 
 
-class Verifier:
+class Verifier(IStarkProver):
     def __init__(self, **kwargs):
         # Prime number
-        p: int = kwargs["p"]
+        P: int = kwargs["P"]
         # generator of F[P, *] = multiplicative subgroup of prime field P
         g: int = kwargs["g"]
 
@@ -127,10 +158,81 @@ class Verifier:
         N = len(roots)
         # FRI and STARK evaluation domain are shifted by g so that
         # trace_eval_domain and eval_domain are disjoint
-        eval_domain = [(g * w) % p for w in roots]
+        eval_domain = [(g * w) % P for w in roots]
 
-        self.p: int = p
+        # z(x) = (x - g^0)(x - g^1)...(x - g^(T-1)) = x^T - 1, where T = trace_len
+        z: Polynomial = X(trace_len, lambda x: F(x, P)) - 1
+
+        self.P: int = P
         self.g: int = g
+        self.ext_factor: int = ext_factor
+        self.eval_domain: list[int] = eval_domain
+        self.w: int = w
+        self.N: int = N
 
-    def verify(self):
+        self.c: Polynomial = c
+        self.z: Polynomial = z
+        self.adj: Polynomial | None = None
+        # Max degree of quotient polynomial q(x)
+        self.max_degree: int = 0
+        # Random challenges sent to prover for adjusting degree on quotient polynomial q(x)
+        self.challenges: (int, int) = (0, 0)
+
+        self.f_merkle_root: str | None = None
+        self.q_merkle_root: str | None = None
+
+        self.fri_verifier: fri.Verifier = fri.Verifier(
+            N = N,
+            P = P,
+            w = w,
+            shift = g,
+            exp_factor = exp_factor
+        )
+
+    def fri(self) -> fri.Verifier:
+        return self.fri_verifier
+
+    def set_adj(self, max_degree: int) -> (int, int):
+        assert self.challenges != (0, 0)
+        assert self.adj is None
+        # TODO
+        assert max_degree < trace_len
+
+        a = rand_int(1, self.P - 1)
+        b = rand_int(1, self.P - 1)
+        self.challenges = (a, b)
+
+        # Max degree of q(x)
+        self.max_degree = max_degree
+        deg_adj = min_pow2_gt(max_degree)
+        assert deg_adj > max_degree
+
+        (a, b) = self.challenges
+        self.adj = a * X(deg_adj - max_degree - 1, lambda x: F(x, P)) + b
+
+        return (a, b)
+
+    def set_merkle_roots(self, f_merkle_root: str, q_merkle_root: str):
+        assert self.adj is not None
+        assert self.f_merkle_root is None
+        assert self.q_merkle_root is None
+        self.f_merkle_root = f_merkle_root
+        self.q_merkle_root = q_merkle_root
+
+    # TODO: checks before query
+    def check(self):
         pass
+
+    def query(self, idx: int, iop_chan: Channel):
+        (fx, qx, f_proof, q_proof) = iop_chan.send(Msg(msg_type="stark_prove", data=idx))
+        self.verify(idx, fx, qx, f_proof, q_proof)    
+
+    def verify(self, idx: int, fx: F, qx: F, f_proof: list[str], q_proof: list[str]):
+        x = self.eval_domain[idx]
+        cx = self.c(fx)
+        zx = self.z(x)
+        adjx = self.adj(x)
+        assert qx * zx == cx * adjx
+    
+        assert merkle.verify(f_proof, self.f_merkle_root, merkle.hash_leaf(str(fx)), idx)
+        assert merkle.verify(q_proof, self.q_merkle_root, merkle.hash_leaf(str(qx)), idx)      
