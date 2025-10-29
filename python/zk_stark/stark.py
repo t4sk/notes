@@ -1,3 +1,4 @@
+from __future__ import annotations
 from polynomial import Polynomial, X
 from field import F
 import field
@@ -42,7 +43,9 @@ class Prover(IStarkProver):
         # FRI and STARK evaluation domain are shifted by g so that
         # trace_eval_domain and eval_domain are disjoint
         eval_domain = [(g * wi) % P for wi in roots]
-        assert (intersec : = set(eval_domain) & set(trace_eval_domain)) == set(), f"eval domains not disjoint {intersec}"
+        assert (
+            intersec := set(eval_domain) & set(trace_eval_domain)
+        ) == set(), f"eval domains not disjoint {intersec}"
 
         # Let G = trace_eval_domain
         #     L = Nth roots of unity
@@ -110,7 +113,9 @@ class Prover(IStarkProver):
         deg_adj = min_pow2_gt(self.max_degree)
         assert deg_adj > self.max_degree
 
-        (a, b) = chan.send(Msg(msg_type="stark_degree_adj", data=self.max_degree))
+        (a, b) = chan.send(
+            dst="verifier", msg=Msg(msg_type="stark_degree_adj", data=self.max_degree)
+        )
         adj = a * X(deg_adj - self.max_degree - 1, lambda x: F(x, self.P)) + b
         q_adj = self.q * adj
         assert is_pow2(q_adj.degree() + 1)
@@ -128,21 +133,28 @@ class Prover(IStarkProver):
         self.q_merkle_root = merkle.commit(self.q_hashes)
 
         chan.send(
-            Msg(
+            dst="verifier",
+            msg=Msg(
                 msg_type="stark_merkle_roots",
                 data=(self.f_merkle_root, self.q_merkle_root),
-            )
+            ),
         )
 
         self.fri_prover.commit(qx, chan)
 
-    def prove(self, idx: int) -> (F, F, list[str], list[str]):
+        assert self.q_merkle_root == self.fri_prover.merkle_roots[0]
+
+    def prove(self, idx: int, chan: Channel):
         x = self.eval_domain[idx]
         fx = self.f(x)
         qx = self.q_adj(x)
         f_proof = merkle.open(self.f_hashes, idx)
         q_proof = merkle.open(self.q_hashes, idx)
-        return (fx, qx, f_proof, q_proof)
+
+        chan.send(
+            dst="verifier",
+            msg=Msg(msg_type="stark_proofs", data=(fx, qx, f_proof, q_proof)),
+        )
 
 
 class Verifier(IStarkVerifier):
@@ -240,9 +252,11 @@ class Verifier(IStarkVerifier):
         assert self.q_merkle_root == self.fri_verifier.merkle_roots[0]
 
     def query(self, idx: int, chan: Channel):
-        (fx, qx, f_proof, q_proof) = chan.send(
-            Msg(msg_type="stark_prove", data=idx)
-        )
+        chan.send(dst="prover", msg=Msg(msg_type="stark_prove", data=idx))
+        msg = chan.verifier.inbox.pop()
+        assert msg.type == "stark_proofs"
+        (fx, qx, f_proof, q_proof) = msg.data
+
         self.verify(idx, fx, qx, f_proof, q_proof)
 
         # TODO: STARK and FRI separate queries?

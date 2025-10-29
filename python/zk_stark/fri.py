@@ -1,3 +1,4 @@
+from __future__ import annotations
 import merkle
 from field import F
 import field
@@ -79,13 +80,16 @@ class Prover(IFriProver):
             # Commit Merkle root
             merkle_root = merkle.commit([merkle.hash_leaf(str(c)) for c in codeword])
             self.merkle_roots.append(merkle_root)
-            chan.send(Msg(msg_type="fri_merkle_root", data=merkle_root))
+            chan.send(
+                dst="verifier",
+                msg=Msg(msg_type="fri_merkle_root", data=merkle_root),
+            )
 
             # Next loop
             n //= 2
             if n >= self.exp_factor:
                 # Get random challenge
-                c = chan.send(Msg(msg_type="fri_get_challenge"))
+                c = chan.send(dst="verifier", msg=Msg(msg_type="fri_get_challenge"))
                 self.challenges.append(self.wrap(c))
                 # Fold
                 # f_even(x^2) = (f(x) + f(-x)) / 2
@@ -207,7 +211,9 @@ class Verifier(IFriVerifier):
         return c
 
     def query(self, idx: int, chan: Channel):
-        (vals, proofs, codeword) = chan.send(Msg(msg_type="fri_prove", data=idx))
+        (vals, proofs, codeword) = chan.send(
+            dst="prover", msg=Msg(msg_type="fri_prove", data=idx)
+        )
         self.verify(idx, vals, proofs, codeword)
 
     def verify(

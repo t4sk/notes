@@ -1,4 +1,5 @@
 # Interactive oracle proof
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from field import F
 
@@ -49,41 +50,52 @@ class Msg:
 class Prover:
     def __init__(self, prover: IStarkProver):
         self.prover = prover
+        self.inbox: list[Msg] = []
 
-    def reply(self, msg: Msg):
+    def recv(self, msg: Msg, chan: Channel):
         match msg.type:
             case "stark_prove":
-                return self.prover.prove(msg.data)
+                self.prover.prove(msg.data, chan)
             case "fri_prove":
-                return self.prover.fri().prove(msg.data)
+                self.prover.fri().prove(msg.data)
             case _:
                 raise ValueError(f"Invalid msg type: {msg.type}")
-        return None
 
 
 class Verifier:
     def __init__(self, verifier: IStarkVerifier):
         self.verifier = verifier
+        self.inbox: list[Msg] = []
 
-    def reply(self, msg: Msg):
+    def recv(self, msg: Msg, chan: Channel):
         match msg.type:
             case "stark_degree_adj":
-                return self.verifier.set_adj(msg.data)
+                self.verifier.set_adj(msg.data, chan)
             case "stark_merkle_roots":
                 self.verifier.set_merkle_roots(msg.data)
+            case "stark_proofs":
+                self.inbox.append(msg)
             case "fri_merkle_root":
                 self.verifier.fri().push_merkle_root(msg.data)
             case "fri_get_challenge":
-                return self.verifier.fri().get_challenge()
+                self.verifier.fri().get_challenge(chan)
             case _:
                 raise ValueError(f"Invalid msg type: {msg.type}")
-        return None
 
 
-# One way channel
 class Channel:
-    def __init__(self, receiver: Prover | Verifier):
-        self.receiver = receiver
+    def __init__(self, prover: Prover, verifier: Verifier):
+        self.prover = prover
+        self.verifier = verifier
 
-    def send(self, msg: Msg):
-        return self.receiver.reply(msg)
+    def send(self, **kwargs):
+        dst: str = kwargs["dst"]
+        msg: Msg = kwargs["msg"]
+
+        assert dst in ["prover", "verifier"]
+
+        match dst:
+            case "prover":
+                self.prover.recv(msg, self)
+            case "verifier":
+                self.verifier.recv(msg, self)
