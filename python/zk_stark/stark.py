@@ -9,6 +9,7 @@ from utils import is_prime, is_pow2, min_pow2_gt, rand_int
 
 
 # TODO: clean up
+# TODO: clean up setup
 class Prover(IStarkProver):
     def __init__(self, **kwargs):
         # Prime number
@@ -41,9 +42,7 @@ class Prover(IStarkProver):
         # FRI and STARK evaluation domain are shifted by g so that
         # trace_eval_domain and eval_domain are disjoint
         eval_domain = [(g * wi) % P for wi in roots]
-        assert (
-            set(eval_domain) & set(trace_eval_domain)
-        ) == set(), f"eval_domain and trace_eval_domain are not disjoint {set(eval_domain) & set(trace_eval_domain)}"
+        assert (intersec : = set(eval_domain) & set(trace_eval_domain)) == set(), f"eval domains not disjoint {intersec}"
 
         # Let G = trace_eval_domain
         #     L = Nth roots of unity
@@ -194,7 +193,7 @@ class Verifier(IStarkVerifier):
         # Max degree of quotient polynomial q(x)
         self.max_degree: int = 0
         # Random challenges sent to prover for adjusting degree on quotient polynomial q(x)
-        self.challenges: (int, int) = (0, 0)
+        self.challenges: (int, int) | None = None
 
         self.f_merkle_root: str | None = None
         self.q_merkle_root: str | None = None
@@ -211,7 +210,7 @@ class Verifier(IStarkVerifier):
         return self.fri_verifier
 
     def set_adj(self, max_degree: int) -> (int, int):
-        assert self.challenges == (0, 0)
+        assert self.challenges is None
         assert self.adj is None
         assert max_degree < self.trace_len
 
@@ -231,13 +230,12 @@ class Verifier(IStarkVerifier):
 
     def set_merkle_roots(self, merkle_roots: (str, str)):
         (f_merkle_root, q_merkle_root) = merkle_roots
-        assert self.adj is not None
         assert self.f_merkle_root is None
         assert self.q_merkle_root is None
         self.f_merkle_root = f_merkle_root
         self.q_merkle_root = q_merkle_root
 
-    # Checks before query
+    # Preliminary checks before queries
     def check(self):
         assert self.q_merkle_root == self.fri_verifier.merkle_roots[0]
 
@@ -246,6 +244,9 @@ class Verifier(IStarkVerifier):
             Msg(msg_type="stark_prove", data=idx)
         )
         self.verify(idx, fx, qx, f_proof, q_proof)
+
+        # TODO: STARK and FRI separate queries?
+        self.fri_verifier.query(idx, iop_chan)
 
     def verify(self, idx: int, fx: F, qx: F, f_proof: list[str], q_proof: list[str]):
         x = self.eval_domain[idx]
