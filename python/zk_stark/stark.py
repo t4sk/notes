@@ -95,7 +95,7 @@ class Prover(IStarkProver):
     def fri(self) -> fri.Prover:
         return self.fri_prover
 
-    def commit(self, iop_chan: Channel):
+    def commit(self, chan: Channel):
         assert self.f_merkle_root is None
         assert self.q_merkle_root is None
         assert self.q_adj is None
@@ -110,7 +110,7 @@ class Prover(IStarkProver):
         deg_adj = min_pow2_gt(self.max_degree)
         assert deg_adj > self.max_degree
 
-        (a, b) = iop_chan.send(Msg(msg_type="stark_degree_adj", data=self.max_degree))
+        (a, b) = chan.send(Msg(msg_type="stark_degree_adj", data=self.max_degree))
         adj = a * X(deg_adj - self.max_degree - 1, lambda x: F(x, self.P)) + b
         q_adj = self.q * adj
         assert is_pow2(q_adj.degree() + 1)
@@ -127,14 +127,14 @@ class Prover(IStarkProver):
         self.f_merkle_root = merkle.commit(self.f_hashes)
         self.q_merkle_root = merkle.commit(self.q_hashes)
 
-        iop_chan.send(
+        chan.send(
             Msg(
                 msg_type="stark_merkle_roots",
                 data=(self.f_merkle_root, self.q_merkle_root),
             )
         )
 
-        self.fri_prover.commit(qx, iop_chan)
+        self.fri_prover.commit(qx, chan)
 
     def prove(self, idx: int) -> (F, F, list[str], list[str]):
         x = self.eval_domain[idx]
@@ -239,14 +239,14 @@ class Verifier(IStarkVerifier):
     def check(self):
         assert self.q_merkle_root == self.fri_verifier.merkle_roots[0]
 
-    def query(self, idx: int, iop_chan: Channel):
-        (fx, qx, f_proof, q_proof) = iop_chan.send(
+    def query(self, idx: int, chan: Channel):
+        (fx, qx, f_proof, q_proof) = chan.send(
             Msg(msg_type="stark_prove", data=idx)
         )
         self.verify(idx, fx, qx, f_proof, q_proof)
 
         # TODO: STARK and FRI separate queries?
-        self.fri_verifier.query(idx, iop_chan)
+        self.fri_verifier.query(idx, chan)
 
     def verify(self, idx: int, fx: F, qx: F, f_proof: list[str], q_proof: list[str]):
         x = self.eval_domain[idx]

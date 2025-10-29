@@ -52,10 +52,10 @@ class Prover:
 
     def reply(self, msg: Msg):
         match msg.type:
-            case "fri_prove":
-                return self.prover.fri().prove(msg.data)
             case "stark_prove":
                 return self.prover.prove(msg.data)
+            case "fri_prove":
+                return self.prover.fri().prove(msg.data)
             case _:
                 raise ValueError(f"Invalid msg type: {msg.type}")
         return None
@@ -80,8 +80,9 @@ class Verifier:
         return None
 
 
+# One way channel
 class Channel:
-    def __init__(self, receiver):
+    def __init__(self, receiver: Prover | Verifier):
         self.receiver = receiver
 
     def send(self, msg: Msg):

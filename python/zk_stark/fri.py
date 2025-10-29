@@ -45,7 +45,7 @@ class Prover(IFriProver):
         # Function to wrap x into F
         self.wrap = lambda x: F(x, P)
 
-    def commit(self, codeword: list[F], iop_chan: Channel):
+    def commit(self, codeword: list[F], chan: Channel):
         """
         1. Evaluate polynomial f0(x) at w^0, w^1, ..., w^(N-1)
            where w is a Nth primitive root of unity (use FFT for fast evaluation)
@@ -79,13 +79,13 @@ class Prover(IFriProver):
             # Commit Merkle root
             merkle_root = merkle.commit([merkle.hash_leaf(str(c)) for c in codeword])
             self.merkle_roots.append(merkle_root)
-            iop_chan.send(Msg(msg_type="fri_merkle_root", data=merkle_root))
+            chan.send(Msg(msg_type="fri_merkle_root", data=merkle_root))
 
             # Next loop
             n //= 2
             if n >= self.exp_factor:
                 # Get random challenge
-                c = iop_chan.send(Msg(msg_type="fri_get_challenge"))
+                c = chan.send(Msg(msg_type="fri_get_challenge"))
                 self.challenges.append(self.wrap(c))
                 # Fold
                 # f_even(x^2) = (f(x) + f(-x)) / 2
@@ -206,8 +206,8 @@ class Verifier(IFriVerifier):
         self.challenges.append(self.wrap(c))
         return c
 
-    def query(self, idx: int, iop_chan: Channel):
-        (vals, proofs, codeword) = iop_chan.send(Msg(msg_type="fri_prove", data=idx))
+    def query(self, idx: int, chan: Channel):
+        (vals, proofs, codeword) = chan.send(Msg(msg_type="fri_prove", data=idx))
         self.verify(idx, vals, proofs, codeword)
 
     def verify(
