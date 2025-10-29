@@ -5,34 +5,33 @@ from polynomial import Polynomial
 import polynomial
 import fft_poly
 from iop import Channel, Msg, IFriProver, IFriVerifier
-from utils import is_pow2, is_prime, fiat_shamir
+from utils import is_pow2, fiat_shamir
 
 
 class Prover(IFriProver):
     def __init__(self, **kwargs):
-        # Prime
+        # Prime number
         P: int = kwargs["P"]
-        # Initial domain size
-        N: int = kwargs["N"]
         # Primitive Nth root of unity
         w: int = kwargs["w"]
         # Shift evaluation domain (typically a generator of F[P])
         shift: int = kwargs["shift"]
-        # Expansion factor from message length M to RS code length N
-        # exp_factor * M = N
+        # Expansion factor from trace length T to RS code length N
+        # exp_factor * T = N
         exp_factor: int = kwargs["exp_factor"]
         # FRI evaluation domain, usually denoted as L
         eval_domain: list[int] = kwargs["eval_domain"]
 
-        assert N < P
-        assert is_prime(P), f"P = {P} is not prime"
+        # Initial domain size
+        N = len(eval_domain)
+
+        assert N < P, f"{N} >= {P}"
         assert is_pow2(N), f"N = {N} is not a power of 2"
         assert 2 <= exp_factor, f"exp factor = {exp_factor} < 2"
-        # Since N = exp_factor * M is a power of 2, exp_factor must also be a power of 2
+        # Since N = exp_factor * T is a power of 2, exp_factor must also be a power of 2
         assert is_pow2(exp_factor), f"exp_factor = {exp_factor} is a power of 2"
         assert 1 <= w <= P - 1
         assert 1 <= shift <= P - 1
-        assert len(eval_domain) == N
 
         self.P: int = P
         self.N: int = N
@@ -69,9 +68,9 @@ class Prover(IFriProver):
         s = self.shift
         # Evaluation domain
         Li = self.eval_domain
-        # m = message length -> polynomial degree < m
-        # n = m * exp_factor
-        # m = 1 -> polynomial degree < 1
+        # T = trace length -> polynomial degree < T
+        # n = T * exp_factor
+        # T = 1 -> polynomial degree < 1
         # At n = exp_factor -> polynomial degree = 0
         while n >= self.exp_factor:
             # Reed Solomon code
@@ -165,23 +164,25 @@ class Prover(IFriProver):
 
 class Verifier(IFriVerifier):
     def __init__(self, **kwargs):
-        # Prime
+        # Prime number
         P = kwargs["P"]
-        # Initial domain size
-        N = kwargs["N"]
         # Primitive Nth root of unity
         w = kwargs["w"]
         # Shift evaluation domain (typically a generator of F[P])
         shift = kwargs["shift"]
-        # Expansion factor from message length M to RS code length N
-        # exp_factor * M = N
+        # Expansion factor from trace length T to RS code length N
+        # exp_factor * T = N
         exp_factor = kwargs["exp_factor"]
+        # FRI evaluation domain, usually denoted as L
+        eval_domain: list[int] = kwargs["eval_domain"]
+
+        # Initial domain size
+        N = len(eval_domain)
 
         assert N < P, f"{N} >= {P}"
-        assert is_prime(P), f"{P} is not prime"
         assert is_pow2(N), f"{N} is not a power of 2"
         assert 2 <= exp_factor, f"exp factor = {exp_factor} < 2"
-        # Since N = exp_factor * M is a power of 2, exp_factor must also be a power of 2
+        # Since N = exp_factor * T is a power of 2, exp_factor must also be a power of 2
         assert is_pow2(exp_factor), f"exp_factor = {exp_factor} is a power of 2"
         assert 1 <= w <= P - 1
         assert 1 <= shift <= P - 1
@@ -191,6 +192,7 @@ class Verifier(IFriVerifier):
         self.w: int = w
         self.shift: int = shift
         self.exp_factor = exp_factor
+        self.eval_domain: list[int] = eval_domain
         self.merkle_roots: list[str] = []
         self.challenges: list[F] = []
         # Function to wrap x into F
@@ -216,7 +218,6 @@ class Verifier(IFriVerifier):
         codeword: list[F],
     ):
         """
-        TODO: verify with x not in L?
         3. Verfifier checks Merkle proofs for fi(x) and fi(-x)
         4. Verifier uses fi(x) and fi(-x) to create f(i+1)(x^2)
            fi(x)  = fi_even(x^2) + x * fi_odd(x^2)
@@ -233,14 +234,14 @@ class Verifier(IFriVerifier):
         # Last Merkle root is directly calculated from the provided codeword
         assert len(vals) == len(proofs) == len(self.merkle_roots) - 1
         # Check codeword length
-        # Message length M -> poly degree < M -> RS code length N
-        # N = M * exp_factor (here poly degree = 0 so M = 1)
+        # trace length T -> poly degree < T -> RS code length N
+        # N = T * exp_factor (here poly degree = 0 so T = 1)
         assert len(codeword) == self.exp_factor
         assert idx < self.N
 
         i = 0
         n = self.N
-        x = self.wrap(self.shift * pow(self.w, idx, self.P))
+        x = self.eval_domains[idx]
         fold = None
 
         while n > self.exp_factor:

@@ -8,6 +8,7 @@ from iop import Channel, Msg, IStarkProver, IStarkVerifier
 from utils import is_prime, is_pow2, min_pow2_gt, rand_int
 
 
+# TODO: clean up
 class Prover(IStarkProver):
     def __init__(self, **kwargs):
         # Prime number
@@ -16,7 +17,7 @@ class Prover(IStarkProver):
         g: int = kwargs["g"]
 
         # Trace polynomial
-        f: Polynomial = kwargs["f"]
+        f: Polynomial = kwargs["trace_poly"]
         # Trace evaluation domain
         trace_eval_domain: list[int] = kwargs["trace_eval_domain"]
         trace_len = len(trace_eval_domain)
@@ -51,7 +52,7 @@ class Prover(IStarkProver):
         assert (P - 1) % N == 0
 
         # Constraint polynomial
-        c: Polynomial = kwargs["c"]
+        c: Polynomial = kwargs["constraint_poly"]
         # Constraint polynomial evaluation domain
         constraint_eval_domain: list[int] = kwargs["constraint_eval_domain"]
         assert is_pow2(len(constraint_eval_domain))
@@ -85,7 +86,6 @@ class Prover(IStarkProver):
         self.q_merkle_root: str | None = None
 
         self.fri_prover: fri.Prover = fri.Prover(
-            N=N,
             P=P,
             w=w,
             shift=g,
@@ -158,7 +158,7 @@ class Verifier(IStarkVerifier):
         assert is_pow2(trace_len)
 
         # Constraint polynomial given a value y = f(x), c(y) must = 0
-        c: Polynomial = kwargs["c"]
+        c: Polynomial = kwargs["constraint_poly"]
 
         # Expansion factor, exp_factor * trace_len = N = size of eval_domain
         exp_factor: int = kwargs["exp_factor"]
@@ -200,7 +200,11 @@ class Verifier(IStarkVerifier):
         self.q_merkle_root: str | None = None
 
         self.fri_verifier: fri.Verifier = fri.Verifier(
-            N=N, P=P, w=w, shift=g, exp_factor=exp_factor
+            P=P,
+            w=w,
+            shift=g,
+            exp_factor=exp_factor,
+            eval_domain=eval_domain,
         )
 
     def fri(self) -> fri.Verifier:
@@ -233,9 +237,9 @@ class Verifier(IStarkVerifier):
         self.f_merkle_root = f_merkle_root
         self.q_merkle_root = q_merkle_root
 
-    # TODO: checks before query
+    # Checks before query
     def check(self):
-        pass
+        assert self.q_merkle_root == self.fri_verifier.merkle_roots[0]
 
     def query(self, idx: int, iop_chan: Channel):
         (fx, qx, f_proof, q_proof) = iop_chan.send(
@@ -256,4 +260,3 @@ class Verifier(IStarkVerifier):
         assert merkle.verify(
             q_proof, self.q_merkle_root, merkle.hash_leaf(str(qx)), idx
         )
-
