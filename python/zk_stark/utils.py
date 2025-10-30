@@ -29,7 +29,7 @@ def msb_pow2(x: int) -> int:
 
 
 # Smallest power of 2 greater than x
-def min_pow2_gt(x: int):
+def min_pow2_gt(x: int) -> int:
     assert x >= 0
     if x == 0:
         return 1

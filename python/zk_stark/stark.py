@@ -9,8 +9,6 @@ from iop import Channel, Msg, IStarkProver, IStarkVerifier
 from utils import is_prime, is_pow2, min_pow2_gt, rand_int
 
 
-# TODO: clean up
-# TODO: clean up setup
 class Prover(IStarkProver):
     def __init__(self, **kwargs):
         # Prime number
@@ -55,31 +53,35 @@ class Prover(IStarkProver):
 
         # Constraint polynomial
         c: Polynomial = kwargs["constraint_poly"]
+        # Constraint polynomial evaluation domain size
+        c_size = min_pow2_gt(c.degree())
+        assert trace_len <= c_size <= N
+        assert (P - 1) % c_size == 0
         # Constraint polynomial evaluation domain
-        constraint_eval_domain: list[int] = kwargs["constraint_eval_domain"]
-        assert is_pow2(len(constraint_eval_domain))
-        assert trace_len <= len(constraint_eval_domain) <= N
+        c_eval_domain = field.generate(
+            field.get_primitive_root(g, c_size, P), c_size, P
+        )
 
         # z(x) = (x - g^0)(x - g^1)...(x - g^(T-1)) = x^T - 1, where T = trace_len
         z: Polynomial = X(trace_len, lambda x: F(x, P)) - 1
 
         # Quotient polynomial q(x) = c(x) / z(x)
-        q = fft_poly.div(c, z, constraint_eval_domain, P, g)
+        q = fft_poly.div(c, z, c_eval_domain, P, g)
+        max_degree = q.degree()
+        assert max_degree < trace_len
 
         self.P: int = P
         self.g: int = g
-        self.exp_factor: int = exp_factor
         self.eval_domain: list[int] = eval_domain
-        self.w: int = w
         self.roots: list[int] = roots
-        self.N: int = N
         self.trace_len: int = trace_len
 
         self.f: Polynomial = f
         self.c: Polynomial = c
         self.z: Polynomial = z
         self.q: Polynomial = q
-        self.max_degree: int = q.degree()
+        # Max degree of quotient polynomial q(x)
+        self.max_degree: int = max_degree
         self.q_adj: Polynomial | None = None
 
         self.f_hashes: list[str] = []
@@ -168,9 +170,6 @@ class Verifier(IStarkVerifier):
         trace_len: int = kwargs["trace_len"]
         assert is_pow2(trace_len)
 
-        # Constraint polynomial given a value y = f(x), c(y) must = 0
-        c: Polynomial = kwargs["constraint_poly"]
-
         # Expansion factor, exp_factor * trace_len = N = size of eval_domain
         exp_factor: int = kwargs["exp_factor"]
         assert is_pow2(exp_factor)
@@ -189,21 +188,27 @@ class Verifier(IStarkVerifier):
         # trace_eval_domain and eval_domain are disjoint
         eval_domain = [(g * wi) % P for wi in roots]
 
+        # Let G = trace_eval_domain
+        #     L = Nth roots of unity
+        # G and L are subgroups of F[P, *] -> |G| and |L| divides |F[P, *]| = P - 1
+        assert (P - 1) % trace_len == 0
+        assert (P - 1) % N == 0
+
+        # Constraint polynomial given a value y = f(x), c(y) must = 0
+        c: Polynomial = kwargs["constraint_poly"]
+
         # z(x) = (x - g^0)(x - g^1)...(x - g^(T-1)) = x^T - 1, where T = trace_len
         z: Polynomial = X(trace_len, lambda x: F(x, P)) - 1
 
         self.P: int = P
-        self.g: int = g
-        self.exp_factor: int = exp_factor
         self.eval_domain: list[int] = eval_domain
-        self.N: int = N
         self.trace_len: int = trace_len
 
         self.c: Polynomial = c
         self.z: Polynomial = z
-        self.adj: Polynomial | None = None
-        # Max degree of quotient polynomial q(x)
+        # Max degree of the quotient polynomial q(x) = c(x) / z(x)
         self.max_degree: int = 0
+        self.adj: Polynomial | None = None
         # Random challenges sent to prover for adjusting degree on quotient polynomial q(x)
         self.challenges: (int, int) | None = None
 
@@ -224,14 +229,15 @@ class Verifier(IStarkVerifier):
     def set_adj(self, max_degree: int, chan: Channel):
         assert self.challenges is None
         assert self.adj is None
+
         assert max_degree < self.trace_len
+        self.max_degree = max_degree
 
         a = rand_int(1, self.P - 1)
         b = rand_int(1, self.P - 1)
         self.challenges = (a, b)
 
         # Max degree of q(x)
-        self.max_degree = max_degree
         deg_adj = min_pow2_gt(max_degree)
         assert deg_adj > max_degree
 
