@@ -54,10 +54,14 @@ class Prover:
 
     def recv(self, msg: Msg, chan: Channel):
         match msg.type:
+            case "stark_degree_adj":
+                self.inbox.append(msg)
             case "stark_prove":
                 self.prover.prove(msg.data, chan)
+            case "fri_challenge":
+                self.inbox.append(msg)
             case "fri_prove":
-                self.prover.fri().prove(msg.data)
+                self.prover.fri().prove(msg.data, chan)
             case _:
                 raise ValueError(f"Invalid msg type: {msg.type}")
 
@@ -77,10 +81,23 @@ class Verifier:
                 self.inbox.append(msg)
             case "fri_merkle_root":
                 self.verifier.fri().push_merkle_root(msg.data)
-            case "fri_get_challenge":
+            case "fri_challenge":
                 self.verifier.fri().get_challenge(chan)
+            case "fri_proofs":
+                self.inbox.append(msg)
             case _:
                 raise ValueError(f"Invalid msg type: {msg.type}")
+
+
+class Channel:
+    def __init__(self, src: Prover | Verifier, dst: Prover | Verifier):
+        self.src = src
+        self.dst = dst
+
+    def send(self, msg):
+        self.dst.recv(msg, self)
+        if len(self.src.inbox) > 0:
+            return self.src.inbox.pop().data
 
 
 class Channel:
@@ -97,5 +114,9 @@ class Channel:
         match dst:
             case "prover":
                 self.prover.recv(msg, self)
+                if len(self.verifier.inbox) > 0:
+                    return self.verifier.inbox.pop().data
             case "verifier":
                 self.verifier.recv(msg, self)
+                if len(self.prover.inbox) > 0:
+                    return self.prover.inbox.pop().data

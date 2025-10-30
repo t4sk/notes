@@ -89,7 +89,7 @@ class Prover(IFriProver):
             n //= 2
             if n >= self.exp_factor:
                 # Get random challenge
-                c = chan.send(dst="verifier", msg=Msg(msg_type="fri_get_challenge"))
+                c = chan.send(dst="verifier", msg=Msg(msg_type="fri_challenge"))
                 self.challenges.append(self.wrap(c))
                 # Fold
                 # f_even(x^2) = (f(x) + f(-x)) / 2
@@ -111,7 +111,7 @@ class Prover(IFriProver):
                 Li = [s * li for li in Li[0::2]]
                 s *= s
 
-    def prove(self, idx: int) -> (list[(F, F)], list[(list[str], list[str])], list[F]):
+    def prove(self, idx: int, chan: Channel):
         """
         1. Verifier sends random challenge x to the prover
         2. Start at i = 0, prover sends fi(x) and fi(-x) and Merkle proof
@@ -163,7 +163,10 @@ class Prover(IFriProver):
                 # Next iteration maps upper half to lower half -> index i to i % (n / 2)
                 idx %= n
 
-        return (vals, proofs, self.codewords[-1])
+        chan.send(
+            dst="verifier",
+            msg=Msg(msg_type="fri_proofs", data=(vals, proofs, self.codewords[-1])),
+        )
 
 
 class Verifier(IFriVerifier):
@@ -205,10 +208,10 @@ class Verifier(IFriVerifier):
     def push_merkle_root(self, val: str):
         self.merkle_roots.append(val)
 
-    def get_challenge(self) -> int:
+    def get_challenge(self, chan: Channel):
         c = fiat_shamir(str(self.merkle_roots))
         self.challenges.append(self.wrap(c))
-        return c
+        chan.send(dst="prover", msg=Msg(msg_type="fri_challenge", data=c))
 
     def query(self, idx: int, chan: Channel):
         (vals, proofs, codeword) = chan.send(
@@ -247,7 +250,7 @@ class Verifier(IFriVerifier):
 
         i = 0
         n = self.N
-        x = self.eval_domains[idx]
+        x = self.eval_domain[idx]
         fold = None
 
         while n > self.exp_factor:

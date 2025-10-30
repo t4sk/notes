@@ -221,7 +221,7 @@ class Verifier(IStarkVerifier):
     def fri(self) -> fri.Verifier:
         return self.fri_verifier
 
-    def set_adj(self, max_degree: int) -> (int, int):
+    def set_adj(self, max_degree: int, chan: Channel):
         assert self.challenges is None
         assert self.adj is None
         assert max_degree < self.trace_len
@@ -238,7 +238,7 @@ class Verifier(IStarkVerifier):
         (a, b) = self.challenges
         self.adj = a * X(deg_adj - max_degree - 1, lambda x: F(x, self.P)) + b
 
-        return (a, b)
+        chan.send(dst="prover", msg=Msg(msg_type="stark_degree_adj", data=(a, b)))
 
     def set_merkle_roots(self, merkle_roots: (str, str)):
         (f_merkle_root, q_merkle_root) = merkle_roots
@@ -252,15 +252,10 @@ class Verifier(IStarkVerifier):
         assert self.q_merkle_root == self.fri_verifier.merkle_roots[0]
 
     def query(self, idx: int, chan: Channel):
-        chan.send(dst="prover", msg=Msg(msg_type="stark_prove", data=idx))
-        msg = chan.verifier.inbox.pop()
-        assert msg.type == "stark_proofs"
-        (fx, qx, f_proof, q_proof) = msg.data
-
+        (fx, qx, f_proof, q_proof) = chan.send(
+            dst="prover", msg=Msg(msg_type="stark_prove", data=idx)
+        )
         self.verify(idx, fx, qx, f_proof, q_proof)
-
-        # TODO: STARK and FRI separate queries?
-        self.fri_verifier.query(idx, chan)
 
     def verify(self, idx: int, fx: F, qx: F, f_proof: list[str], q_proof: list[str]):
         x = self.eval_domain[idx]
