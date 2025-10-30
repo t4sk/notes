@@ -90,17 +90,6 @@ class Verifier:
 
 
 class Channel:
-    def __init__(self, src: Prover | Verifier, dst: Prover | Verifier):
-        self.src = src
-        self.dst = dst
-
-    def send(self, msg):
-        self.dst.recv(msg, self)
-        if len(self.src.inbox) > 0:
-            return self.src.inbox.pop().data
-
-
-class Channel:
     def __init__(self, prover: Prover, verifier: Verifier):
         self.prover = prover
         self.verifier = verifier
