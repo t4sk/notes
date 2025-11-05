@@ -24,6 +24,7 @@ Code execution (trace + constraints) -> polynomial -> prover commits to poly, ve
   - Commitment
   - Query
 - FRI
+  - Intro / Steps
   - Reed Solomon code
   - Code distance
   - Linear code

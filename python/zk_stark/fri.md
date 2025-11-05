@@ -1,16 +1,22 @@
 # FRI
 Fast Reed–Solomon Interactive Oracle Proofs of Proximity
+- Intro
+    - Polynomial degree D, D + 1 queries
+    - Visual Fn space + code
 
-- Codeword
-- Reed Solomon code
+- Reed Solomon Code
+    - Code
+    - Codeword
+- Hamming distance
+
 - Low degree testing
 - Why RS code? Why not regular polynomial? -> structured redundancy
 - Split + fold
 - Commit phase
 - Query phase
 - TODO: RS code redundancy, error correcting radius, unique decoding distance etc..
-- Hamming weight and distance
-- Proximity gap for RS codes
+- Hamming weight and distance, unique decoding distance
+- Proximity gap theorem for RS codes
 - Polynomial, degree, how to check if given points recover an polynomial
 
 ### Reed Solomon code
