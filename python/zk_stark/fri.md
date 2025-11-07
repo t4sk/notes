@@ -9,6 +9,7 @@ Fast Reed–Solomon Interactive Oracle Proofs of Proximity
     - Codeword
 - Hamming distance
 
+- Why test low degree? -> can consttruct a high degree polynomial that passes the constraint checks but not a honest trace polynomial
 - Low degree testing
 - Why RS code? Why not regular polynomial? -> structured redundancy
 - Split + fold
