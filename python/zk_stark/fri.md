@@ -1,13 +1,20 @@
 # FRI
 Fast Reed–Solomon Interactive Oracle Proofs of Proximity
 - Intro
-    - Polynomial degree D, D + 1 queries
     - Visual Fn space + code
-
+- TODO: Polynomial
+    - Polynomial degree D, D + 1 points
+    - 2 polynomials can agree atmost D points?
+    - Roots
 - Reed Solomon Code
-    - Code
-    - Codeword
+    - Example
+      - Lagrange interpolation
+    - Definitions
+        - Code
+        - Codeword
+        - RS code
 - Hamming distance
+- TODO: unique decoding distance?
 
 - Why test low degree? -> can consttruct a high degree polynomial that passes the constraint checks but not a honest trace polynomial
 - Low degree testing
@@ -19,6 +26,8 @@ Fast Reed–Solomon Interactive Oracle Proofs of Proximity
 - Hamming weight and distance, unique decoding distance
 - Proximity gap theorem for RS codes
 - Polynomial, degree, how to check if given points recover an polynomial
+
+- TODO: 128 bit security and delta
 
 ### Reed Solomon code
 ```
