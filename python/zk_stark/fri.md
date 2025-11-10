@@ -14,6 +14,9 @@ Fast Reed–Solomon Interactive Oracle Proofs of Proximity
         - Codeword
         - RS code
 - Hamming distance
+- RS code and FRI
+- FRI
+- TODO: ZKSTARK -> FRI
 - TODO: unique decoding distance?
 
 - Why test low degree? -> can consttruct a high degree polynomial that passes the constraint checks but not a honest trace polynomial
@@ -28,14 +31,6 @@ Fast Reed–Solomon Interactive Oracle Proofs of Proximity
 - Polynomial, degree, how to check if given points recover an polynomial
 
 - TODO: 128 bit security and delta
-
-### Reed Solomon code
-```
-messange length = d -> P = polynomial degree = d
-encoded message length = N -> evaluate N points -> field dimension = N
-N > d
-N points determines the unique polynomial P
-```
 
 ### Commit phase
 
