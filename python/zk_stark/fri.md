@@ -6,6 +6,10 @@ Fast Reed–Solomon Interactive Oracle Proofs of Proximity
     - Polynomial degree D, D + 1 points
     - 2 polynomials can agree atmost D points?
     - Roots
+    - split f(x) = f_even(x^2) + xf_odd(x^2)
+    - f_even(x^2) = (f(x) + f(-x)) / 2
+    - f_odd(x^2) = (f(x) - f(-x)) / 2x
+- TODO: Motivation - d + k queries for (1 - p)^k probability of acceptance?
 - Reed Solomon Code
     - Example
       - Lagrange interpolation
@@ -32,6 +36,11 @@ Fast Reed–Solomon Interactive Oracle Proofs of Proximity
 
 - TODO: 128 bit security and delta
 
+
+### TODO: problem with commiting to f(x)
+- TODO: high probability of accepting a fraud
+- need d + k queries for (1 - p)^k probability of accepting a fraud
+
 ### Commit phase
 
 TODO: why check that polynomial is low degree? <- given RS code, it always identify a polynomial (a poly that passes through all the points provided)
@@ -41,7 +50,6 @@ TODO: why low degree polynomial is honest execution trace? Can a dishonest execu
 1. Evaluate polynomial f0(x) at w^0, w^1, ..., w^(N-1)
    where w is a root of unity and N is the domain size (use FFT for fast evaluation)
    [f0(w^i) for 0 <= i < N] is a RS codeword
-   TODO: N is a power of 2?
 2. Create Merkle tree from the RS codeword
 3. Prover sends Merkle root to the verifier
 4. Verifier sends a challenge B0
@@ -88,10 +96,6 @@ A fraudulent prover is successful when the verifier accepts a codeword that does
 
 TODO: check at step 4 fails with high probability if fraud? Also, probability of prover to guess the challenge x before commit is low
 ```
-
-### TODO: problem with commiting to f(x)
-- TODO: high probability of accepting a fraud
-- need d + k queries for (1 - p)^k probability of accepting a fraud
 
 ### g(x,y) evaluation table
 TODO: why it boosts fraud detection? + polynomial reduction
