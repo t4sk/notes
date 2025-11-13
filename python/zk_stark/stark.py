@@ -91,8 +91,6 @@ class Prover(IStarkProver):
 
         self.fri_prover: fri.Prover = fri.Prover(
             P=P,
-            w=w,
-            shift=g,
             exp_factor=exp_factor,
             eval_domain=eval_domain,
         )
