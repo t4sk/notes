@@ -1,5 +1,6 @@
 # FRI
 Fast Reed–Solomon Interactive Oracle Proofs of Proximity
+- TODO: why low degree testing?
 - Intro
     - Visual Fn space + code
 - TODO: Polynomial
@@ -20,9 +21,13 @@ Fast Reed–Solomon Interactive Oracle Proofs of Proximity
 - Hamming distance
 - RS code and FRI
 - FRI
+  - TODO: tree diagram
+- TODO: soundness / intuitions, fold, proximity gap
+- TODO: why random challenge?
 - TODO: ZKSTARK -> FRI
 - TODO: unique decoding distance?
 - TODO: probabilities?
+- TODO: evaluation domain
 
 - Why test low degree? -> can consttruct a high degree polynomial that passes the constraint checks but not a honest trace polynomial
 - Low degree testing
