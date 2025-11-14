@@ -148,8 +148,8 @@ class Prover(IFriProver):
 
             # Next loop
             n //= 2
+            i += 1
             if n > self.exp_factor:
-                i += 1
                 # x^i -> x^(2i % N)
                 # n = 8, [x^0, x^1, x^2, x^3, x^4, x^5, x^6, x^7]
                 # n = 4, [x^0, x^2, x^4, x^6]
@@ -215,9 +215,13 @@ class Verifier(IFriVerifier):
 
     def verify(
         self,
+        # Index to x in L
         idx: int,
+        # List of (f[i](x), f[i](-x))
         vals: list[(F, F)],
+        # Merkle proofs of (f[i](x), f[i](-x))
         proofs: list[(list[str], list[str])],
+        # Last codeword
         codeword: list[F],
     ):
         """
@@ -263,30 +267,32 @@ class Verifier(IFriVerifier):
 
             # Next loop
             n //= 2
+            i += 1
             if n > self.exp_factor:
                 x *= x
-                i += 1
                 idx %= n
 
         # Check last fold - last codeword must be an evaluation of a polynomial with
-        # degree = 0 so all elements in codeword must be the same values
+        # degree = 0 so all elements in the codeword must be the same values
         assert fold == codeword[0]
 
         # Check Merkle root
-        hs = [merkle.hash_leaf(str(c)) for c in codeword]
-        assert merkle.commit(hs) == self.merkle_roots[-1]
+        assert (
+            merkle.commit([merkle.hash_leaf(str(c)) for c in codeword])
+            == self.merkle_roots[-1]
+        )
 
         # Interpolate a polynomial and check that the degree = 0
         # (shift * w^i)^k = shift^k * w^(i*k)
         p = fft_poly.interp(
             codeword,
             field.generate(
-                pow(self.w, 2 ** (i + 1), self.P),
+                pow(self.w, 2 ** i, self.P),
                 len(codeword),
                 self.P,
             ),
             self.P,
-            pow(self.shift, 2 ** (i + 1), self.P),
+            pow(self.shift, 2 ** i, self.P),
         )
         assert (
             p.degree() == 0

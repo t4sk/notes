@@ -22,6 +22,7 @@ Fast Reed–Solomon Interactive Oracle Proofs of Proximity
 - FRI
 - TODO: ZKSTARK -> FRI
 - TODO: unique decoding distance?
+- TODO: probabilities?
 
 - Why test low degree? -> can consttruct a high degree polynomial that passes the constraint checks but not a honest trace polynomial
 - Low degree testing
