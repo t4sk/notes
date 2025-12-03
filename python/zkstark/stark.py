@@ -73,6 +73,7 @@ class Prover(IStarkProver):
         self.P: int = P
         self.g: int = g
         self.eval_domain: list[int] = eval_domain
+        # Needed to use FFT on eval_domain
         self.roots: list[int] = roots
         self.trace_len: int = trace_len
 

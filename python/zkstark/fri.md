@@ -1,6 +1,9 @@
+# ZKSTARK
+- trace -> constraint -> quotient polynomial
+
 # FRI
 Fast Reed–Solomon Interactive Oracle Proofs of Proximity
-- TODO: why low degree testing?
+- TODO: Why test low degree? -> can consttruct a high degree polynomial that passes the constraint checks but not a honest trace polynomial
 - Intro
     - Visual Fn space + code
 - TODO: Polynomial
@@ -10,11 +13,13 @@ Fast Reed–Solomon Interactive Oracle Proofs of Proximity
     - split f(x) = f_even(x^2) + xf_odd(x^2)
     - f_even(x^2) = (f(x) + f(-x)) / 2
     - f_odd(x^2) = (f(x) - f(-x)) / 2x
+    - poly is delta close -> quotient polynomial is delta close 
 - TODO: Motivation - d + k queries for (1 - p)^k probability of acceptance?
 - Reed Solomon Code
     - Example
       - Lagrange interpolation
     - Definitions
+        - TODO: rate, notation (RS[F, L, D])?
         - Code
         - Codeword
         - RS code
@@ -23,13 +28,16 @@ Fast Reed–Solomon Interactive Oracle Proofs of Proximity
 - FRI
   - TODO: tree diagram
 - TODO: soundness / intuitions, fold, proximity gap
+    - fold
+        - [Vector addition and scalar multiplication](https://www.desmos.com/calculator/rezchfjvgw)
+    - [Proximity Gap](https://www.desmos.com/calculator/k6ryiv8qqp)
 - TODO: why random challenge?
 - TODO: ZKSTARK -> FRI
 - TODO: unique decoding distance?
 - TODO: probabilities?
 - TODO: evaluation domain
 
-- Why test low degree? -> can consttruct a high degree polynomial that passes the constraint checks but not a honest trace polynomial
+
 - Low degree testing
 - Why RS code? Why not regular polynomial? -> structured redundancy
 - Split + fold
