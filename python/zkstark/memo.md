@@ -21,6 +21,8 @@ Code execution (trace + constraints) -> polynomial -> prover commits to poly, ve
   - Trace evaluation domain
   - ZKSTARK evaluation domain (coset)
 - Polynomail constraint checks
+  - Quotient
+  - DEEP?
   - Commitment
   - Query
 - FRI
