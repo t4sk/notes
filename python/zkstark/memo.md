@@ -17,6 +17,7 @@ Code execution (trace + constraints) -> polynomial -> prover commits to poly, ve
       - M points uniquely determines a poly of degree < M
       - 2 different poly of degree < M can agree at most M points?
       - r is a root of a polynomial P -> (x - r) divides P
+      - degree(P) < K -> P(x) = 0 for at most K points
 - Evaluation domain
   - Trace evaluation domain
   - ZKSTARK evaluation domain (coset)
