@@ -17,12 +17,12 @@ class Prover(IStarkProver):
         g: int = kwargs["g"]
 
         # Trace polynomial
-        f: Polynomial = kwargs["trace_poly"]
+        t: Polynomial = kwargs["trace_poly"]
         # Trace evaluation domain
         trace_eval_domain: list[int] = kwargs["trace_eval_domain"]
         trace_len = len(trace_eval_domain)
         assert is_pow2(trace_len)
-        assert f.degree() < trace_len
+        assert t.degree() < trace_len
 
         # Expansion factor, exp_factor * trace_len = N = size of eval_domain
         exp_factor: int = kwargs["exp_factor"]
@@ -51,7 +51,7 @@ class Prover(IStarkProver):
         assert (P - 1) % trace_len == 0
         assert (P - 1) % N == 0
 
-        # Constraint polynomial
+        # Constraint polynomial c(t(x))
         c: Polynomial = kwargs["constraint_poly"]
         # Constraint polynomial evaluation domain size
         c_size = min_pow2_gt(c.degree())
@@ -65,7 +65,7 @@ class Prover(IStarkProver):
         # z(x) = (x - g^0)(x - g^1)...(x - g^(T-1)) = x^T - 1, where T = trace_len
         z: Polynomial = X(trace_len, lambda x: F(x, P)) - 1
 
-        # Quotient polynomial q(x) = c(x) / z(x)
+        # Quotient polynomial q(x) = c(t(x)) / z(x)
         q = fft_poly.div(c, z, c_eval_domain, P, g)
         max_degree = q.degree()
         assert max_degree < trace_len
@@ -77,7 +77,7 @@ class Prover(IStarkProver):
         self.roots: list[int] = roots
         self.trace_len: int = trace_len
 
-        self.f: Polynomial = f
+        self.t: Polynomial = t
         self.c: Polynomial = c
         self.z: Polynomial = z
         self.q: Polynomial = q
@@ -85,9 +85,9 @@ class Prover(IStarkProver):
         self.max_degree: int = max_degree
         self.q_adj: Polynomial | None = None
 
-        self.f_hashes: list[str] = []
+        self.t_hashes: list[str] = []
         self.q_hashes: list[str] = []
-        self.f_merkle_root: str | None = None
+        self.t_merkle_root: str | None = None
         self.q_merkle_root: str | None = None
 
         self.fri_prover: fri.Prover = fri.Prover(
@@ -100,7 +100,7 @@ class Prover(IStarkProver):
         return self.fri_prover
 
     def commit(self, chan: Channel):
-        assert self.f_merkle_root is None
+        assert self.t_merkle_root is None
         assert self.q_merkle_root is None
         assert self.q_adj is None
 
@@ -124,20 +124,20 @@ class Prover(IStarkProver):
 
         self.q_adj = q_adj
 
-        # f(L)
-        fx = fft_poly.eval(self.f, self.roots, self.P, self.g)
+        # t(L)
+        tx = fft_poly.eval(self.t, self.roots, self.P, self.g)
         # q_adj(L)
         qx = fft_poly.eval(self.q_adj, self.roots, self.P, self.g)
-        self.f_hashes = [merkle.hash_leaf(str(y)) for y in fx]
+        self.t_hashes = [merkle.hash_leaf(str(y)) for y in tx]
         self.q_hashes = [merkle.hash_leaf(str(y)) for y in qx]
-        self.f_merkle_root = merkle.commit(self.f_hashes)
+        self.t_merkle_root = merkle.commit(self.t_hashes)
         self.q_merkle_root = merkle.commit(self.q_hashes)
 
         chan.send(
             dst="verifier",
             msg=Msg(
                 msg_type="stark_merkle_roots",
-                data=(self.f_merkle_root, self.q_merkle_root),
+                data=(self.t_merkle_root, self.q_merkle_root),
             ),
         )
 
@@ -147,14 +147,14 @@ class Prover(IStarkProver):
 
     def prove(self, idx: int, chan: Channel):
         x = self.eval_domain[idx]
-        fx = self.f(x)
+        tx = self.t(x)
         qx = self.q_adj(x)
-        f_proof = merkle.open(self.f_hashes, idx)
+        t_proof = merkle.open(self.t_hashes, idx)
         q_proof = merkle.open(self.q_hashes, idx)
 
         chan.send(
             dst="verifier",
-            msg=Msg(msg_type="stark_proofs", data=(fx, qx, f_proof, q_proof)),
+            msg=Msg(msg_type="stark_proofs", data=(tx, qx, t_proof, q_proof)),
         )
 
 
@@ -193,7 +193,7 @@ class Verifier(IStarkVerifier):
         assert (P - 1) % trace_len == 0
         assert (P - 1) % N == 0
 
-        # Constraint polynomial given a value y = f(x), c(y) must = 0
+        # Constraint polynomial given a value y = t(x), c(y) must = 0
         c: Polynomial = kwargs["constraint_poly"]
 
         # z(x) = (x - g^0)(x - g^1)...(x - g^(T-1)) = x^T - 1, where T = trace_len
@@ -211,7 +211,7 @@ class Verifier(IStarkVerifier):
         # Random challenges sent to prover for adjusting degree on quotient polynomial q(x)
         self.challenges: (int, int) | None = None
 
-        self.f_merkle_root: str | None = None
+        self.t_merkle_root: str | None = None
         self.q_merkle_root: str | None = None
 
         self.fri_verifier: fri.Verifier = fri.Verifier(
@@ -246,10 +246,10 @@ class Verifier(IStarkVerifier):
         chan.send(dst="prover", msg=Msg(msg_type="stark_degree_adj", data=(a, b)))
 
     def set_merkle_roots(self, merkle_roots: (str, str)):
-        (f_merkle_root, q_merkle_root) = merkle_roots
-        assert self.f_merkle_root is None
+        (t_merkle_root, q_merkle_root) = merkle_roots
+        assert self.t_merkle_root is None
         assert self.q_merkle_root is None
-        self.f_merkle_root = f_merkle_root
+        self.t_merkle_root = t_merkle_root
         self.q_merkle_root = q_merkle_root
 
     # Preliminary checks before queries
@@ -257,20 +257,20 @@ class Verifier(IStarkVerifier):
         assert self.q_merkle_root == self.fri_verifier.merkle_roots[0]
 
     def query(self, idx: int, chan: Channel):
-        (fx, qx, f_proof, q_proof) = chan.send(
+        (tx, qx, t_proof, q_proof) = chan.send(
             dst="prover", msg=Msg(msg_type="stark_prove", data=idx)
         )
-        self.verify(idx, fx, qx, f_proof, q_proof)
+        self.verify(idx, tx, qx, t_proof, q_proof)
 
-    def verify(self, idx: int, fx: F, qx: F, f_proof: list[str], q_proof: list[str]):
+    def verify(self, idx: int, tx: F, qx: F, t_proof: list[str], q_proof: list[str]):
         x = self.eval_domain[idx]
-        cx = self.c(fx)
+        cx = self.c(tx)
         zx = self.z(x)
         adjx = self.adj(x)
         assert qx * zx == cx * adjx
 
         assert merkle.verify(
-            f_proof, self.f_merkle_root, merkle.hash_leaf(str(fx)), idx
+            t_proof, self.t_merkle_root, merkle.hash_leaf(str(tx)), idx
         )
         assert merkle.verify(
             q_proof, self.q_merkle_root, merkle.hash_leaf(str(qx)), idx
