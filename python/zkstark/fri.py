@@ -52,6 +52,7 @@ class Prover(IFriProver):
            5.1 Split f[i](x) = f[i, even](x^2) + x * f[i, odd](x^2)
            5.2 Fold f[i + 1](x) = f[i, even](x) + B[i] * f[i, odd](x)
         6. Repeat 1 to 5 until the polynomial f[i] is reduced to a polynomial with degree 0
+        7. Send codeword of the final fold
         """
         assert len(self.merkle_roots) == 0
         assert len(self.codewords) == 0
@@ -68,19 +69,19 @@ class Prover(IFriProver):
             # Reed Solomon code
             self.codewords.append(codeword)
 
-            # Commit Merkle root
-            hs = [merkle.hash_leaf(str(c)) for c in codeword]
-            merkle_root = merkle.commit(hs)
-            self.hashes.append(hs)
-            self.merkle_roots.append(merkle_root)
-            chan.send(
-                dst="verifier",
-                msg=Msg(msg_type="fri_merkle_root", data=merkle_root),
-            )
-
             # Next loop
             n //= 2
             if n >= self.exp_factor:
+                # Commit Merkle root
+                hs = [merkle.hash_leaf(str(c)) for c in codeword]
+                merkle_root = merkle.commit(hs)
+                self.hashes.append(hs)
+                self.merkle_roots.append(merkle_root)
+                chan.send(
+                    dst="verifier",
+                    msg=Msg(msg_type="fri_merkle_root", data=merkle_root),
+                )
+
                 # Get random challenge
                 c = chan.send(dst="verifier", msg=Msg(msg_type="fri_challenge"))
                 self.challenges.append(self.wrap(c))
@@ -89,7 +90,7 @@ class Prover(IFriProver):
                 # f_odd(x^2) = (f(x) - f(-x)) / 2x
                 # f_fold(x^2) = f_even(x^2) + c * f_odd(x^2)
                 # Evaluations of f_fold(x^2)
-                folds = []
+                vals = []
                 assert len(Li) == 2 * n
                 for i in range(n):
                     x = Li[i]
@@ -98,11 +99,16 @@ class Prover(IFriProver):
                     f_even = (f_plus + f_minus) / 2
                     f_odd = (f_plus - f_minus) / (2 * x)
                     f_fold = f_even + c * f_odd
-                    folds.append(f_fold)
-                codeword = folds
+                    vals.append(f_fold)
+                codeword = vals
 
                 # L^(2^(i+1)) = [x^2 for x in L^(2^i)]
                 Li = [x * x for x in Li[:n]]
+            else:
+                chan.send(
+                    dst="verifier",
+                    msg=Msg(msg_type="fri_last_codeword", data=codeword),
+                )
 
     def prove(self, idx: int, chan: Channel):
         """
@@ -121,7 +127,6 @@ class Prover(IFriProver):
         6. Repeat 2 to 5 while the degree of polynomial f[i] > 0
         7. When degree of f[i] = 0,
            -  Verifier directly checks the codeword f[i](Li)
-           -  Calculates Merkle root from the codeword and checks with the committed Merkle root
         """
         i = 0
         n = self.N
@@ -159,7 +164,7 @@ class Prover(IFriProver):
 
         chan.send(
             dst="verifier",
-            msg=Msg(msg_type="fri_proofs", data=(vals, proofs, self.codewords[-1])),
+            msg=Msg(msg_type="fri_proofs", data=(vals, proofs)),
         )
 
 
@@ -196,11 +201,20 @@ class Verifier(IFriVerifier):
         self.eval_domain: list[int] = eval_domain
         self.merkle_roots: list[str] = []
         self.challenges: list[F] = []
+        self.last_codeword: list[F] = []
         # Function to wrap x into F
         self.wrap = lambda x: F(x, P)
 
     def push_merkle_root(self, val: str):
         self.merkle_roots.append(val)
+
+    def set_last_codeword(self, codeword: list[F]):
+        # Check last codeword length
+        # trace length t -> poly degree < t
+        # RS code length = n = t * exp_factor (here poly degree = 0 so t = 1)
+        assert len(codeword) == self.exp_factor
+        assert len(self.last_codeword) == 0
+        self.last_codeword = codeword
 
     def get_challenge(self, chan: Channel):
         c = fiat_shamir(str(self.merkle_roots))
@@ -208,10 +222,10 @@ class Verifier(IFriVerifier):
         chan.send(dst="prover", msg=Msg(msg_type="fri_challenge", data=c))
 
     def query(self, idx: int, chan: Channel):
-        (vals, proofs, codeword) = chan.send(
+        (vals, proofs) = chan.send(
             dst="prover", msg=Msg(msg_type="fri_prove", data=idx)
         )
-        self.verify(idx, vals, proofs, codeword)
+        self.verify(idx, vals, proofs)
 
     def verify(
         self,
@@ -221,21 +235,14 @@ class Verifier(IFriVerifier):
         vals: list[(F, F)],
         # Merkle proofs of (f[i](x), f[i](-x))
         proofs: list[(list[str], list[str])],
-        # Last codeword
-        codeword: list[F],
     ):
         """
         See Prover.prove
         """
         # Merkle root of the first codeword f[0](L) has no challenge
-        assert len(self.merkle_roots) == len(self.challenges) + 1
+        assert len(self.merkle_roots) == len(self.challenges)
 
-        # Last Merkle root is directly calculated from the provided codeword
-        assert len(vals) == len(proofs) == len(self.merkle_roots) - 1
-        # Check last codeword length
-        # trace length t -> poly degree < t
-        # RS code length = n = t * exp_factor (here poly degree = 0 so t = 1)
-        assert len(codeword) == self.exp_factor
+        assert len(vals) == len(proofs) == len(self.merkle_roots)
         assert idx < self.N
 
         i = 0
@@ -274,21 +281,15 @@ class Verifier(IFriVerifier):
 
         # Check last fold - last codeword must be an evaluation of a polynomial with
         # degree = 0 so all elements in the codeword must be the same values
-        assert fold == codeword[0]
-
-        # Check Merkle root
-        assert (
-            merkle.commit([merkle.hash_leaf(str(c)) for c in codeword])
-            == self.merkle_roots[-1]
-        )
+        assert fold == self.last_codeword[0]
 
         # Interpolate a polynomial and check that the degree = 0
         # (shift * w^i)^k = shift^k * w^(i*k)
         p = fft_poly.interp(
-            codeword,
+            self.last_codeword,
             field.generate(
                 pow(self.w, 2 ** i, self.P),
-                len(codeword),
+                len(self.last_codeword),
                 self.P,
             ),
             self.P,
@@ -296,7 +297,7 @@ class Verifier(IFriVerifier):
         )
         assert (
             p.degree() == 0
-        ), f"interpolated polynomial degree = {p.degree()} > max = 0"
+        ), f"interpolated polynomial degree = {p.degree()} > 0"
         assert (
-            p(codeword) == codeword
-        ), f"polynomial evaluation {p(codeword)} != {codeword}"
+            p(self.last_codeword) == self.last_codeword
+        ), f"polynomial evaluation {p(self.last_codeword)} != {self.last_codeword}"

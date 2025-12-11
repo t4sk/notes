@@ -7,13 +7,17 @@ from field import F
 # Interfaces
 class IFriProver(ABC):
     @abstractmethod
-    def prove(self, idx: int) -> (list[(F, F)], list[(list[str], list[str])], list[F]):
+    def prove(self, idx: int) -> (list[(F, F)], list[(list[str], list[str])]):
         pass
 
 
 class IFriVerifier(ABC):
     @abstractmethod
     def push_merkle_root(self, val: str):
+        pass
+
+    @abstractmethod
+    def set_last_codeword(self, codeword: list[F]):
         pass
 
     @abstractmethod
@@ -81,6 +85,8 @@ class Verifier:
                 self.inbox.append(msg)
             case "fri_merkle_root":
                 self.verifier.fri().push_merkle_root(msg.data)
+            case "fri_last_codeword":
+                self.verifier.fri().set_last_codeword(msg.data)
             case "fri_challenge":
                 self.verifier.fri().get_challenge(chan)
             case "fri_proofs":
