@@ -237,11 +237,9 @@ class Verifier(IFriVerifier):
         proofs: list[(list[str], list[str])],
     ):
         """
-        See Prover.prove
+        See comments in Prover.prove
         """
-        # Merkle root of the first codeword f[0](L) has no challenge
         assert len(self.merkle_roots) == len(self.challenges)
-
         assert len(vals) == len(proofs) == len(self.merkle_roots)
         assert idx < self.N
 
@@ -275,13 +273,11 @@ class Verifier(IFriVerifier):
             # Next loop
             n //= 2
             i += 1
-            if n > self.exp_factor:
-                x *= x
-                idx %= n
+            x *= x
+            idx %= n
 
-        # Check last fold - last codeword must be an evaluation of a polynomial with
-        # degree = 0 so all elements in the codeword must be the same values
-        assert fold == self.last_codeword[0]
+        # Check last fold
+        assert fold == self.last_codeword[idx]
 
         # Interpolate a polynomial and check that the degree = 0
         # (shift * w^i)^k = shift^k * w^(i*k)
