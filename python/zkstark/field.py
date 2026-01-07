@@ -155,6 +155,11 @@ def generate(g: int, n: int, p: int) -> list[int]:
 
 # Primitive Nth root of unity
 def get_primitive_root(g: int, n: int, p: int) -> int:
+    """
+    g = generator of F[P, *]
+    n = nth primitive root of unity
+    p = prime number P
+    """
     # F[P, *] = Multiplicative subgroup of F[P] = {1, 2, 3, ..., P - 1}
     # g = generator of F[P, *]
     # |F[P, *]| = P - 1
