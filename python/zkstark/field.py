@@ -136,7 +136,7 @@ def generate(g: int, n: int, p: int) -> list[int]:
     """
     g = generator of F[P, *]
     n = order of subgroup G to generate
-    p = prime number
+    p = prime number P
     """
     assert n <= p
 
@@ -156,6 +156,9 @@ def generate(g: int, n: int, p: int) -> list[int]:
 # Primitive Nth root of unity
 def get_primitive_root(g: int, n: int, p: int) -> int:
     # F[P, *] = Multiplicative subgroup of F[P] = {1, 2, 3, ..., P - 1}
-    # When k divides |F[P, *]|, g^k generates a group of size |F[P, *]| / k
-    # |F[P, *]| / k = n -> k = (P - 1) / n
-    return pow(g, (p - 1) // n, p)
+    # g = generator of F[P, *]
+    # |F[P, *]| = P - 1
+    # If k divides P - 1, then g^k generates a group of size (P - 1) / k
+    # (P - 1) / k = n -> k = (P - 1) / n
+    k = (p - 1) // n
+    return pow(g, k, p)

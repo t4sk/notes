@@ -45,9 +45,9 @@ class Prover(IStarkProver):
             intersec := set(eval_domain) & set(trace_eval_domain)
         ) == set(), f"eval domains not disjoint {intersec}"
 
-        # Let G = trace_eval_domain
+        # Let T = trace_eval_domain
         #     L = Nth roots of unity
-        # G and L are subgroups of F[P, *] -> |G| and |L| divides |F[P, *]| = P - 1
+        # T and L are subgroups of F[P, *] -> |T| and |L| divides |F[P, *]| = P - 1
         assert (P - 1) % trace_len == 0
         assert (P - 1) % N == 0
 
@@ -187,9 +187,9 @@ class Verifier(IStarkVerifier):
         # trace_eval_domain and eval_domain are disjoint
         eval_domain = [(g * wi) % P for wi in roots]
 
-        # Let G = trace_eval_domain
+        # Let T = trace_eval_domain
         #     L = Nth roots of unity
-        # G and L are subgroups of F[P, *] -> |G| and |L| divides |F[P, *]| = P - 1
+        # T and L are subgroups of F[P, *] -> |T| and |L| divides |F[P, *]| = P - 1
         assert (P - 1) % trace_len == 0
         assert (P - 1) % N == 0
 
