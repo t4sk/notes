@@ -16,11 +16,12 @@ class Prover(IStarkProver):
         # generator of F[P, *] = multiplicative subgroup of prime field P
         g: int = kwargs["g"]
 
+        # TODO: build trace_domain here?
         # Trace polynomial
         t: Polynomial = kwargs["trace_poly"]
         # Trace evaluation domain
-        trace_eval_domain: list[int] = kwargs["trace_eval_domain"]
-        trace_len = len(trace_eval_domain)
+        trace_domain: list[int] = kwargs["trace_domain"]
+        trace_len = len(trace_domain)
         assert is_pow2(trace_len)
         assert t.degree() < trace_len
 
@@ -39,13 +40,13 @@ class Prover(IStarkProver):
         assert len(roots) == N
 
         # FRI and STARK evaluation domain are shifted by g so that
-        # trace_eval_domain and eval_domain are disjoint
+        # trace_domain and eval_domain are disjoint
         eval_domain = [(g * wi) % P for wi in roots]
         assert (
-            intersec := set(eval_domain) & set(trace_eval_domain)
+            intersec := set(eval_domain) & set(trace_domain)
         ) == set(), f"eval domains not disjoint {intersec}"
 
-        # Let T = trace_eval_domain
+        # Let T = trace_domain
         #     L = Nth roots of unity
         # T and L are subgroups of F[P, *] -> |T| and |L| divides |F[P, *]| = P - 1
         assert (P - 1) % trace_len == 0
@@ -184,10 +185,10 @@ class Verifier(IStarkVerifier):
         assert len(roots) == N
 
         # FRI and STARK evaluation domain are shifted by g so that
-        # trace_eval_domain and eval_domain are disjoint
+        # trace_domain and eval_domain are disjoint
         eval_domain = [(g * wi) % P for wi in roots]
 
-        # Let T = trace_eval_domain
+        # Let T = trace_domain
         #     L = Nth roots of unity
         # T and L are subgroups of F[P, *] -> |T| and |L| divides |F[P, *]| = P - 1
         assert (P - 1) % trace_len == 0
