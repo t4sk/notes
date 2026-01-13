@@ -1,5 +1,10 @@
 # ZKSTARK
 
+- zk-stark-overview
+- comp-to-poly
+- trace-poly
+- trace-domain
+
 - Big picture
 ```
 Code execution (trace + constraints) -> polynomial -> prover commits to poly, verifier queries properties about the poly
@@ -61,7 +66,7 @@ TODO: cheat example?
 TODO: low degree testing
 TODO: quotienting?
 
-- [Graph - finite field, group, subgroup, coset](https://www.desmos.com/calculator/fadywrc9h5) 
+- [Graph - finite field, group, subgroup, coset](https://www.desmos.com/calculator/fadywrc9h5)
 
 
 
