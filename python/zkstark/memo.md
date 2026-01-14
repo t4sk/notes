@@ -4,6 +4,7 @@
 - comp-to-poly
 - trace-poly
 - trace-domain
+- lagrange polynomial
 
 - Big picture
 ```
