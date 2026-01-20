@@ -5,6 +5,8 @@
 - trace-poly
 - trace-domain
 - lagrange polynomial
+- quotienting
+- vanishing polynomial
 
 - Big picture
 ```
