@@ -7,6 +7,7 @@
 - lagrange polynomial
 - quotienting
 - vanishing polynomial
+- composition polynomial
 
 - Big picture
 ```
