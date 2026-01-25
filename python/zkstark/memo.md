@@ -8,6 +8,8 @@
 - quotienting
 - vanishing polynomial
 - composition polynomial
+- checks
+- mask
 
 - Big picture
 ```
