@@ -10,6 +10,8 @@
 - composition polynomial
 - checks
 - mask
+- eval domain
+- why few checks on pcomp?
 
 - Big picture
 ```
