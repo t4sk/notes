@@ -12,6 +12,8 @@
 - mask
 - eval domain
 - why few checks on pcomp?
+- hamming dist
+- rs code
 
 - Big picture
 ```
