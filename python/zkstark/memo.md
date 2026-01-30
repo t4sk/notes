@@ -14,6 +14,7 @@
 - why few checks on pcomp?
 - hamming dist
 - rs code
+- rs code + zkstark
 
 - Big picture
 ```
