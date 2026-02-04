@@ -15,6 +15,7 @@
 - hamming dist
 - rs code
 - rs code + zkstark
+- hamming dist of rational func
 
 - Big picture
 ```
