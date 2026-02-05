@@ -32,3 +32,4 @@ contract V2 {
         bool zeroForOne
     ) external returns (uint256 amountOut) {}
 }
+
