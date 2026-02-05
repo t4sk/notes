@@ -18,6 +18,7 @@ interface IUniswapV3Pool {
         uint32 secondsOutside;
         bool initialized;
     }
+
     function ticks(int24 tick) external view returns (Tick memory);
 
     struct Slot0 {
@@ -40,26 +41,6 @@ interface IUniswapV3Pool {
 
     function slot0() external view returns (Slot0 memory);
 
-    function mint(
-        address recipient,
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 amount,
-        bytes calldata data
-    ) external returns (uint256 amount0, uint256 amount1);
-
-    function collect(
-        address recipient,
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 amount0Requested,
-        uint128 amount1Requested
-    ) external returns (uint128 amount0, uint128 amount1);
-
-    function burn(int24 tickLower, int24 tickUpper, uint128 amount)
-        external
-        returns (uint256 amount0, uint256 amount1);
-
     function swap(
         address recipient,
         bool zeroForOne,
@@ -67,19 +48,4 @@ interface IUniswapV3Pool {
         uint160 sqrtPriceLimitX96,
         bytes calldata data
     ) external returns (int256 amount0, int256 amount1);
-
-    function flash(
-        address recipient,
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external;
-
-    function observe(uint32[] calldata secondsAgos)
-        external
-        view
-        returns (
-            int56[] memory tickCumulatives,
-            uint160[] memory secondsPerLiquidityCumulativeX128s
-        );
 }
