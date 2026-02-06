@@ -2,6 +2,7 @@
 pragma solidity 0.8.33;
 
 import {IERC20} from "./interfaces/IERC20.sol";
+import {IPool} from "./interfaces/IPool.sol";
 import {IUniswapV3Pool} from "./interfaces/uni-v3/IUniswapV3Pool.sol";
 import {
     IUniswapV3SwapCallback
@@ -9,10 +10,14 @@ import {
 import {TickMath} from "./lib/TickMath.sol";
 import {TickLiquidity} from "./lib/TickLiquidity.sol";
 
-contract V3 is IUniswapV3SwapCallback {
+contract V3 is IUniswapV3SwapCallback, IPool {
     function getFee(address pool) external view returns (uint256) {
         // 1e6
         return IUniswapV3Pool(pool).fee() * 1e12;
+    }
+
+    function getCurrentTick(address pool) external view returns (int24) {
+        return IUniswapV3Pool(pool).slot0().tick;
     }
 
     function getLiquidityRange(address pool, int24 tick, bool asc)
@@ -20,13 +25,13 @@ contract V3 is IUniswapV3SwapCallback {
         view
         returns (int24 tickLo, int24 tickHi, uint256 liquidity)
     {
-        IUniswapV3Pool pool = IUniswapV3Pool(pool);
-        int24 tickSpacing = pool.tickSpacing();
+        int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
 
         int24 compressed = tick / tickSpacing;
         // Round towards negative infinity
         if (tick < 0 && tick % tickSpacing != 0) compressed--;
 
+        /*
         if (asc) {
             (tickLo, tickHi, liquidity) =
                 TickLiquidity.findNextInitializedTickAbove(
@@ -38,6 +43,7 @@ contract V3 is IUniswapV3SwapCallback {
                     pool, compressed, tickSpacing
                 );
         }
+        */
     }
 
     function swap(

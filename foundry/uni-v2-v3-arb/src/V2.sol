@@ -3,23 +3,35 @@ pragma solidity 0.8.33;
 
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IUniswapV2Pair} from "./interfaces/uni-v2/IUniswapV2Pair.sol";
-import {Math} from "./lib/Math.sol";
+import {IPool} from "./interfaces/IPool.sol";
+import {Math, Q96} from "./lib/Math.sol";
+import {FullMath} from "./lib/FullMath.sol";
+import {TickMath} from "./lib/TickMath.sol";
 
-contract V2 {
-    function getFee() external view returns (uint256) {
+contract V2 is IPool {
+    function getFee(address pool) external view returns (uint256) {
         // 0.3%
         return 0.003 * 1e18;
     }
 
-    function getLiquidityRange(address pool, int256 tick, bool asc)
+    function getCurrentTick(address pool) external view returns (int24) {
+        (uint112 x, uint112 y,) = IUniswapV2Pair(pool).getReserves();
+        // sqrt(y / x) * Q96
+        uint256 ratioX96 = FullMath.mulDiv(y, Q96, x);
+        uint256 sqrtPriceX96 = Math.sqrt(ratioX96) << 48;
+        require(sqrtPriceX96 <= type(uint160).max);
+        return TickMath.getTickAtSqrtRatio(uint160(sqrtPriceX96));
+    }
+
+    function getLiquidityRange(address pool, int24 tick, bool asc)
         external
         view
-        returns (int256 tickLo, int256 tickHi, uint256 liquidity)
+        returns (int24 tickLo, int24 tickHi, uint256 liquidity)
     {
         (uint112 x, uint112 y,) = IUniswapV2Pair(pool).getReserves();
 
-        tickLo = type(int256).min;
-        tickHi = type(int256).max;
+        tickLo = type(int24).min;
+        tickHi = type(int24).max;
         liquidity = Math.sqrt(uint256(x) * uint256(y));
     }
 

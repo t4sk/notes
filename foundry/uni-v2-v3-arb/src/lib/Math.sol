@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.33;
 
+uint256 constant Q96 = 1 << 96;
+
 library Math {
     function sqrt(uint256 y) internal pure returns (uint256 z) {
         if (y > 3) {
