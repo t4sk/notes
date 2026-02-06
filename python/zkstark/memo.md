@@ -16,6 +16,8 @@
 - rs code
 - rs code + zkstark
 - hamming dist of rational func
+- dist of q to `RS[F, L, K]` and `RS[F, L, D]`
+- apply avg dist amp
 
 - Big picture
 ```
