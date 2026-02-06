@@ -1,6 +1,6 @@
 # ZKSTARK
 
-- zk-stark-overview
+- zk-stark-overview (TODO: update)
 - comp-to-poly
 - trace-poly
 - trace-domain
