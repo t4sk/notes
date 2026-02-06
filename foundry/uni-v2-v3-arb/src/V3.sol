@@ -25,13 +25,17 @@ contract V3 is IUniswapV3SwapCallback, IPool {
         view
         returns (int24 tickLo, int24 tickHi, uint256 liquidity)
     {
+        /*
+           asc -> tick <= tickLo <= tickHi
+           des -> tickLo <= tickHi <= tick
+        */
+        /*
         int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
 
         int24 compressed = tick / tickSpacing;
         // Round towards negative infinity
         if (tick < 0 && tick % tickSpacing != 0) compressed--;
 
-        /*
         if (asc) {
             (tickLo, tickHi, liquidity) =
                 TickLiquidity.findNextInitializedTickAbove(

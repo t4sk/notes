@@ -2,72 +2,55 @@
 pragma solidity 0.8.33;
 
 import {IUniswapV3Pool} from "../interfaces/uni-v3/IUniswapV3Pool.sol";
-import {BitMath} from "./BitMath.sol";
+import {TickBitmap} from "./TickBitmap.sol";
 
 library TickLiquidity {
-    function position(int24 tick)
+    function findNextLiquidityRange(IUniswapV3Pool pool, int24 tick, bool asc)
         internal
-        pure
-        returns (int16 wordPos, uint8 bitPos)
+        view
+        returns (int24 tickLo, int24 tickHi, int128 liquidityNet)
     {
-        wordPos = int16(tick >> 8);
-        bitPos = uint8(int8(tick % 256));
+        // TODO: ticks at boundry (asc and lte)
+        int24 tickSpacing = pool.tickSpacing();
+
+        int24 t0 = findInitializedTick(pool, tick, tickSpacing, !asc);
+
+        int24 next = asc ? t0 + tickSpacing : t0 - tickSpacing;
+        int24 t1 = findInitializedTick(pool, next, tickSpacing, !asc);
+
+        // TODO: check code
+        if (asc) {
+            tickLo = t0;
+            tickHi = t1;
+        } else {
+            tickLo = t1;
+            tickHi = t0;
+        }
+
+        // liquidityNet at tickLo = liquidity added when crossing upward
+        IUniswapV3Pool.Tick memory tickInfo = pool.ticks(tickLo);
+        return (tickLo, tickHi, tickInfo.liquidityNet);
     }
 
-    function nextInitializedTickWithinOneWord(
+    function findInitializedTick(
         IUniswapV3Pool pool,
         int24 tick,
         int24 tickSpacing,
         bool lte
-    ) internal view returns (int24 next, bool initialized) {
-        int24 compressed = tick / tickSpacing;
-        if (tick < 0 && tick % tickSpacing != 0) compressed--; // round towards negative infinity
+    ) internal view returns (int24) {
+        uint256 i = 0;
+        while (true) {
+            require(i < 1000, "max loop");
 
-        if (lte) {
-            (int16 wordPos, uint8 bitPos) = position(compressed);
-            // all the 1s at or to the right of the current bitPos
-            uint256 mask = (1 << bitPos) - 1 + (1 << bitPos);
-            uint256 masked = pool.tickBitmap(wordPos) & mask;
+            (int24 next, bool initialized) = TickBitmap.nextInitializedTickWithinOneWord(
+                pool, tick, tickSpacing, lte
+            );
 
-            // if there are no initialized ticks to the right of or at the current tick, return rightmost in the word
-            initialized = masked != 0;
-            // overflow/underflow is possible, but prevented externally by limiting both tickSpacing and tick
-            next = initialized
-                ? (compressed
-                        - int24(
-                            uint24(bitPos - BitMath.mostSignificantBit(masked))
-                        )) * tickSpacing
-                : (compressed - int24(uint24(bitPos))) * tickSpacing;
-        } else {
-            // start from the word of the next tick, since the current tick state doesn't matter
-            (int16 wordPos, uint8 bitPos) = position(compressed + 1);
-            // all the 1s at or to the left of the bitPos
-            uint256 mask = ~((1 << bitPos) - 1);
-            uint256 masked = pool.tickBitmap(wordPos) & mask;
+            if (initialized) return next;
 
-            // if there are no initialized ticks to the left of the current tick, return leftmost in the word
-            initialized = masked != 0;
-            // overflow/underflow is possible, but prevented externally by limiting both tickSpacing and tick
-            next = initialized
-                ? (compressed
-                        + 1
-                        + int24(
-                            uint24(BitMath.leastSignificantBit(masked) - bitPos)
-                        )) * tickSpacing
-                : (compressed + 1 + int24(uint24(type(uint8).max - bitPos)))
-                    * tickSpacing;
+            // Not found in this word, move to next word
+            tick = lte ? next - tickSpacing : next + tickSpacing;
+            i++;
         }
     }
-
-    /*
-    function findNextInitializedTickAbove(
-        IUniswapV3Pool pool,
-        int24 tick,
-        int24 tickSpacing,
-        bool lte
-    ) internal view returns (int24 tickLo, int24 tickHi, uint256 liquidity) {
-        (int24 next, bool initialized) =
-            nextInitializedTickWithinOneWord(pool, tick, tickSpacing, lte);
-    }
-    */
 }
