@@ -5,6 +5,7 @@ interface IPool {
     function pool() external view returns (address);
     function getFee() external view returns (uint256);
     function getCurrentTick() external view returns (int24);
+    function getCurrentLiquidity() external view returns (uint128);
     function getLiquidityRange(int24 tick, bool lte)
         external
         view

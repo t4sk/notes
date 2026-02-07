@@ -26,6 +26,10 @@ contract V3 is IUniswapV3SwapCallback, IPool {
         return IUniswapV3Pool(pool).slot0().tick;
     }
 
+    function getCurrentLiquidity() external view returns (uint128) {
+        return IUniswapV3Pool(pool).liquidity();
+    }
+
     function getLiquidityRange(int24 tick, bool lte)
         external
         view

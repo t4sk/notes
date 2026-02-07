@@ -31,6 +31,16 @@ contract V2 is IPool {
         return TickMath.getTickAtSqrtRatio(uint160(sqrtPriceX96));
     }
 
+    function getCurrentLiquidity() external view returns (uint128) {
+        (uint112 x, uint112 y,) = pair.getReserves();
+        uint256 liquidity = Math.sqrt(uint256(x) * uint256(y));
+        require(
+            liquidity <= uint256(type(uint128).max),
+            "liquidity > max uint128"
+        );
+        return uint128(liquidity);
+    }
+
     function getLiquidityRange(int24 tick, bool lte)
         external
         view
