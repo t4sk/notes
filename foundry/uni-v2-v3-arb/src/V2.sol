@@ -17,6 +17,14 @@ contract V2 is IPool {
         pair = IUniswapV2Pair(pool);
     }
 
+    function token0() external view returns (address) {
+        return pair.token0();
+    }
+
+    function token1() external view returns (address) {
+        return pair.token1();
+    }
+
     function getFee() external view returns (uint256) {
         // 0.3%
         return 0.003 * 1e18;
@@ -57,13 +65,8 @@ contract V2 is IPool {
             tickLo = tick + 1;
             tickHi = type(int24).max;
         }
-
-        uint256 liquidity = Math.sqrt(uint256(x) * uint256(y));
-        require(
-            liquidity <= uint256(uint128(type(int128).max)),
-            "liquidity > max int128"
-        );
-        liquidityNet = int128(uint128(liquidity));
+        // Liquidity is constant
+        liquidityNet = 0;
     }
 
     function swap(

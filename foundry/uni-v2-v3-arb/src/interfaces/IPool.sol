@@ -2,6 +2,8 @@
 pragma solidity 0.8.33;
 
 interface IPool {
+    function token0() external view returns (address);
+    function token1() external view returns (address);
     function pool() external view returns (address);
     function getFee() external view returns (uint256);
     function getCurrentTick() external view returns (int24);

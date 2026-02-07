@@ -17,6 +17,14 @@ contract V3 is IUniswapV3SwapCallback, IPool {
         pool = _pool;
     }
 
+    function token0() external view returns (address) {
+        return IUniswapV3Pool(pool).token0();
+    }
+
+    function token1() external view returns (address) {
+        return IUniswapV3Pool(pool).token1();
+    }
+
     function getFee() external view returns (uint256) {
         // 1e6
         return IUniswapV3Pool(pool).fee() * 1e12;

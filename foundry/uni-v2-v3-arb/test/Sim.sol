@@ -3,8 +3,12 @@ pragma solidity 0.8.33;
 
 import {Test, console} from "forge-std/Test.sol";
 import {IPool} from "../src/interfaces/IPool.sol";
+import {IERC20} from "../src/interfaces/IERC20.sol";
 import {V2} from "../src/V2.sol";
 import {V3} from "../src/V3.sol";
+import {Math, Q96} from "../src/lib/Math.sol";
+import {FullMath} from "../src/lib/FullMath.sol";
+import {TickMath} from "../src/lib/TickMath.sol";
 import {
     UNI_V3_POOL_USDC_WETH_500,
     UNI_V3_POOL_USDC_WETH_3000
@@ -21,19 +25,59 @@ contract Sim is Test {
     address constant POOL_B = UNI_V3_POOL_USDC_WETH_3000;
     IPool pool_a;
     IPool pool_b;
+    IERC20 token0;
+    IERC20 token1;
 
     function setUp() public {
         pool_a = IPool(address(new V3(POOL_A)));
         pool_b = IPool(address(new V3(POOL_B)));
 
+        require(pool_a.token0() == pool_b.token0(), "token 0");
+        require(pool_a.token1() == pool_b.token1(), "token 1");
+
+        token0 = IERC20(pool_a.token0());
+        token1 = IERC20(pool_a.token1());
+
         int24 tick_a = pool_a.getCurrentTick();
         int24 tick_b = pool_b.getCurrentTick();
+
+        if (tick_b < tick_a) {
+            (tick_a, tick_b) = (tick_b, tick_a);
+            (pool_a, pool_b) = (pool_b, pool_a);
+        }
+
+        // TODO: swap to create arbitrage opportunity
 
         uint128 liq_a = pool_a.getCurrentLiquidity();
         uint128 liq_b = pool_b.getCurrentLiquidity();
 
-        console.log("tick", tick_a);
-        console.log("liq", liq_a);
+        console.log("tick a:", tick_a);
+        console.log("tick b:", tick_b);
+
+        // Increase
+        int128 liq = int128(liq_a);
+        int24 tick = tick_a;
+        while (tick <= tick_a + 1000) {
+            (int24 lo, int24 hi, int128 net) = pool_a.getLiquidityRange(tick - 1, false);
+
+            if (tick == tick_a) {
+                console.log("lo:", tick);
+                console.log("hi:", lo);
+                console.log("net:", uint256(0));
+                console.log("liq:", liq);
+            }
+
+            tick = hi;
+            liq += net;
+
+            // uint160 s = TickMath.getSqrtRatioAtTick(tick);
+            // TODO: adjust token decimals
+            // console.log("p:", 1e12 / (s / Q96 * s / Q96));
+            console.log("lo:", lo);
+            console.log("hi:", hi);
+            console.log("net:", net);
+            console.log("liq:", liq);
+        }
     }
 
     function test() public {
