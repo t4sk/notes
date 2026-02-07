@@ -9,13 +9,21 @@ import {FullMath} from "./lib/FullMath.sol";
 import {TickMath} from "./lib/TickMath.sol";
 
 contract V2 is IPool {
-    function getFee(address pool) external view returns (uint256) {
+    address immutable public pool;
+    IUniswapV2Pair immutable public pair;
+
+    constructor(address _pool) {
+        pool = _pool;
+        pair = IUniswapV2Pair(pool);
+    }
+
+    function getFee() external view returns (uint256) {
         // 0.3%
         return 0.003 * 1e18;
     }
 
-    function getCurrentTick(address pool) external view returns (int24) {
-        (uint112 x, uint112 y,) = IUniswapV2Pair(pool).getReserves();
+    function getCurrentTick() external view returns (int24) {
+        (uint112 x, uint112 y,) = pair.getReserves();
         // sqrt(y / x) * Q96
         uint256 ratioX96 = FullMath.mulDiv(y, Q96, x);
         uint256 sqrtPriceX96 = Math.sqrt(ratioX96) << 48;
@@ -23,12 +31,12 @@ contract V2 is IPool {
         return TickMath.getTickAtSqrtRatio(uint160(sqrtPriceX96));
     }
 
-    function getLiquidityRange(address pool, int24 tick, bool lte)
+    function getLiquidityRange(int24 tick, bool lte)
         external
         view
         returns (int24 tickLo, int24 tickHi, int128 liquidityNet)
     {
-        (uint112 x, uint112 y,) = IUniswapV2Pair(pool).getReserves();
+        (uint112 x, uint112 y,) = pair.getReserves();
 
         // lte -> tickLo < tickHi <= tick
         // !lte -> tick < tickLo < tickHi
@@ -49,12 +57,10 @@ contract V2 is IPool {
     }
 
     function swap(
-        address pool,
         uint256 amtIn,
         uint256 minAmtOut,
         bool zeroForOne
     ) external returns (uint256 amtOut) {
-        IUniswapV2Pair pair = IUniswapV2Pair(pool);
 
         (uint112 x, uint112 y,) = pair.getReserves();
 

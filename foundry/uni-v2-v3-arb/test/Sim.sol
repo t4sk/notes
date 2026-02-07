@@ -2,6 +2,7 @@
 pragma solidity 0.8.33;
 
 import {Test, console} from "forge-std/Test.sol";
+import {IPool} from "../src/interfaces/IPool.sol";
 
 // TODO:
 // - Collect pool info: list of (tick lo, tick hi, liquidity)
@@ -9,5 +10,6 @@ import {Test, console} from "forge-std/Test.sol";
 // - Run python script
 // - Cast python script results
 // - swap v2, v3 <-> v2, v3
-contract Sim is Test {}
+contract Sim is Test {
+}
 

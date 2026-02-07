@@ -11,16 +11,22 @@ import {TickMath} from "./lib/TickMath.sol";
 import {TickLiquidity} from "./lib/TickLiquidity.sol";
 
 contract V3 is IUniswapV3SwapCallback, IPool {
-    function getFee(address pool) external view returns (uint256) {
+    address immutable public pool;
+
+    constructor(address _pool) {
+        pool = _pool;
+    }
+
+    function getFee() external view returns (uint256) {
         // 1e6
         return IUniswapV3Pool(pool).fee() * 1e12;
     }
 
-    function getCurrentTick(address pool) external view returns (int24) {
+    function getCurrentTick() external view returns (int24) {
         return IUniswapV3Pool(pool).slot0().tick;
     }
 
-    function getLiquidityRange(address pool, int24 tick, bool lte)
+    function getLiquidityRange(int24 tick, bool lte)
         external
         view
         returns (int24 tickLo, int24 tickHi, int128 liquidityNet)
@@ -29,7 +35,6 @@ contract V3 is IUniswapV3SwapCallback, IPool {
     }
 
     function swap(
-        address pool,
         uint256 amtIn,
         uint256 minAmtOut,
         bool zeroForOne
@@ -42,7 +47,7 @@ contract V3 is IUniswapV3SwapCallback, IPool {
                 zeroForOne
                     ? TickMath.MIN_SQRT_RATIO + 1
                     : TickMath.MAX_SQRT_RATIO - 1,
-                abi.encode(pool, msg.sender)
+                abi.encode(msg.sender)
             );
 
         amtOut = zeroForOne ? uint256(-amt1) : uint256(-amt0);
@@ -54,7 +59,7 @@ contract V3 is IUniswapV3SwapCallback, IPool {
         int256 delta1,
         bytes calldata data
     ) external {
-        (address pool, address payer) = abi.decode(data, (address, address));
+        (address payer) = abi.decode(data, (address));
 
         if (delta0 > 0) {
             IERC20(IUniswapV3Pool(msg.sender).token0())
