@@ -5,7 +5,10 @@ import {IUniswapV3Pool} from "../interfaces/uni-v3/IUniswapV3Pool.sol";
 import {TickBitmap} from "./TickBitmap.sol";
 
 library TickLiquidity {
-    function findNextLiquidityRange(IUniswapV3Pool pool, int24 tick, bool lte)
+    // Find liquidity range that
+    // lte -> tickLo < tickHi <= tick
+    // !lte -> tick < tickLo < tickHi
+    function findLiquidityRange(IUniswapV3Pool pool, int24 tick, bool lte)
         internal
         view
         returns (int24 tickLo, int24 tickHi, int128 liquidityNet)

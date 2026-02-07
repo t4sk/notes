@@ -4,7 +4,7 @@ pragma solidity 0.8.33;
 interface IPool {
     function getFee(address pool) external view returns (uint256);
     function getCurrentTick(address pool) external view returns (int24);
-    function getLiquidityRange(address pool, int24 tick, bool asc)
+    function getLiquidityRange(address pool, int24 tick, bool lte)
         external
         view
         returns (int24 tickLo, int24 tickHi, int128 liquidityNet);
