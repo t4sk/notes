@@ -7,7 +7,7 @@ interface IPool {
     function getLiquidityRange(address pool, int24 tick, bool asc)
         external
         view
-        returns (int24 tickLo, int24 tickHi, uint256 liquidity);
+        returns (int24 tickLo, int24 tickHi, int128 liquidityNet);
     function swap(
         address pool,
         uint256 amtIn,

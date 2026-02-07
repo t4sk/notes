@@ -5,26 +5,24 @@ import {IUniswapV3Pool} from "../interfaces/uni-v3/IUniswapV3Pool.sol";
 import {TickBitmap} from "./TickBitmap.sol";
 
 library TickLiquidity {
-    function findNextLiquidityRange(IUniswapV3Pool pool, int24 tick, bool asc)
+    function findNextLiquidityRange(IUniswapV3Pool pool, int24 tick, bool lte)
         internal
         view
         returns (int24 tickLo, int24 tickHi, int128 liquidityNet)
     {
-        // TODO: ticks at boundry (asc and lte)
         int24 tickSpacing = pool.tickSpacing();
 
-        int24 t0 = findInitializedTick(pool, tick, tickSpacing, !asc);
+        int24 t0 = findInitializedTick(pool, tick, tickSpacing, lte);
 
-        int24 next = asc ? t0 + tickSpacing : t0 - tickSpacing;
-        int24 t1 = findInitializedTick(pool, next, tickSpacing, !asc);
+        int24 next = lte ? t0 - tickSpacing : t0 + tickSpacing;
+        int24 t1 = findInitializedTick(pool, next, tickSpacing, lte);
 
-        // TODO: check code
-        if (asc) {
-            tickLo = t0;
-            tickHi = t1;
-        } else {
+        if (lte) {
             tickLo = t1;
             tickHi = t0;
+        } else {
+            tickLo = t0;
+            tickHi = t1;
         }
 
         // liquidityNet at tickLo = liquidity added when crossing upward
@@ -41,6 +39,7 @@ library TickLiquidity {
         uint256 i = 0;
         while (true) {
             require(i < 1000, "max loop");
+            i++;
 
             (int24 next, bool initialized) = TickBitmap.nextInitializedTickWithinOneWord(
                 pool, tick, tickSpacing, lte
@@ -50,7 +49,6 @@ library TickLiquidity {
 
             // Not found in this word, move to next word
             tick = lte ? next - tickSpacing : next + tickSpacing;
-            i++;
         }
     }
 }

@@ -40,6 +40,7 @@ interface IUniswapV3Pool {
     }
 
     function slot0() external view returns (Slot0 memory);
+    function liquidity() external view returns (uint128);
 
     function swap(
         address recipient,

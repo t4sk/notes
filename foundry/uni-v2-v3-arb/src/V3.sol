@@ -23,14 +23,14 @@ contract V3 is IUniswapV3SwapCallback, IPool {
     function getLiquidityRange(address pool, int24 tick, bool asc)
         external
         view
-        returns (int24 tickLo, int24 tickHi, uint256 liquidity)
+        returns (int24 tickLo, int24 tickHi, int128 liquidityNet)
     {
-        /*
-           asc -> tick <= tickLo <= tickHi
-           des -> tickLo <= tickHi <= tick
-        */
-        /*
+        // asc -> tick <= tickLo <= tickHi
+        // des -> tickLo <= tickHi <= tick
         int24 tickSpacing = IUniswapV3Pool(pool).tickSpacing();
+        uint128 liquidity = IUniswapV3Pool(pool).liquidity();
+
+        /*
 
         int24 compressed = tick / tickSpacing;
         // Round towards negative infinity

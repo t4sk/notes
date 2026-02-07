@@ -26,13 +26,15 @@ contract V2 is IPool {
     function getLiquidityRange(address pool, int24 tick, bool asc)
         external
         view
-        returns (int24 tickLo, int24 tickHi, uint256 liquidity)
+        returns (int24 tickLo, int24 tickHi, int128 liquidityNet)
     {
         (uint112 x, uint112 y,) = IUniswapV2Pair(pool).getReserves();
 
         tickLo = type(int24).min;
         tickHi = type(int24).max;
-        liquidity = Math.sqrt(uint256(x) * uint256(y));
+        uint256 liquidity = Math.sqrt(uint256(x) * uint256(y));
+        require(liquidity <= uint256(uint128(type(int128).max)), "liquidity > max int128");
+        liquidityNet = int128(uint128(liquidity));
     }
 
     function swap(
