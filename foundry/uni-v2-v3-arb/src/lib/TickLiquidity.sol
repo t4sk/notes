@@ -16,17 +16,20 @@ library TickLiquidity {
         int24 tickSpacing = pool.tickSpacing();
 
         int24 t0 = findInitializedTick(pool, tick, tickSpacing, lte);
-
-        int24 next = lte ? t0 - tickSpacing : t0 + tickSpacing;
+        int24 next = lte ? t0 - tickSpacing : t0;
         int24 t1 = findInitializedTick(pool, next, tickSpacing, lte);
 
         if (lte) {
             tickLo = t1;
             tickHi = t0;
+            require(tickHi <= tick, "tick hi > tick");
         } else {
             tickLo = t0;
             tickHi = t1;
+            require(tick < tickLo, "tick lo <= tick");
         }
+
+        require(tickLo < tickHi, "tick lo >= tick hi");
 
         // liquidityNet at tickLo = liquidity added when crossing upward
         IUniswapV3Pool.Tick memory tickInfo = pool.ticks(tickLo);
