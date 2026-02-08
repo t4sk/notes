@@ -11,7 +11,7 @@ import {TickMath} from "./lib/TickMath.sol";
 import {TickLiquidity} from "./lib/TickLiquidity.sol";
 
 contract V3 is IUniswapV3SwapCallback, IPool {
-    address immutable public pool;
+    address public immutable pool;
 
     constructor(address _pool) {
         pool = _pool;
@@ -46,11 +46,10 @@ contract V3 is IUniswapV3SwapCallback, IPool {
         return TickLiquidity.findLiquidityRange(IUniswapV3Pool(pool), tick, lte);
     }
 
-    function swap(
-        uint256 amtIn,
-        uint256 minAmtOut,
-        bool zeroForOne
-    ) external returns (uint256 amtOut) {
+    function swap(uint256 amtIn, uint256 minAmtOut, bool zeroForOne)
+        external
+        returns (uint256 amtOut)
+    {
         (int256 amt0, int256 amt1) = IUniswapV3Pool(pool)
             .swap(
                 msg.sender,

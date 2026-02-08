@@ -12,10 +12,8 @@ interface IPool {
         external
         view
         returns (int24 tickLo, int24 tickHi, int128 liquidityNet);
-    function swap(
-        uint256 amtIn,
-        uint256 minAmtOut,
-        bool zeroForOne
-    ) external returns (uint256 amtOut);
+    function swap(uint256 amtIn, uint256 minAmtOut, bool zeroForOne)
+        external
+        returns (uint256 amtOut);
 }
 

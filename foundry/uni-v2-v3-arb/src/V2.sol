@@ -9,8 +9,8 @@ import {FullMath} from "./lib/FullMath.sol";
 import {TickMath} from "./lib/TickMath.sol";
 
 contract V2 is IPool {
-    address immutable public pool;
-    IUniswapV2Pair immutable public pair;
+    address public immutable pool;
+    IUniswapV2Pair public immutable pair;
 
     constructor(address _pool) {
         pool = _pool;
@@ -43,8 +43,7 @@ contract V2 is IPool {
         (uint112 x, uint112 y,) = pair.getReserves();
         uint256 liquidity = Math.sqrt(uint256(x) * uint256(y));
         require(
-            liquidity <= uint256(type(uint128).max),
-            "liquidity > max uint128"
+            liquidity <= uint256(type(uint128).max), "liquidity > max uint128"
         );
         return uint128(liquidity);
     }
@@ -69,12 +68,10 @@ contract V2 is IPool {
         liquidityNet = 0;
     }
 
-    function swap(
-        uint256 amtIn,
-        uint256 minAmtOut,
-        bool zeroForOne
-    ) external returns (uint256 amtOut) {
-
+    function swap(uint256 amtIn, uint256 minAmtOut, bool zeroForOne)
+        external
+        returns (uint256 amtOut)
+    {
         (uint112 x, uint112 y,) = pair.getReserves();
 
         (uint256 resIn, uint256 resOut) =
