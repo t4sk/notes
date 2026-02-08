@@ -79,17 +79,15 @@ contract Sim is Test {
                 pool_a.getLiquidityRange(tick - 1, false);
 
             if (tick == tick_a) {
-                console.log("lo:", tick);
-                console.log("hi:", lo);
-                console.log("net:", uint256(0));
-                console.log("liq:", liq);
-                pool_a_liq.push(Liquidity {
-                    lo: tick,
-                    hi: lo,
-                    net: 0,
-                    liq: liq
-                });
+                // TODO: wat do when lo = tick
+                require(liq >= 0, "liq < 0");
+                pool_a_liq.push(
+                    Liquidity({lo: tick, hi: lo, net: 0, liq: uint128(liq)})
+                );
             }
+
+            require(tick <= lo, "tick > lo");
+            require(lo <= hi, "lo > hi");
 
             tick = hi;
             liq += net;
@@ -99,13 +97,35 @@ contract Sim is Test {
             // TODO: adjust token decimals
             // console.log("p:", 1e12 / (s / Q96 * s / Q96));
 
-            pool_a_liq.push(Liquidity {
-                lo: lo,
-                hi: hi,
-                net: net,
-                liq: liq
-            });
+            require(liq >= 0, "liq < 0");
+            pool_a_liq.push(
+                Liquidity({lo: lo, hi: hi, net: net, liq: uint128(liq)})
+            );
         }
+
+        write(pool_a_liq, "./tmp/pool_a.json");
+    }
+
+    function write(Liquidity[] storage pool_liq, string memory path) internal {
+        string memory json = "[";
+        for (uint256 i = 0; i < pool_liq.length; i++) {
+            string memory obj = "";
+            obj = string.concat(obj, "{");
+            obj = string.concat(obj, '"lo":', vm.toString(pool_liq[i].lo), ",");
+            obj = string.concat(obj, '"hi":', vm.toString(pool_liq[i].hi), ",");
+            obj =
+                string.concat(obj, '"net":', vm.toString(pool_liq[i].net), ",");
+            obj = string.concat(obj, '"liq":', vm.toString(pool_liq[i].liq));
+            obj = string.concat(obj, "}");
+
+            if (i < pool_liq.length - 1) {
+                json = string.concat(json, obj, ",");
+            } else {
+                json = string.concat(json, obj);
+            }
+        }
+        json = string.concat(json, "]");
+        vm.writeJson(json, path);
     }
 
     function test() public {}

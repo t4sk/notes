@@ -2,6 +2,7 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+fs_permissions = [{ access = "read-write", path = "./tmp" }]
 
 [fmt]
 line_length = 80
