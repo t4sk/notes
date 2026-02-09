@@ -47,6 +47,9 @@ contract Sim is Test {
     Liquidity[] pool_a_liq;
     Liquidity[] pool_b_liq;
 
+    // Swap inside setUp to spread price differences
+    bool constant SWAP = true;
+
     function setUp() public {
         pool_a = IPool(address(new V3(POOL_A)));
         pool_b = IPool(address(new V3(POOL_B)));
@@ -54,9 +57,22 @@ contract Sim is Test {
         require(pool_a.token0() == pool_b.token0(), "token 0");
         require(pool_a.token1() == pool_b.token1(), "token 1");
 
+        // Tokens
         token0 = IERC20(pool_a.token0());
         token1 = IERC20(pool_a.token1());
 
+        uint256 dec0 = uint256(token0.decimals());
+        uint256 dec1 = uint256(token1.decimals());
+
+        deal(address(token0), address(this), 1e6 * 10 ** dec0);
+        deal(address(token1), address(this), 1e6 * 10 ** dec1);
+
+        token0.approve(address(pool_a), type(uint256).max);
+        token0.approve(address(pool_b), type(uint256).max);
+        token1.approve(address(pool_a), type(uint256).max);
+        token1.approve(address(pool_b), type(uint256).max);
+
+        // Ticks
         int24 tick_a = pool_a.getCurrentTick();
         int24 tick_b = pool_b.getCurrentTick();
 
@@ -65,7 +81,16 @@ contract Sim is Test {
             (pool_a, pool_b) = (pool_b, pool_a);
         }
 
-        // TODO: swap to create arbitrage opportunity
+        if (SWAP) {
+            // tick_a < tick_b
+            // Decrease tick_a -> swap X -> Y
+            pool_a.swap({amtIn: 1e6 * 1e6, minAmtOut: 1, zeroForOne: true});
+            // Increase tick_b -> swap Y -> X
+            pool_b.swap({amtIn: 10 * 1e18, minAmtOut: 1, zeroForOne: false});
+
+            tick_a = pool_a.getCurrentTick();
+            tick_b = pool_b.getCurrentTick();
+        }
 
         uint128 liq_a = pool_a.getCurrentLiquidity();
         uint128 liq_b = pool_b.getCurrentLiquidity();
@@ -77,6 +102,7 @@ contract Sim is Test {
         console.log("liquidity a: %e", liq_a);
         console.log("liquidity b: %e", liq_b);
 
+        // Collect data
         delete pool_a_liq;
         delete pool_b_liq;
 
