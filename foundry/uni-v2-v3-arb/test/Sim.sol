@@ -14,6 +14,11 @@ import {
     UNI_V3_POOL_USDC_WETH_3000
 } from "../src/Constants.sol";
 
+/*
+forge test --fork-url $FORK_URL --ffi --match-path test/Sim.sol -vvv
+cp -R ./tmp/*.json ../../python/uniswap-v3/tmp/
+*/
+
 // TODO:
 // - Collect pool info: list of (tick lo, tick hi, liquidity)
 // - Export pool info
@@ -65,45 +70,88 @@ contract Sim is Test {
         uint128 liq_a = pool_a.getCurrentLiquidity();
         uint128 liq_b = pool_b.getCurrentLiquidity();
 
+        console.log("pool a:", address(pool_a));
+        console.log("pool b:", address(pool_b));
         console.log("tick a:", tick_a);
         console.log("tick b:", tick_b);
+        console.log("liquidity a: %e", liq_a);
+        console.log("liquidity b: %e", liq_b);
 
         delete pool_a_liq;
         delete pool_b_liq;
 
-        // Increase
-        int128 liq = int128(liq_a);
-        int24 tick = tick_a;
-        while (tick <= tick_a + 1000) {
-            (int24 lo, int24 hi, int128 net) =
-                pool_a.getLiquidityRange(tick - 1, false);
+        get(pool_a, pool_a_liq, liq_a, tick_a, tick_b, true);
+        write(pool_a_liq, "./tmp/pool_a.json");
 
-            if (tick == tick_a) {
-                // TODO: wat do when lo = tick
+        get(pool_b, pool_b_liq, liq_b, tick_a, tick_b, false);
+        write(pool_b_liq, "./tmp/pool_b.json");
+    }
+
+    // TODO: test on v2 pools
+    function get(
+        IPool pool,
+        Liquidity[] storage pool_liq,
+        uint128 curr_liq,
+        int24 min_tick,
+        int24 max_tick,
+        bool asc
+    ) internal {
+        require(pool_liq.length == 0, "pool not empty");
+        require(min_tick < max_tick, "min tick > max tick");
+
+        if (asc) {
+            int128 liq = int128(curr_liq);
+            int24 tick = min_tick;
+
+            while (tick <= max_tick) {
+                (int24 lo, int24 hi, int128 net) =
+                    pool.getLiquidityRange({tick: tick - 1, lte: false});
+
+                if (tick == min_tick && tick < lo) {
+                    // Add current liquidity up to tick lo
+                    pool_liq.push(
+                        Liquidity({lo: tick, hi: lo, net: 0, liq: uint128(liq)})
+                    );
+                }
+
+                require(tick <= lo, "tick > lo");
+                require(lo <= hi, "lo > hi");
+
+                tick = hi;
+                liq += net;
+
                 require(liq >= 0, "liq < 0");
-                pool_a_liq.push(
-                    Liquidity({lo: tick, hi: lo, net: 0, liq: uint128(liq)})
+                pool_liq.push(
+                    Liquidity({lo: lo, hi: hi, net: net, liq: uint128(liq)})
                 );
             }
+        } else {
+            int128 liq = int128(curr_liq);
+            int24 tick = max_tick;
 
-            require(tick <= lo, "tick > lo");
-            require(lo <= hi, "lo > hi");
+            while (min_tick <= tick) {
+                (int24 lo, int24 hi, int128 net) =
+                    pool.getLiquidityRange({tick: tick, lte: true});
 
-            tick = hi;
-            liq += net;
+                if (tick == max_tick && hi < tick) {
+                    // Add current liquidity up to tick hi
+                    pool_liq.push(
+                        Liquidity({lo: hi, hi: tick, net: 0, liq: uint128(liq)})
+                    );
+                }
 
-            // price
-            // uint160 s = TickMath.getSqrtRatioAtTick(tick);
-            // TODO: adjust token decimals
-            // console.log("p:", 1e12 / (s / Q96 * s / Q96));
+                require(hi <= tick, "tick < hi");
+                require(lo <= hi, "lo > hi");
 
-            require(liq >= 0, "liq < 0");
-            pool_a_liq.push(
-                Liquidity({lo: lo, hi: hi, net: net, liq: uint128(liq)})
-            );
+                tick = lo;
+                liq += net;
+
+                require(liq >= 0, "liq < 0");
+                pool_liq.push(
+                    Liquidity({lo: lo, hi: hi, net: net, liq: uint128(liq)})
+                );
+            }
         }
-
-        write(pool_a_liq, "./tmp/pool_a.json");
     }
 
     function write(Liquidity[] storage pool_liq, string memory path) internal {
@@ -125,7 +173,9 @@ contract Sim is Test {
             }
         }
         json = string.concat(json, "]");
+
         vm.writeJson(json, path);
+        console.log("JSON file saved to", path);
     }
 
     function test() public {}
