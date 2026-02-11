@@ -31,7 +31,7 @@ tick_b = pool_b[0][1]
 dya = int(dya * 1e18)
 dyb = int(dyb * 1e18)
 ta = sqrt_p_to_tick(sa)
-tb = sqrt_p_to_tick(sa)
+tb = sqrt_p_to_tick(sb)
 
 print(
     abi_encode_uint(dya)
@@ -39,4 +39,3 @@ print(
     + abi_encode_uint(ta)
     + abi_encode_uint(tb)
 )
-

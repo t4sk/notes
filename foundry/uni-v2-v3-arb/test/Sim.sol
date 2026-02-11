@@ -10,18 +10,20 @@ import {Math, Q96} from "../src/lib/Math.sol";
 import {FullMath} from "../src/lib/FullMath.sol";
 import {TickMath} from "../src/lib/TickMath.sol";
 import {
+    UNI_V2_PAIR_USDC_WETH,
     UNI_V3_POOL_USDC_WETH_500,
     UNI_V3_POOL_USDC_WETH_3000
 } from "../src/Constants.sol";
 
 /*
 forge test --fork-url $FORK_URL --ffi --match-path test/Sim.sol -vvv
+
+Export data to python notebook
 cp -R ./tmp/*.json ../../python/uniswap-v3/arb/tmp/
 */
 
-// TODO:
-// - swap v2, v3 <-> v2, v3
 contract Sim is Test {
+    // address constant POOL_A = UNI_V2_PAIR_USDC_WETH;
     address constant POOL_A = UNI_V3_POOL_USDC_WETH_500;
     address constant POOL_B = UNI_V3_POOL_USDC_WETH_3000;
     IPool pool_a;
@@ -47,6 +49,7 @@ contract Sim is Test {
     bool constant SWAP = true;
 
     function setUp() public {
+        // pool_a = IPool(address(new V2(POOL_A)));
         pool_a = IPool(address(new V3(POOL_A)));
         pool_b = IPool(address(new V3(POOL_B)));
 
