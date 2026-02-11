@@ -12,7 +12,7 @@ contract PyTest is Test {
         uint256 b = 7;
 
         string[] memory cmd = new string[](3);
-        cmd[0] = "test/dev.py";
+        cmd[0] = "py/dev.py";
         cmd[1] = vm.toString(a);
         cmd[2] = vm.toString(b);
 

@@ -25,12 +25,12 @@ contract V2 is IPool {
         return pair.token1();
     }
 
-    function getFee() external view returns (uint256) {
+    function fee() external view returns (uint256) {
         // 0.3%
-        return 0.003 * 1e18;
+        return 0.003 * 1e6;
     }
 
-    function getCurrentTick() external view returns (int24) {
+    function tick() external view returns (int24) {
         (uint112 x, uint112 y,) = pair.getReserves();
         // sqrt(y / x) * Q96
         uint256 ratioX96 = FullMath.mulDiv(y, Q96, x);
@@ -39,7 +39,7 @@ contract V2 is IPool {
         return TickMath.getTickAtSqrtRatio(uint160(sqrtPriceX96));
     }
 
-    function getCurrentLiquidity() external view returns (uint128) {
+    function liq() external view returns (uint128) {
         (uint112 x, uint112 y,) = pair.getReserves();
         uint256 liquidity = Math.sqrt(uint256(x) * uint256(y));
         require(
@@ -48,7 +48,7 @@ contract V2 is IPool {
         return uint128(liquidity);
     }
 
-    function getLiquidityRange(int24 tick, bool lte)
+    function range(int24 tick, bool lte)
         external
         view
         returns (int24 tickLo, int24 tickHi, int128 liquidityNet)

@@ -16,14 +16,10 @@ import {
 
 /*
 forge test --fork-url $FORK_URL --ffi --match-path test/Sim.sol -vvv
-cp -R ./tmp/*.json ../../python/uniswap-v3/tmp/
+cp -R ./tmp/*.json ../../python/uniswap-v3/arb/tmp/
 */
 
 // TODO:
-// - Collect pool info: list of (tick lo, tick hi, liquidity)
-// - Export pool info
-// - Run python script
-// - Cast python script results
 // - swap v2, v3 <-> v2, v3
 contract Sim is Test {
     address constant POOL_A = UNI_V3_POOL_USDC_WETH_500;
@@ -73,8 +69,8 @@ contract Sim is Test {
         token1.approve(address(pool_b), type(uint256).max);
 
         // Ticks
-        int24 tick_a = pool_a.getCurrentTick();
-        int24 tick_b = pool_b.getCurrentTick();
+        int24 tick_a = pool_a.tick();
+        int24 tick_b = pool_b.tick();
 
         if (tick_b < tick_a) {
             (tick_a, tick_b) = (tick_b, tick_a);
@@ -88,19 +84,24 @@ contract Sim is Test {
             // Increase tick_b -> swap Y -> X
             pool_b.swap({amtIn: 10 * 1e18, minAmtOut: 1, zeroForOne: false});
 
-            tick_a = pool_a.getCurrentTick();
-            tick_b = pool_b.getCurrentTick();
+            tick_a = pool_a.tick();
+            tick_b = pool_b.tick();
         }
 
-        uint128 liq_a = pool_a.getCurrentLiquidity();
-        uint128 liq_b = pool_b.getCurrentLiquidity();
+        uint128 liq_a = pool_a.liq();
+        uint128 liq_b = pool_b.liq();
 
+        console.log("=== pools ===");
+        console.log("token 0:", address(token0));
+        console.log("token 1:", address(token1));
         console.log("pool a:", address(pool_a));
         console.log("pool b:", address(pool_b));
         console.log("tick a:", tick_a);
         console.log("tick b:", tick_b);
         console.log("liquidity a: %e", liq_a);
         console.log("liquidity b: %e", liq_b);
+        console.log("fee a:", pool_a.fee());
+        console.log("fee b:", pool_b.fee());
 
         // Collect data
         delete pool_a_liq;
@@ -131,7 +132,7 @@ contract Sim is Test {
 
             while (tick <= max_tick) {
                 (int24 lo, int24 hi, int128 net) =
-                    pool.getLiquidityRange({tick: tick - 1, lte: false});
+                    pool.range({tick: tick - 1, lte: false});
 
                 if (tick == min_tick && tick < lo) {
                     // Add current liquidity up to tick lo
@@ -157,7 +158,7 @@ contract Sim is Test {
 
             while (min_tick <= tick) {
                 (int24 lo, int24 hi, int128 net) =
-                    pool.getLiquidityRange({tick: tick, lte: true});
+                    pool.range({tick: tick, lte: true});
 
                 if (tick == max_tick && hi < tick) {
                     // Add current liquidity up to tick hi
@@ -204,6 +205,43 @@ contract Sim is Test {
         console.log("JSON file saved to", path);
     }
 
-    function test() public {}
+    function test() public {
+        string[] memory cmd = new string[](5);
+        cmd[0] = "py/arb/main.py";
+        cmd[1] = "tmp/pool_a.json";
+        cmd[2] = "tmp/pool_b.json";
+        cmd[3] = vm.toString(pool_a.fee());
+        cmd[4] = vm.toString(pool_b.fee());
+
+        bytes memory res = vm.ffi(cmd);
+
+        (uint256 dya, uint256 dyb, uint256 ta, uint256 tb) =
+            abi.decode(res, (uint256, uint256, uint256, uint256));
+
+        dya /= 1e18;
+        dyb /= 1e18;
+        int24 tick_a = int24(uint24(ta));
+        int24 tick_b = int24(uint24(tb));
+
+        console.log("=== py sim ===");
+        console.log("dya: %e", dya);
+        console.log("dyb: %e", dyb);
+        console.log("diff: %e", (dyb - dya));
+        console.log("tick a:", tick_a);
+        console.log("tick b:", tick_b);
+
+        if (dya > 0) {
+            console.log("=== swap ===");
+            uint256 dx = pool_a.swap(dya, 1, false);
+            uint256 dy = pool_b.swap(dx, 1, true);
+
+            console.log("dy: %e", dy);
+            if (dy >= dya) {
+                console.log("profit: %e", dy - dya);
+            } else {
+                console.log("loss: %e", dya - dy);
+            }
+        }
+    }
 }
 
