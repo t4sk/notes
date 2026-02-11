@@ -117,7 +117,6 @@ contract Sim is Test {
         write(pool_b_liq, "./tmp/pool_b.json");
     }
 
-    // TODO: test on v2 pools
     function get(
         IPool pool,
         Liquidity[] storage pool_liq,
