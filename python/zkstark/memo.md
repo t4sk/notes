@@ -20,6 +20,8 @@
 - apply avg dist amp
 - delta example
 
+- poly decomposition
+
 - Big picture
 ```
 Code execution (trace + constraints) -> polynomial -> prover commits to poly, verifier queries properties about the poly
