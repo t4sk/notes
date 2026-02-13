@@ -19,6 +19,7 @@
 - dist of q to `RS[F, L, K]` and `RS[F, L, D]`
 - apply avg dist amp
 - delta example
+- why check delta close
 
 - poly decomposition
 
