@@ -20,6 +20,7 @@
 - apply avg dist amp
 - delta example
 - why check delta close
+- batch FRI
 
 - poly decomposition
 
