@@ -22,8 +22,7 @@
 - why check delta close
 - batch FRI
 - polynomial decomposition
-
-- poly decomposition
+- recap
 
 - Big picture
 ```
