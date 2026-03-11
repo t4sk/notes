@@ -25,6 +25,7 @@
 - recap
 - deep ali
 - deep ali sec
+- FRI
 
 - Big picture
 ```
