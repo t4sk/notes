@@ -1,5 +1,9 @@
 # notes
 
+# DeFi
+
+- [Yield optimization between 2 Aave V3 pools](./python/yield-opt.ipynb)
+
 # Merkle Tree
 
 - [Algorithm](./excalidraw/algo/merkle-algo.png)
