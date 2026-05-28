@@ -1,0 +1,8 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+remappings = ["@src/=src/"]
+
+[fmt]
+line_length = 80
