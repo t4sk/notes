@@ -3,6 +3,7 @@
 # DeFi
 
 - [Yield optimization between 2 Aave V3 pools](./python/yield-opt.ipynb)
+- [Vault inflation](./foundry/vault)
 
 # Merkle Tree
 

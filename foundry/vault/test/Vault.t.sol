@@ -55,23 +55,5 @@ contract VaultTest is Test {
         console.log("user received: %e", w1);
 
         console.log("vault balance: %e", token.balanceOf(address(vault)));
-
-        // Vault inflation for user to receive 0 shares
-        // u = user deposit
-        // a0 = attacker deposit
-        // a1 = attacker donation
-        // u * a0 / (a0 + a1) < 1 -> u < 1 + a1 / a0
-
-        // With virtual offset and virtual balance of 1
-        // u * (a0 + 1) * 10^off / (a0 + a1 + 1) < 1
-        // u * 10^off < (a0 + a1 + 1) / (a0 + 1) = 1 + a1 / (a0 + 1)
-
-        // Attacker share = a0 * 10^off / (a0 + 1)
-        // Attacker recoverable after donation = a1 * a0 / (a0 + 1)
-        // Remaining a1 / (a0 + 1) is captured by the vault
-        // Attacker loss = a1 / (a0 + 1)
-
-        // Attacker always loses more than the user
-        // u * 10^off <= attacker loss
     }
 }
