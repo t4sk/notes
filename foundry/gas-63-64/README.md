@@ -1,0 +1,3 @@
+```shell
+forge test -vvv
+```
