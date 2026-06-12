@@ -3,7 +3,10 @@
 # DeFi
 
 - [Yield optimization between 2 Aave V3 pools](./python/yield-opt.ipynb)
-- [Vault inflation](./foundry/vault)
+- [Vault inflation](./foundry/test/Vault.t.sol)
+  - [Graph](https://www.desmos.com/calculator/orugjruk99)
+  - [Notes](./excalidraw/vault-inflation.png)
+- [63 / 64 gas rule](./foundry/test/Gas.t.sol)
 
 # Merkle Tree
 

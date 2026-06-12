@@ -7,12 +7,6 @@ import {Vault} from "@src/Vault.sol";
 
 /*
 forge test --match-path Vault.t.sol -vvv
-
-Graph
-https://www.desmos.com/calculator/orugjruk99
-
-Notes
-../../../excalidraw/vault-inflation.png
 */
 
 contract VaultTest is Test {
