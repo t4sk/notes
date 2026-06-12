@@ -4,7 +4,7 @@ pragma solidity 0.8.33;
 import "forge-std/Test.sol";
 
 /*
-forge test --watch -vvv
+forge test --match-path Gas.t.sol -vvv
 */
 
 /*

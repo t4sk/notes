@@ -1,3 +1,0 @@
-```shell
-forge test -vvv
-```

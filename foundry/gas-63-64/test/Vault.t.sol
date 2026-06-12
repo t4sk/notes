@@ -1,9 +1,19 @@
-// SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.32;
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma solidity 0.8.33;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Token} from "./Token.sol";
 import {Vault} from "@src/Vault.sol";
+
+/*
+forge test --match-path Vault.t.sol -vvv
+
+Graph
+https://www.desmos.com/calculator/orugjruk99
+
+Notes
+../../../excalidraw/vault-inflation.png
+*/
 
 contract VaultTest is Test {
     Token token;
