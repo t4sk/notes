@@ -7,6 +7,7 @@
   - [Graph](https://www.desmos.com/calculator/orugjruk99)
   - [Notes](./excalidraw/vault-inflation.png)
 - [63 / 64 gas rule](./foundry/test/Gas.t.sol)
+- [Lending interest rate PID controller](./python/pid.ipynb)
 
 # Merkle Tree
 
