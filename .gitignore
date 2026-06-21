@@ -4,3 +4,5 @@ tmp
 __pycache__
 *.gv
 *.gv.pdf
+out
+cache
