@@ -1,4 +1,4 @@
-/deep seek/ SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.33;
 
 // D[i] = total deposit at time i
@@ -15,8 +15,7 @@ pragma solidity 0.8.33;
 // C[i] = collateral seized at time i
 // V[N] = user's claim on collateral at time N
 //      = C[K + 1] * d[K] / D[K] + ... + C[N] * d[N - 1] / D[N - 1]
-//      = d[K] / P[K] * (S[N] - S[K])
-
+//      = d[K] * (S[N] - S[K]) / P[K]
 
 // S[0] = 0
 // S[N] = sum(C[i] / D[i - 1] * P[i - 1]) for 1 <= i <= N
@@ -28,6 +27,18 @@ pragma solidity 0.8.33;
 
 // M - L[N] = (M - L[N - 1]) * (1 - Q[N] / D[N - 1])
 // M - L[N] = M * P[N]
+
+// M - L[N] <= 128 bits
+// M * S[N] = sum(C[i] / D[i - 1] * (M - L[i - 1])) for 1 <= i <= N
+// M * S[N] <= 256 bits
+
+// d[N] = d[K] * P[N] / P[K]
+//      = d[K] * (M - L[N]) / (M - L[K])
+//      <= 256 bits
+
+// V[N] = d[K] * (S[N] - S[K]) / P[K]
+//      = d[K] * M * (S[N] - S[K]) / (M - P[K])
+//      <= 128 + 256 bits
 
 contract StabilityPool {
 
