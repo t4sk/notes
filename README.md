@@ -8,6 +8,7 @@
   - [Notes](./excalidraw/vault-inflation.png)
 - [63 / 64 gas rule](./foundry/test/Gas.t.sol)
 - [Lending interest rate PID controller](./python/pid.ipynb)
+- [Notes on `mulDiv`](./foundry/src/MulDiv.sol)
 
 # Merkle Tree
 
