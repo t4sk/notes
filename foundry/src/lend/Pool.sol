@@ -17,11 +17,18 @@ contract Pool {
         oracle = IOracle(_oracle);
     }
 
-    function mint() external {}
+    function mint() external {
+        // sync
+        // pull
+        // mint
+        // update
+    }
+
     function burn() external {}
     function deposit() external {}
     function withdraw() external {}
     function borrow() external {}
     function repay() external {}
+    function flash() external {}
     function liquidate() external {}
 }
