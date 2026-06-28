@@ -2,6 +2,7 @@
 pragma solidity 0.8.33;
 
 // TODO: ROCQ
+// TODO: split files
 
 // T[i] = total deposit at time i
 // Q[i] = deposit deducted at time i
@@ -14,13 +15,13 @@ pragma solidity 0.8.33;
 // P[0] = 1
 // P[N] = prod(1 - Q[i] / T[i - 1]) for 1 <= i <= N
 
-// C[i] = collateral seized at time i
-// V[N] = user's claim on collateral at time N
-//      = C[K + 1] * D[K] / T[K] + ... + C[N] * D[N - 1] / T[N - 1]
+// B[i] = token bought at time i
+// V[N] = user's claim on token bought up to time N
+//      = B[K + 1] * D[K] / T[K] + ... + B[N] * D[N - 1] / T[N - 1]
 //      = D[K] * (S[N] - S[K]) / P[K]
 
 // S[0] = 0
-// S[N] = sum(C[i] / T[i - 1] * P[i - 1]) for 1 <= i <= N
+// S[N] = sum(B[i] / T[i - 1] * P[i - 1]) for 1 <= i <= N
 
 // M = u128 max
 // R[N] = reduction factor at time N
@@ -32,7 +33,7 @@ pragma solidity 0.8.33;
 // M - R[N] = M * P[N]
 
 // M - R[N] <= 128 bits
-// M * S[N] = sum(C[i] / T[i - 1] * (M - R[i - 1])) for 1 <= i <= N
+// M * S[N] = sum(B[i] / T[i - 1] * (M - R[i - 1])) for 1 <= i <= N
 // M * S[N] <= 256 bits
 
 // D[N] = D[K] * P[N] / P[K]
@@ -42,6 +43,14 @@ pragma solidity 0.8.33;
 // V[N] = D[K] * (S[N] - S[K]) / P[K]
 //      = D[K] * M * (S[N] - S[K]) / (M - R[K])
 //      <= 128 + 256 bits
+//
+// Y[i] = yield gain at time i
+// Same math as S[N], M * S[N] and V[N]
+// G[0] = 0
+// G[N] = sum(Y[i] / T[i - 1] * P[i - 1]) for 1 <= i <= N
+// M * G[N] = sum(Y[i] / T[i - 1] * (M - R[i - 1])) for 1 <= i <= N
+// W[N] = user's claim on yield gains up to time N
+//      = D[K] * M * (G[N] - G[K]) / (M - R[K])
 
 uint256 constant M = type(uint128).max;
 
@@ -51,14 +60,28 @@ library Math {
         return uint128(u);
     }
 
+    function min(uint128 x, uint128 y) internal pure returns (uint128 z) {
+        z = x <= y ? x : y;
+    }
+
     // M * S[N + 1]
-    function ms(uint256 msn, uint128 c, uint128 rn, uint256 t)
+    function ms(uint256 msn, uint128 b, uint128 rn, uint256 t)
         internal
         pure
         returns (uint256)
     {
         // TODO: overflow? use muldiv?
-        return msn + c * (M - rn) / t;
+        return msn + b * (M - rn) / t;
+    }
+
+    // M * G[N + 1]
+    function mg(uint256 mgn, uint128 y, uint128 rn, uint256 t)
+        internal
+        pure
+        returns (uint256)
+    {
+        // TODO: overflow? use muldiv?
+        return mgn + y * (M - rn) / t;
     }
 
     // R[N + 1]
@@ -91,6 +114,17 @@ library Math {
         // TODO: use muldiv
         // TODO: M - rk = 0?
         return u128(dk * (msn - msk) / (M - rk));
+    }
+
+    // W[N + 1]
+    function w(uint256 dk, uint256 mgn, uint256 mgk, uint256 rk)
+        internal
+        pure
+        returns (uint128)
+    {
+        // TODO: use muldiv
+        // TODO: M - rk = 0?
+        return u128(dk * (mgn - mgk) / (M - rk));
     }
 
     function muldiv(uint256 x, uint256 y, uint256 d)
@@ -136,28 +170,46 @@ contract DCA is Auth {
     uint128 public r;
     // M * S[N]
     uint256 public ms;
+    // M * G[N]
+    uint256 public mg;
 
     struct Snap {
         uint128 dk;
         uint128 rk;
         uint256 msk;
+        uint256 mgk;
     }
 
     mapping(address => Snap) public snaps;
-    mapping(address => uint128) public vs;
+    mapping(address => uint128) public zs;
 
-    function sync(address usr) public returns (uint128 dn, uint128 v) {
+    function sync(address usr) public returns (uint128, uint128) {
+        uint128 y = 0;
+
         Snap memory s = snaps[usr];
-        uint256 rn = r;
+        uint128 tn = t;
+        uint128 rn = r;
         uint256 msn = ms;
-        dn = Math.d(s.dk, rn, s.rk);
-        v = vs[usr] + Math.v(s.dk, msn, s.msk, s.rk);
+        uint256 mgn = mg;
+
+        uint128 z = zs[usr] + Math.v(s.dk, msn, s.msk, s.rk);
+        uint128 w = Math.w(s.dk, mgn, s.mgk, s.rk);
+
+        mgn = Math.mg(mgn, y, rn, tn);
+        uint128 dn = Math.d(s.dk, rn, s.rk) + w;
+
+        t = tn + w;
         s.dk = dn;
-        vs[usr] = v;
+        zs[usr] = z;
         s.rk = uint128(rn);
-        s.msk = uint128(msn);
+        s.msk = msn;
+        s.mgk = mgn;
         snaps[usr] = s;
+
+        return (dn, z);
     }
+
+    // TODO: functionst to deposit sell tokens to earn yield
 
     function join(uint128 amt) external {
         sync(msg.sender);
@@ -176,13 +228,15 @@ contract DCA is Auth {
 
     function claim() external {
         (, uint128 v) = sync(msg.sender);
-        vs[msg.sender] = 0;
+        zs[msg.sender] = 0;
     }
 
-    function swap(uint128 q, uint128 c) external auth {
-        // TODO: DCA logic (time + amount)
+    function swap(uint128 q, uint128 b) external auth {
+        // TODO: DCA logic (time + amount (chunk))
         uint128 rn = r;
-        ms = Math.ms(ms, c, rn, t);
-        r = Math.r(rn, q, t);
+        uint128 tn = t;
+        ms = Math.ms(ms, b, rn, tn);
+        r = Math.r(rn, q, tn);
+        t = tn - q;
     }
 }
