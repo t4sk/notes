@@ -39,12 +39,19 @@ contract DCA {
         require(_sell != _buy, "sell = buy");
         sell = IERC20(_sell);
         buy = IERC20(_buy);
+
+        // Optional
         vault = IVault(_vault);
-        sell.approve(address(vault), type(uint256).max);
+        if (address(vault) != address(0)) {
+            sell.approve(address(vault), type(uint256).max);
+        }
     }
 
     function sync(address usr) public returns (uint128, uint128) {
-        uint128 y = vault.claim();
+        uint128 y;
+        if (address(vault) != address(0)) {
+            y = vault.claim();
+        }
 
         uint128 tn = t;
         uint128 rn = r;
@@ -75,7 +82,9 @@ contract DCA {
         snaps[msg.sender].dk += amt;
         t += amt;
         sell.transferFrom(msg.sender, address(this), amt);
-        vault.deposit(amt);
+        if (address(vault) != address(0)) {
+            vault.deposit(amt);
+        }
     }
 
     function withdraw(uint128 amt, uint128 min) external returns (uint128) {
@@ -86,7 +95,9 @@ contract DCA {
         snaps[msg.sender].dk -= amt;
         t -= amt;
 
-        amt = vault.withdraw(amt);
+        if (address(vault) != address(0)) {
+            amt = vault.withdraw(amt);
+        }
         require(amt >= min, "amt < min");
         sell.transfer(msg.sender, amt);
 
