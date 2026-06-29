@@ -63,38 +63,47 @@ library Math {
         z = x <= y ? x : y;
     }
 
+    function muldiv(uint256 x, uint256 y, uint256 d)
+        internal
+        pure
+        returns (uint256)
+    {
+        // TODO:
+        return x * y / d;
+    }
+
     // M * S[N + 1]
-    function ms(uint256 msn, uint128 b, uint128 rn, uint256 t)
+    function ms(uint256 msn, uint128 b, uint128 rn, uint256 tn)
         internal
         pure
         returns (uint256)
     {
         // TODO: overflow? use muldiv?
-        return msn + b * (M - rn) / t;
+        return msn + b * (M - rn) / tn;
     }
 
     // M * G[N + 1]
-    function mg(uint256 mgn, uint128 y, uint128 rn, uint256 t)
+    function mg(uint256 mgn, uint128 y, uint128 rn, uint256 tn)
         internal
         pure
         returns (uint256)
     {
         // TODO: overflow? use muldiv?
-        return mgn + y * (M - rn) / t;
+        return mgn + y * (M - rn) / tn;
     }
 
     // R[N + 1]
-    function r(uint256 rn, uint256 q, uint256 t)
+    function r(uint256 rn, uint256 q, uint256 tn)
         internal
         pure
         returns (uint128)
     {
         // TODO: overflow?
-        // TODO: t = 0?
-        return u128(M - (M - rn) * (t - q) / t);
+        // TODO: tn = 0?
+        return u128(M - (M - rn) * (tn - q) / tn);
     }
 
-    // D[N + 1]
+    // D[N]
     function d(uint256 dk, uint256 rn, uint256 rk)
         internal
         pure
@@ -104,7 +113,7 @@ library Math {
         return u128(dk * (M - rn) / (M - rk));
     }
 
-    // V[N + 1]
+    // V[N]
     function v(uint256 dk, uint256 msn, uint256 msk, uint256 rk)
         internal
         pure
@@ -115,7 +124,7 @@ library Math {
         return u128(dk * (msn - msk) / (M - rk));
     }
 
-    // W[N + 1]
+    // W[N]
     function w(uint256 dk, uint256 mgn, uint256 mgk, uint256 rk)
         internal
         pure
@@ -124,15 +133,6 @@ library Math {
         // TODO: use muldiv
         // TODO: M - rk = 0?
         return u128(dk * (mgn - mgk) / (M - rk));
-    }
-
-    function muldiv(uint256 x, uint256 y, uint256 d)
-        internal
-        pure
-        returns (uint256)
-    {
-        // TODO:
-        return x * y / d;
     }
 }
 
