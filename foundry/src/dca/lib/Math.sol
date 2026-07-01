@@ -63,37 +63,90 @@ library Math {
         z = x <= y ? x : y;
     }
 
+    function max(uint128 x, uint128 y) internal pure returns (uint128 z) {
+        z = x >= y ? x : y;
+    }
+
+    function mul512(uint256 x, uint256 y)
+        internal
+        pure
+        returns (uint256 high, uint256 low)
+    {
+        assembly ("memory-safe") {
+            let mm := mulmod(x, y, not(0))
+            low := mul(x, y)
+            high := sub(sub(mm, low), lt(mm, low))
+        }
+    }
+
     function muldiv(uint256 x, uint256 y, uint256 d)
         internal
         pure
-        returns (uint256)
+        returns (uint256 result)
     {
-        // TODO:
-        return x * y / d;
+        unchecked {
+            (uint256 high, uint256 low) = mul512(x, y);
+
+            if (high == 0) {
+                return low / d;
+            }
+
+            require(high < d, "high >= denominator");
+
+            // 512 bits / 256 bits
+            uint256 rem;
+            assembly ("memory-safe") {
+                rem := mulmod(x, y, d)
+                high := sub(high, gt(rem, low))
+                low := sub(low, rem)
+            }
+
+            uint256 twos = d & (0 - d);
+            assembly ("memory-safe") {
+                d := div(d, twos)
+                low := div(low, twos)
+                twos := add(div(sub(0, twos), twos), 1)
+            }
+
+            low |= high * twos;
+
+            uint256 inv = (3 * d) ^ 2;
+            inv *= 2 - d * inv; // inv mod 2⁸
+            inv *= 2 - d * inv; // inv mod 2¹⁶
+            inv *= 2 - d * inv; // inv mod 2³²
+            inv *= 2 - d * inv; // inv mod 2⁶⁴
+            inv *= 2 - d * inv; // inv mod 2¹²⁸
+            inv *= 2 - d * inv; // inv mod 2²⁵⁶
+
+            result = low * inv;
+            return result;
+        }
     }
 
+    // TODO: fix uint types
+
     // M * S[N + 1]
-    function ms(uint256 msn, uint128 b, uint128 rn, uint256 tn)
+    function ms(uint256 msn, uint128 b, uint128 rn, uint128 tn)
         internal
         pure
         returns (uint256)
     {
         // TODO: overflow? use muldiv?
-        return msn + b * (M - rn) / tn;
+        return msn + muldiv(uint256(b), M - rn, tn);
     }
 
     // M * G[N + 1]
-    function mg(uint256 mgn, uint128 y, uint128 rn, uint256 tn)
+    function mg(uint256 mgn, uint128 y, uint128 rn, uint128 tn)
         internal
         pure
         returns (uint256)
     {
         // TODO: overflow? use muldiv?
-        return mgn + y * (M - rn) / tn;
+        return mgn + muldiv(y, (M - rn), tn);
     }
 
     // R[N + 1]
-    function r(uint256 rn, uint256 q, uint256 tn)
+    function r(uint256 rn, uint256 q, uint128 tn)
         internal
         pure
         returns (uint128)

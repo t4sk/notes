@@ -10,11 +10,20 @@ interface IVault {
     function claim() external returns (uint128);
 }
 
+interface IOracle {
+    // price = [sell token decimals] / [buy token decimals] * 1e18
+    function get(address sell, address buy)
+        external
+        returns (bool ok, uint256 price, uint256 timestamp);
+}
+
 contract DCA {
-    // TODO: lock
+    bool transient locked;
+
     IERC20 public immutable sell;
     IERC20 public immutable buy;
     IVault public immutable vault;
+    IOracle public immutable oracle;
 
     // T[N]
     uint128 public t;
@@ -35,10 +44,34 @@ contract DCA {
     mapping(address => Snap) public snaps;
     mapping(address => uint128) public vs;
 
-    constructor(address _sell, address _buy, address _vault) {
+    // Rate limit
+    // Total deposit is divided by this constant to calculate the cap
+    uint128 private constant C = 8;
+    // Max swap amount per epoch
+    uint128 public cap;
+    // Swapped amount in the current epoch
+    uint128 public curr;
+    // Epoch duration
+    uint256 private constant E = 7 days;
+    uint256 public epoch = (block.timestamp / E) * E;
+
+    // Oracle
+    uint256 private constant MAX_PRICE_DT = 5 minutes;
+    uint256 private constant MAX_PRICE_DELTA = 0.02e18;
+
+    modifier lock() {
+        require(!locked, "locked");
+        locked = true;
+        _;
+        locked = false;
+    }
+
+    constructor(address _sell, address _buy, address _oracle, address _vault) {
         require(_sell != _buy, "sell = buy");
         sell = IERC20(_sell);
         buy = IERC20(_buy);
+
+        oracle = IOracle(_oracle);
 
         // Optional
         vault = IVault(_vault);
@@ -47,7 +80,7 @@ contract DCA {
         }
     }
 
-    function sync(address usr) public returns (uint128, uint128) {
+    function sync(address usr) public lock returns (uint128, uint128) {
         uint128 y;
         if (address(vault) != address(0)) {
             y = vault.claim();
@@ -77,23 +110,33 @@ contract DCA {
         return (d, v);
     }
 
-    function deposit(uint128 amt) external {
+    function deposit(uint128 amt) external lock {
         sync(msg.sender);
         snaps[msg.sender].dk += amt;
+
+        // FIX: - deposit -> swap -> withdraw
         t += amt;
+        cap = t / C;
+
         sell.transferFrom(msg.sender, address(this), amt);
         if (address(vault) != address(0)) {
             vault.deposit(amt);
         }
     }
 
-    function withdraw(uint128 amt, uint128 min) external returns (uint128) {
+    function withdraw(uint128 amt, uint128 min)
+        external
+        lock
+        returns (uint128)
+    {
         (uint128 d,) = sync(msg.sender);
         if (amt == type(uint128).max) {
             amt = d;
         }
         snaps[msg.sender].dk -= amt;
+
         t -= amt;
+        cap = t / C;
 
         if (address(vault) != address(0)) {
             amt = vault.withdraw(amt);
@@ -104,25 +147,59 @@ contract DCA {
         return amt;
     }
 
-    function claim() external returns (uint128 v) {
+    function claim() external lock returns (uint128 v) {
         (, v) = sync(msg.sender);
         vs[msg.sender] = 0;
         buy.transfer(msg.sender, v);
     }
 
-    uint128 public cap;
-    uint64 public epoch;
+    function swap(uint128 q, uint128 b) external lock {
+        if (epoch + E <= block.timestamp) {
+            epoch = (block.timestamp / E) * E;
+            curr = 0;
+        }
 
-    function swap(uint128 q, uint128 b) external {
-        // TODO: DCA logic (time + amount (chunk), oracle)
+        require(curr + q <= cap, "cap");
+        curr += q;
+
+        // Oracle check
+        (bool ok, uint256 price, uint256 timestamp) =
+            oracle.get(address(sell), address(buy));
+        require(ok, "oracle not ok");
+        require(price > 0, "price = 0");
+        require(timestamp <= block.timestamp, "timestamp > block.timestamp");
+        require(block.timestamp - timestamp <= MAX_PRICE_DT, "stale price");
+        // price = sell token amount / 1 buy token * 1e18
+        require(
+            uint256(q) * 1e18 / b >= price * (1e18 - MAX_PRICE_DELTA) / 1e18,
+            "swap price < oracle price"
+        );
+
         uint128 rn = r;
         uint128 tn = t;
         ms = Math.ms(ms, b, rn, tn);
         r = Math.r(rn, q, tn);
         t = tn - q;
 
-        buy.transferFrom(msg.sender, address(this), b);
-        // TODO: callback
+        // Swap
         sell.transfer(msg.sender, q);
+
+        uint256 bal0 = buy.balanceOf(address(this));
+        if (msg.sender.code.length > 0) {
+            ISwap(msg.sender).swap(address(sell), address(buy), q, b);
+        } else {
+            buy.transferFrom(msg.sender, address(this), b);
+        }
+        uint256 bal1 = buy.balanceOf(address(this));
+        require(bal1 - bal0 >= b, "buy transfer < min");
     }
+}
+
+interface ISwap {
+    function swap(
+        address tokenIn,
+        address tokenOut,
+        uint128 amountIn,
+        uint256 minAmountOut
+    ) external;
 }
