@@ -2,7 +2,9 @@
 pragma solidity 0.8.33;
 
 import {IERC20} from "./lib/IERC20.sol";
+import {SafeTransfer} from "./lib/SafeTransfer.sol";
 import {Math} from "./lib/Math.sol";
+import {Auth} from "./Auth.sol";
 
 interface IVault {
     function deposit(uint128 amt) external;
@@ -17,8 +19,17 @@ interface IOracle {
         returns (bool ok, uint256 price, uint256 timestamp);
 }
 
-contract DCA {
-    bool transient locked;
+interface ISwap {
+    function swap(
+        address tokenIn,
+        address tokenOut,
+        uint128 amountIn,
+        uint256 minAmountOut
+    ) external;
+}
+
+contract DCA is Auth {
+    using SafeTransfer for IERC20;
 
     IERC20 public immutable sell;
     IERC20 public immutable buy;
@@ -58,6 +69,8 @@ contract DCA {
     // Oracle
     uint256 private constant MAX_PRICE_DT = 5 minutes;
     uint256 private constant MAX_PRICE_DELTA = 0.02e18;
+
+    bool transient locked;
 
     modifier lock() {
         require(!locked, "locked");
@@ -118,7 +131,7 @@ contract DCA {
         t += amt;
         cap = t / C;
 
-        sell.transferFrom(msg.sender, address(this), amt);
+        sell.safeTransferFrom(msg.sender, address(this), amt);
         if (address(vault) != address(0)) {
             vault.deposit(amt);
         }
@@ -142,7 +155,7 @@ contract DCA {
             amt = vault.withdraw(amt);
         }
         require(amt >= min, "amt < min");
-        sell.transfer(msg.sender, amt);
+        sell.safeTransfer(msg.sender, amt);
 
         return amt;
     }
@@ -150,7 +163,7 @@ contract DCA {
     function claim() external lock returns (uint128 v) {
         (, v) = sync(msg.sender);
         vs[msg.sender] = 0;
-        buy.transfer(msg.sender, v);
+        buy.safeTransfer(msg.sender, v);
     }
 
     function swap(uint128 q, uint128 b) external lock {
@@ -182,24 +195,16 @@ contract DCA {
         t = tn - q;
 
         // Swap
-        sell.transfer(msg.sender, q);
+        sell.safeTransfer(msg.sender, q);
 
         uint256 bal0 = buy.balanceOf(address(this));
         if (msg.sender.code.length > 0) {
             ISwap(msg.sender).swap(address(sell), address(buy), q, b);
         } else {
-            buy.transferFrom(msg.sender, address(this), b);
+            buy.safeTransferFrom(msg.sender, address(this), b);
         }
         uint256 bal1 = buy.balanceOf(address(this));
         require(bal1 - bal0 >= b, "buy transfer < min");
     }
 }
 
-interface ISwap {
-    function swap(
-        address tokenIn,
-        address tokenOut,
-        uint128 amountIn,
-        uint256 minAmountOut
-    ) external;
-}
