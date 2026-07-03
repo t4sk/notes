@@ -56,6 +56,8 @@ contract DCA is Auth {
     mapping(address => uint128) public vs;
 
     // Rate limit
+    // Upper limit of cap
+    uint128 public max;
     // Total deposit is divided by this constant to calculate the cap
     uint128 private constant C = 8;
     // Max swap amount per epoch
@@ -93,6 +95,10 @@ contract DCA is Auth {
         }
     }
 
+    function set(uint128 val) external auth {
+        max = val;
+    }
+
     function sync(address usr) public lock returns (uint128, uint128) {
         uint128 y;
         if (address(vault) != address(0)) {
@@ -127,9 +133,8 @@ contract DCA is Auth {
         sync(msg.sender);
         snaps[msg.sender].dk += amt;
 
-        // FIX: - deposit -> swap -> withdraw
         t += amt;
-        cap = t / C;
+        cap = Math.min(t / C, max);
 
         sell.safeTransferFrom(msg.sender, address(this), amt);
         if (address(vault) != address(0)) {
@@ -149,7 +154,7 @@ contract DCA is Auth {
         snaps[msg.sender].dk -= amt;
 
         t -= amt;
-        cap = t / C;
+        cap = Math.min(t / C, max);
 
         if (address(vault) != address(0)) {
             amt = vault.withdraw(amt);
