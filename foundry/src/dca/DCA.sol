@@ -78,7 +78,6 @@ contract DCA is Auth {
         require(!locked, "locked");
         locked = true;
         _;
-        locked = false;
     }
 
     constructor(address _sell, address _buy, address _oracle, address _vault) {

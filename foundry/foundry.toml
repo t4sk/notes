@@ -6,3 +6,10 @@ remappings = ["@src/=src/"]
 
 [fmt]
 line_length = 80
+
+[lint]
+exclude_lints = [
+    "screaming-snake-case-const",
+    "screaming-snake-case-immutable",
+    "unwrapped-modifier-logic"
+]
