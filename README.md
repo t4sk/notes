@@ -9,6 +9,7 @@
 - [63 / 64 gas rule](./foundry/test/Gas.t.sol)
 - [Lending interest rate PID controller](./python/pid.ipynb)
 - [Notes on `mulDiv`](./foundry/src/MulDiv.sol)
+- [Elliptic curve addition](https://www.desmos.com/calculator/efumvebyyn)
 
 # Merkle Tree
 
