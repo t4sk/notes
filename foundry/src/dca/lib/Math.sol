@@ -146,7 +146,7 @@ library Math {
         pure
         returns (uint128)
     {
-        // TODO: tn = 0?
+        require(tn > 0, "tn = 0");
         return u128(muldiv(M - (M - rn), tn - q, tn));
     }
 
@@ -156,7 +156,9 @@ library Math {
         pure
         returns (uint128)
     {
-        // TODO: M - rk = 0?
+        if (rk == M) {
+            return 0;
+        }
         return u128(muldiv(dk, M - rn, M - rk));
     }
 
@@ -167,6 +169,9 @@ library Math {
         returns (uint128)
     {
         // TODO: M - rk = 0?
+        if (rk == M) {
+            return 0;
+        }
         return u128(muldiv(dk, msn - msk, M - rk));
     }
 
@@ -177,6 +182,9 @@ library Math {
         returns (uint128)
     {
         // TODO: M - rk = 0?
+        if (rk == M) {
+            return 0;
+        }
         return u128(muldiv(dk, mgn - mgk, M - rk));
     }
 }
