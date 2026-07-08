@@ -1,5 +1,11 @@
 # notes
 
+# Math
+
+- [Notes on `mulDiv`](./foundry/src/MulDiv.sol)
+- [Elliptic curve addition](https://www.desmos.com/calculator/efumvebyyn)
+- [Extended euclidean algo](./python/math/euclid.ipynb)
+
 # DeFi
 
 - [Yield optimization between 2 Aave V3 pools](./python/yield-opt.ipynb)
@@ -8,9 +14,6 @@
   - [Notes](./excalidraw/vault-inflation.png)
 - [63 / 64 gas rule](./foundry/test/Gas.t.sol)
 - [Lending interest rate PID controller](./python/pid.ipynb)
-- [Notes on `mulDiv`](./foundry/src/MulDiv.sol)
-- [Elliptic curve addition](https://www.desmos.com/calculator/efumvebyyn)
-- [Extended euclidean algo](./python/math/euclid.ipynb)
 
 # Merkle Tree
 
