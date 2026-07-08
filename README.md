@@ -4,6 +4,7 @@
 
 - [Notes on `mulDiv`](./foundry/src/MulDiv.sol)
 - [Elliptic curve addition](https://www.desmos.com/calculator/efumvebyyn)
+- [ECDSA](./excalidraw/math/ecdsa.png)
 - [Extended euclidean algo](./python/math/euclid.ipynb)
 
 # DeFi
