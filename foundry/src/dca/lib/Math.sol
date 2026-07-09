@@ -168,7 +168,6 @@ library Math {
         pure
         returns (uint128)
     {
-        // TODO: M - rk = 0?
         if (rk == M) {
             return 0;
         }
@@ -181,7 +180,6 @@ library Math {
         pure
         returns (uint128)
     {
-        // TODO: M - rk = 0?
         if (rk == M) {
             return 0;
         }
