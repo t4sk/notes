@@ -17,12 +17,12 @@ contract Auth {
         emit Allow(msg.sender);
     }
 
-    function allow(address usr) public {
+    function allow(address usr) public auth {
         auths[usr] = true;
         emit Allow(usr);
     }
 
-    function deny(address usr) public {
+    function deny(address usr) public auth {
         auths[usr] = false;
         emit Deny(usr);
     }
