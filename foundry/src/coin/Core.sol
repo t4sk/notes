@@ -2,47 +2,147 @@
 pragma solidity 0.8.33;
 
 import {Auth} from "./lib/Auth.sol";
+import {V, W, mul, muldiv} from "./lib/Math.sol";
 
 // TODO: ROCQ
 contract Core is Auth {
     // Collateral parameters
     struct Col {
-        // Total normalized debt
+        // Total normalized debt [V]
         uint128 tot;
+        // Product of rates [V]
         uint128 rate;
+        // Price of collateral [V]
         uint128 spot;
-        uint128 max;
-        uint128 min;
+        // Max total debt [W]
+        uint256 max;
+        // Min debt of a position [W]
+        uint256 min;
     }
 
     // Collateralized debt position
     struct Pos {
-        uint128 gem;
-        // normalized coin debt
-        uint128 norm;
+        uint128 col;
+        // Normalized coin debt [V]
+        uint128 debt;
     }
 
-    mapping(bytes32 col => mapping(address usr => uint128 amt)) public gem;
-    mapping(bytes32 coin => mapping(address usr => uint128 amt)) public coin;
-    mapping(bytes32 coin => mapping(bytes32 col => Col)) public cols;
-    mapping(bytes32 coin => mapping(address usr => Pos)) public positions;
+    mapping(bytes32 gem => mapping(address usr => uint128 amt)) public gem;
+    // [W]
+    mapping(bytes32 coin => mapping(address usr => uint256 amt)) public coin;
+    // [W]
+    mapping(bytes32 coin => uint256) public sum;
+    mapping(bytes32 key => Col) public cols;
+    mapping(bytes32 key => mapping(address usr => Pos)) public positions;
 
-    function join(bytes32 col, address usr, uint128 amt) external auth {
-        gem[col][usr] += amt;
+    function key(bytes32 coin, bytes32 gem) public pure returns (bytes32 k) {
+        assembly {
+            let ptr := mload(0x40)
+            mstore(ptr, coin)
+            mstore(add(ptr, 0x20), gem)
+            k := keccak256(ptr, 0x40)
+        }
     }
 
-    function exit(bytes32 col, address usr, uint128 amt) external auth {
-        gem[col][usr] -= amt;
+    function join(bytes32 g, address dst, uint128 amt) external auth {
+        gem[g][dst] += amt;
     }
 
-    function move(bytes32 col, address src, address dst, uint128 amt) external {
-        gem[col][src] -= amt;
-        gem[col][dst] += amt;
+    function exit(bytes32 g, uint128 amt) external {
+        gem[g][msg.sender] -= amt;
     }
 
-    function mint() external auth {}
+    function move(bytes32 g, address dst, uint128 amt) external {
+        gem[g][msg.sender] -= amt;
+        gem[g][dst] += amt;
+    }
 
-    function burn() external {}
+    function mint(bytes32 c, address dst, uint256 amt) external auth {
+        coin[c][dst] += amt;
+        sum[c] += amt;
+    }
 
-    function transfer() external {}
+    function burn(bytes32 c, uint256 amt) external {
+        coin[c][msg.sender] -= amt;
+        sum[c] -= amt;
+    }
+
+    function transfer(bytes32 c, address dst, uint256 amt) external {
+        coin[c][msg.sender] -= amt;
+        coin[c][dst] += amt;
+    }
+
+    function inc(bytes32 c, bytes32 g, uint128 debt, uint128 gmt)
+        external
+        returns (uint256)
+    {
+        // TODO: require live
+        bytes32 k = key(c, g);
+
+        Col memory col = cols[k];
+        Pos memory pos = positions[k][msg.sender];
+        require(col.rate != 0, "col not init");
+
+        pos.debt += debt;
+        pos.col += gmt;
+        col.tot += debt;
+
+        uint256 amt = mul(debt, col.rate);
+        uint256 d = mul(pos.debt, col.rate);
+
+        require(d >= col.min, "debt < min");
+        // Increase collateral or over collateralized
+        require(debt == 0 || d < mul(pos.col, col.spot), "under collateralized");
+        // TODO: global max?
+        require(mul(col.tot, col.rate) <= col.max, "tot > max");
+
+        gem[g][msg.sender] -= gmt;
+        coin[c][msg.sender] += amt;
+        sum[c] += amt;
+
+        cols[k].tot = col.tot;
+        positions[k][msg.sender] = pos;
+
+        return amt;
+    }
+
+    function dec(bytes32 c, bytes32 g, uint128 debt, uint128 gmt)
+        external
+        returns (uint256)
+    {
+        // TODO: require live
+        bytes32 k = key(c, g);
+
+        Col memory col = cols[k];
+        Pos memory pos = positions[k][msg.sender];
+        require(col.rate != 0, "col not init");
+
+        pos.debt -= debt;
+        pos.col -= gmt;
+        col.tot -= debt;
+
+        uint256 amt = mul(debt, col.rate);
+        uint256 d = mul(pos.debt, col.rate);
+
+        require(d == 0 || d >= col.min, "debt < min");
+        // Decrease debt or over collateralized
+        require(gmt == 0 || d < mul(pos.col, col.spot), "under collateralized");
+
+        gem[g][msg.sender] += gmt;
+        coin[c][msg.sender] -= amt;
+        sum[c] -= amt;
+
+        cols[k].tot = col.tot;
+        positions[k][msg.sender] = pos;
+
+        return amt;
+    }
+
+    function grab() external auth {}
+
+    function sync(bytes32 c, bytes32 g, uint128 dr) public auth {
+        bytes32 k = key(c, g);
+        cols[k].rate = muldiv(cols[k].rate, dr, W);
+        // cols[k].last = block.timestamp;
+    }
 }
