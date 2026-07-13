@@ -22,11 +22,13 @@ contract Core is Auth {
 
     // Collateralized debt position
     struct Pos {
+        // [V]
         uint128 col;
         // Normalized coin debt [V]
         uint128 debt;
     }
 
+    // [V]
     mapping(bytes32 gem => mapping(address usr => uint128 amt)) public gem;
     // [W]
     mapping(bytes32 coin => mapping(address usr => uint256 amt)) public coin;
@@ -60,6 +62,7 @@ contract Core is Auth {
     function mint(bytes32 c, address dst, uint256 amt) external auth {
         coin[c][dst] += amt;
         sum[c] += amt;
+        // TODO: store unbacked total?
     }
 
     function burn(bytes32 c, uint256 amt) external {
