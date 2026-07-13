@@ -7,6 +7,8 @@
 - [ECDSA](./excalidraw/math/ecdsa.png)
 - [ECDSA nonce reuse](./excalidraw/math/ecdsa-nonce-reuse.png)
   - [code](./python/math/ecdsa.ipynb)
+- [Schnorr](./excalidraw/math/schnorr.png)
+- [Schnorr multisig](./excalidraw/math/schnorr-multisig.png)
 - [Extended euclidean algo](./python/math/euclid.ipynb)
 
 # DeFi
