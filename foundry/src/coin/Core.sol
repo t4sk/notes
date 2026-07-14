@@ -5,6 +5,7 @@ import {Auth} from "./lib/Auth.sol";
 import {V, W, mul, muldiv} from "./lib/Math.sol";
 
 // TODO: ROCQ
+// TODO: unify lending + stablecoin
 contract Core is Auth {
     // Collateral parameters
     struct Col {
