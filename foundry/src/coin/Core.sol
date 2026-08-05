@@ -28,6 +28,8 @@ contract Core is Auth {
         uint128 debt;
     }
 
+    bool public live;
+
     // [V]
     mapping(bytes32 gem => mapping(address usr => uint128 amt)) public gem;
     // [W]
@@ -36,6 +38,10 @@ contract Core is Auth {
     mapping(bytes32 coin => uint256) public sum;
     mapping(bytes32 key => Col) public cols;
     mapping(bytes32 key => mapping(address usr => Pos)) public positions;
+
+    constructor() {
+        live = true;
+    }
 
     function key(bytes32 coin, bytes32 gem) public pure returns (bytes32 k) {
         assembly {
@@ -62,7 +68,6 @@ contract Core is Auth {
     function mint(bytes32 c, address dst, uint256 amt) external auth {
         coin[c][dst] += amt;
         sum[c] += amt;
-        // TODO: store unbacked total?
     }
 
     function burn(bytes32 c, uint256 amt) external {
@@ -75,11 +80,17 @@ contract Core is Auth {
         coin[c][dst] += amt;
     }
 
+    // pos.debt * col.rate <= pos.col * col.spot
+    // p = pos.debt / pos.col
+    // col / total col = shares / total shares
+    // buckets[p] += pos.col
+
     function inc(bytes32 c, bytes32 g, uint128 debt, uint128 gmt)
         external
         returns (uint256)
     {
-        // TODO: require live
+        require(live, "stopped");
+
         bytes32 k = key(c, g);
 
         Col memory col = cols[k];
@@ -113,7 +124,8 @@ contract Core is Auth {
         external
         returns (uint256)
     {
-        // TODO: require live
+        require(live, "stopped");
+
         bytes32 k = key(c, g);
 
         Col memory col = cols[k];
@@ -140,6 +152,11 @@ contract Core is Auth {
 
         return amt;
     }
+
+    // require col.last = block.timestamp
+    // require colspot last = block.timestamp
+    // pos.debt * col.rate <= pos.col * col.spot
+    // pos -> bucket @ pos.debt / pos.col
 
     function grab() external auth {}
 
