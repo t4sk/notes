@@ -30,6 +30,7 @@
 ### Incremental Merkle Tree
 
 - [Code](./python/algo/merkle_inc.ipynb)
+- [Solidity](./foundry/src/MerkleInc.sol)
 
 # Fast Fourier Transform
 
