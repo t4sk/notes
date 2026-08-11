@@ -20,10 +20,16 @@
 - [63 / 64 gas rule](./foundry/test/Gas.t.sol)
 - [Lending interest rate PID controller](./python/pid.ipynb)
 
-# Merkle Tree
+# Algo
+
+### Merkle Tree
 
 - [Algorithm](./excalidraw/algo/merkle-algo.png)
 - [Code](./python/algo/merkle.ipynb)
+
+### Incremental Merkle Tree
+
+- [Code](./python/algo/merkle_inc.ipynb)
 
 # Fast Fourier Transform
 
