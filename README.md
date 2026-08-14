@@ -29,6 +29,7 @@
 
 ### Incremental Merkle Tree
 
+- [Algorithm](./excalidraw/algo/merkle-inc.png)
 - [Code](./python/algo/merkle_inc.ipynb)
 - [Solidity](./foundry/src/MerkleInc.sol)
 
