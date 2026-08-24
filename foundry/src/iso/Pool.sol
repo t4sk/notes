@@ -38,25 +38,47 @@ library Math {
 // TODO: ERC20
 // TODO: fee on transfer and rebase?
 // TODO: join adapters to normalize to 18 decimals?
-// TODO: treasury
+// TODO: protcol + treasury fee split
+
+
+// total debt with interest = borrow rate acc * total normalized debt
+// utilization rate = total debt with interest / total coin supplied
+// borrow rate <- f(utilization rate)
 
 contract Pool {
     using SafeTransfer for IERC20;
+
+    struct Cdp {
+        // 1e18
+        uint128 gem;
+        // Normalized debt (1e18?)
+        uint128 debt;
+    }
 
     IERC20 public immutable gem;
     IERC20 public immutable coin;
     IOracle public immutable oracle;
     // IRateController public immutable ctrl;
 
-    // Underlying balance
-    uint128 public bal;
+    uint128 public coin_in;
+    uint128 public coin_out;
 
-    uint128 public acc;
+    // Borrow rate accumulator
+    uint128 public bacc;
+    // Lending rate accumulator
+    uint128 public lacc;
     uint128 public rate;
     uint64 public last;
 
+    // Total lender shares
+    // total coin with interest = lacc * pie
     uint128 public pie;
     mapping(address => uint128) public shares;
+
+    mapping(address => Cdp) public cdps;
+    // Total normalized debt
+    // total debt with interest = bacc * debt
+    uint128 public debt;
 
     constructor(address _gem, address _coin, address _oracle, address _ctrl) {
         // TODO: combine (join + decimal normalization)
@@ -64,13 +86,13 @@ contract Pool {
         coin = IERC20(_coin);
         oracle = IOracle(_oracle);
         // ctrl = IRateController(_ctrl);
-        acc = W;
+        bacc = W;
         rate = W;
         last = block.timestamp;
     }
 
     function calc() public view returns (uint128) {
-        return acc * Math.pow(rate, block.timestamp - last) / W;
+        return bacc * Math.pow(rate, block.timestamp - last) / W;
     }
 
     function sync() public returns (uint128 a) {
@@ -78,7 +100,7 @@ contract Pool {
         // TODO: util rate
         if (block.timestamp > last) {
             a = calc();
-            acc = a;
+            bacc = a;
             last = block.timestamp;
         }
     }
@@ -87,7 +109,7 @@ contract Pool {
         uint256 a = sync();
 
         coin.safeTransferFrom(msg.sender, address(this), c);
-        bal += c;
+        coin_in += c;
 
         uint256 s = c * W / a;
         pie += s;
@@ -103,7 +125,7 @@ contract Pool {
         shares[msg.sender] -= s;
 
         uint256 c = s * a / W;
-        bal -= c;
+        coin_in -= c;
         coin.safeTransfer(msg.sender, c);
 
         // TODO: update rates
@@ -115,14 +137,7 @@ contract Pool {
         shares[dst] += s;
     }
 
-    struct Cdp {
-        // 1e18
-        uint128 gem;
-        // Normalized debt (1e18?)
-        uint128 debt;
-    }
-
-    mapping(address => Cdp) public cdps;
+    /*
 
     function poke() public returns (uint128) {
         (bool ok, uint128 price) = oracle.poke(address(gem), address(coin));
@@ -158,7 +173,8 @@ contract Pool {
         require(a * cdp.debt < cdp.gem * p);
 
         uint256 c = a * d / W;
-        bal -= c;
+        coin_out += c;
+        coin_out <= coin_in
         coin.safeTransfer(msg.sender, c);
 
         // TODO: update rates
@@ -170,4 +186,5 @@ contract Pool {
 
     function flash(uint128 c, uint128 g) external {}
     function liquidate() external {}
+    */
 }
