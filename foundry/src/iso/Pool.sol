@@ -45,6 +45,26 @@ library Math {
 // utilization rate = total debt with interest / total coin supplied
 // borrow rate <- f(utilization rate)
 
+// Borrow rates
+// 1 + r[i] = debt rates at time i
+
+// D(k, k + N + 1) = user debt at time k + N + 1, given user borrowed d at time k
+//                 = d * (1 + r[k]) * (1 + r[k + 1]) * ... * (1 + r[k + N])
+
+// Debt rate accumulator
+// r[-1] = 0
+// R[N] = (1 + r[-1]) * (1 + r[0]) * (1 + r[1]) * ... * (1 + r[N])
+
+// D(k, k + N + 1) = d * R[k + N] / R[k - 1]
+
+// Normalized debt
+// User borrows d at time k, borrows more or repays x at time k + N + 1, debt at time k + M + 1 (k <= N <= M)
+// D(k, k + M + 1) = (d * R[k + N] / R[k - 1] + x) * R[k + M] / R[k + N]
+//                 = d * R[k + M] / R[k - 1] + x * R[k + M] / R[K + N]
+//                 = (d / R[k - 1] + x / R[k + N]) * R[k + M]
+//                   |___________________________|
+//                          normalized debt
+
 contract Pool {
     using SafeTransfer for IERC20;
 
