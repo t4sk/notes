@@ -58,8 +58,9 @@ library Math {
 // = x * (1 + r[K]) * (1 + r[K + 1]) * ... * (1 + r[K + N - 1])
 
 // Borrow rate accumulator
-// R[-1] = 1
-// R[N] = (1 + r[-1]) * (1 + r[0]) * (1 + r[1]) * ... * (1 + r[N])
+// R[0] = 0
+// For N > 0
+// R[N] = (1 + r[0]) * (1 + r[1]) * ... * (1 + r[N])
 
 // User's debt = x * R[K + N - 1] / R[K - 1] (pre)
 
@@ -69,44 +70,41 @@ library Math {
 // = (x0 / R[K - 1] + x1 / R[K + N - 1]) * R[K + M - 1]
 //   |____________________________|
 //            normalized debt
-// d' = normalized debt
-// D' = total normalized debt
-// D = total debt
-//   = D' * R[N - 1] at time N (pre)
+// d'[u, i] = normalized debt of user u at time i
+// D'[i] = total normalized debt at time i
+// D[i] = total debt at time i
+//      = D'[i] * R[i - 1]
+//        (pre)   (pre)
 
-// -----
+// Yield
+// y[i] = yield from time i - 1 (post) to i (pre)
+//      = D[i] - D[i - 1]
+//        (pre)  (post)
 
-// S[k] = Total normalized debt at time k
-// D[k] = Total debt at time k
-// Total debt from time k to k + N + 1 when S[i] is constant for k <= i <= k + N + 1
-// D[k + N + 1] = S[k] * R[k + N]
-//              = S[k + N + 1] * R[k + N]
+// Pool growth and lender shares
+// P[i] = total amount owed to lenders (deposits + interest) at time i (pre)
+// g[i] = pool growth (lender deposits + interest) from time i - 1 (post) to i (pre)
+//      = (P[i] + y[i]) / P[i]
+//      = 1 + y[i] / P[i] (assuming P[i] > 0)
+// Lender deposits x at t = K, claims at t = K + N
+// x * g[K + 1] * g[K + 2] * ... * g[K + N]
 
-// Total yield between time k and k + N + 1 when S[i] is constant
-// y = D[k + N + 1] - D[k]
-//   = S[k] * (R[k + N] - R[k - 1])
+// Pool growth accumulator
+// G[N] = g[1] * g[2] * ... * g[N] (pre)
+
+// Lender claimable amount
+// = x * G[K + N] / G[K]
+// Lender shares = x / G[K]
+
+// Lender shares and amounts owed
+// s[u, i] = lender u's shares at time i
+// T[i] = total shares at time i
+// P[i] = T[i] * G[i]
 
 // Yield split
 // F = protocol fee
-// y * F = protocol yield
-// y * (1 - F) = lender yield
-
-// Yield accumulator
-// L[i] = total lender shares at time i
-// y[i] = yield between time i - 1 to i
-// Y[N] = y[0] / L[0] + y[1] / L[1] + ... + y[N] / L[N] (if L[i] > 0)
-
-// l[i] = lender share at time i
-// w[i] = lender max withdrawable balance
-// w[i] = l[k] * (Y[k + N + 1] - Y[k])
-
-// TODO:
-// Lender yield
-// P = total lender yield
-// yield growth = (P + y) / P = 1 + y / P
-// given initial deposit x at time k, total claimable at time k + N
-// x(1 + y[k + 1]/P[k + 1])....(1 + y[k + N - 1]/P[k + N - 1])
-// P = T * G
+// y[i] * F = protocol yield
+// y[i] * (1 - F) = lender yield
 
 contract Pool {
     using SafeTransfer for IERC20;
