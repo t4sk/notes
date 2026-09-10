@@ -41,55 +41,60 @@ library Math {
 // TODO: protcol + treasury fee split
 // TODO: sync balance -> protocol yield
 
-
-// Total debt with interest = borrow rate acc * total normalized debt
 // Utilization rate = total debt with interest / total coin supplied
 // borrow rate <- f(utilization rate)
 
-// TODO: check off by 1 miscalculation
-
 // pre = calculation to be done before state updates
 // post = calculation to be done after state updates
+// Use {0, 1} to indicate {pre, post}
 
 // Borrow rates
-// r[i] = borrow rate for time t,  i <= t < i + 1
+// r[i] = borrow rate for time t, i <= t < i + 1
 
 // User borrows x at t = K, debt at t = K + N (pre)
 // = x * (1 + r[K]) * (1 + r[K + 1]) * ... * (1 + r[K + N - 1])
 
 // Borrow rate accumulator
-// R[0] = 0
+// R[0] = 1
 // For N > 0
 // R[N] = (1 + r[0]) * (1 + r[1]) * ... * (1 + r[N])
 
 // User's debt = x * R[K + N - 1] / R[K - 1] (pre)
 
 // Normalized debt
-// User borrows x0 at time K, borrows or repays x1 at time K + N, debt at time K + M (0 <= N <= M)
-// = (x0 * R[K + N - 1] / R[K - 1] + x1) * R[K + M - 1] / R[K + N - 1]
-// = (x0 / R[K - 1] + x1 / R[K + N - 1]) * R[K + M - 1]
-//   |____________________________|
-//            normalized debt
+// User borrows x[0] at time K, borrows or repays x[1] at time K + N, debt at time K + M (0 <= N <= M)
+// = (x[0] * R[K + N - 1] / R[K - 1] + x[1]) * R[K + M - 1] / R[K + N - 1]
+// = (x[0] / R[K - 1] + x[1] / R[K + N - 1]) * R[K + M - 1]
+//   |____________________________________|
+//              normalized debt
+
 // d'[u, i] = normalized debt of user u at time i
 // D'[i] = total normalized debt at time i
 // D[i] = total debt at time i
 //      = D'[i] * R[i - 1]
-//        (pre)   (pre)
+//        (pre)       (pre)
 
-// Yield
-// y[i] = yield from time i - 1 (post) to i (pre)
-//      = D[i] - D[i - 1]
-//        (pre)  (post)
+// Yield (gain and loss)
+// y[i] = yield gain or loss from time i - 1 (post) to i (pre)
+//      = D{0}[i] - D{1}[i - 1]
+//        (pre)     (post)
+
+// Pool value
+// P[i] = total amount owed to lenders (deposits + interest) at time i (pre)
+
+// Pool value invariant - pool value is constant between post i - 1 and pre i
+// P{0}[i] = P{1}[i - 1]
 
 // Pool growth and lender shares
-// P[i] = total amount owed to lenders (deposits + interest) at time i (pre)
 // g[i] = pool growth (lender deposits + interest) from time i - 1 (post) to i (pre)
-//      = (P[i] + y[i]) / P[i]
-//      = 1 + y[i] / P[i] (assuming P[i] > 0)
+//      = (P{0}[i] + y[i]) / P{0}[i] (assumes if y[i] < 0 -> P{0}[i] + y[i] >= 0)
+//      = 1 + y[i] / P{0}[i] (assuming P{0}[i] > 0)
+
 // Lender deposits x at t = K, claims at t = K + N
 // x * g[K + 1] * g[K + 2] * ... * g[K + N]
 
 // Pool growth accumulator
+// G[0] = 1
 // G[N] = g[1] * g[2] * ... * g[N] (pre)
 
 // Lender claimable amount
@@ -99,7 +104,7 @@ library Math {
 // Lender shares and amounts owed
 // s[u, i] = lender u's shares at time i
 // T[i] = total shares at time i
-// P[i] = T[i] * G[i]
+// P{0}[i] = T{0}[i] * G[i]
 
 // Yield split
 // F = protocol fee
@@ -125,20 +130,20 @@ contract Pool {
     uint128 public coin_out;
 
     // Borrow rate accumulator
-    uint128 public bacc;
-    // Lending rate accumulator
-    uint128 public lacc;
+    uint128 public racc;
+    // Lending yield rate accumulator
+    uint128 public yacc;
     uint128 public rate;
     uint64 public last;
 
     // Total lender shares
-    // total coin with interest = lacc * pie
+    // total coin with interest = yacc * pie
     uint128 public pie;
     mapping(address => uint128) public shares;
 
     mapping(address => Cdp) public cdps;
     // Total normalized debt
-    // total debt with interest = bacc * debt
+    // total debt with interest = racc * debt
     uint128 public debt;
 
     constructor(address _gem, address _coin, address _oracle, address _ctrl) {
@@ -147,13 +152,13 @@ contract Pool {
         coin = IERC20(_coin);
         oracle = IOracle(_oracle);
         // ctrl = IRateController(_ctrl);
-        bacc = W;
+        racc = W;
         rate = W;
         last = block.timestamp;
     }
 
     function calc() public view returns (uint128) {
-        return bacc * Math.pow(rate, block.timestamp - last) / W;
+        return racc * Math.pow(rate, block.timestamp - last) / W;
     }
 
     function sync() public returns (uint128 a) {
@@ -161,7 +166,7 @@ contract Pool {
         // TODO: util rate
         if (block.timestamp > last) {
             a = calc();
-            bacc = a;
+            racc = a;
             last = block.timestamp;
         }
     }
