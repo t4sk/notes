@@ -90,10 +90,12 @@ library Math {
 // Pool value may change between post i - 1 and pre i (although not reflected in state variables)
 // P{0}[i] != P{1}[i - 1] is possible
 
+// Pool value bound
+// P{0}[i] - P{1}[i - 1] <= y[i]
+
 // Pool growth and lender shares
 // g[i] = pool growth (lender deposits + interest) from time i - 1 (post) to i (pre)
-//      = (P{1}[i - 1] + y[i]) / P{1}[i - 1] (assumes if y[i] < 0 -> P{0}[i] + y[i] >= 0)
-//      = 1 + y[i] / P{1}[i - 1] (assuming P{1}[i - 1] > 0)
+//      = (P{0}[i] - P{1}[i - 1]) / P{1}[i - 1] (assuming P{i}[i - 1] > 0)
 // g[0] = 1
 
 // Lender deposits x at t = K, claims at t = K + N
