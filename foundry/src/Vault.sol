@@ -20,13 +20,13 @@ contract Vault {
     function deposit(uint256 amt) external returns (uint256 s) {
         /*
         a = amount of token to deposit
-        B = total token balance
+        P = total token balance
         s = shares to mint
         T = total shares
 
-        (B + a) / B = (T + s) / T
-        aT = Bs
-        s = aT / B
+        (P + a) / P = (T + s) / T
+        a / P = s / T
+        s = aT / P (assumming P > 0)
         */
         uint256 bal = token.balanceOf(address(this));
 
@@ -48,13 +48,13 @@ contract Vault {
     function withdraw(uint256 s) external returns (uint256 amt) {
         /*
         a = amount of token to withdraw
-        B = total token balance
+        P = total token balance
         s = shares to burn
         T = total shares
 
-        (B - a) / B = (T - s) / T
-        aT = Bs
-        a = Bs / T
+        (P - a) / P = (T - s) / T
+        a / P = s / T
+        a = Ps / T (assuming T > 0)
         */
         uint256 bal = token.balanceOf(address(this));
 

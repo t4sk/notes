@@ -16,6 +16,7 @@ interface IRateController {}
 uint256 constant W = 1e18;
 
 library Math {
+    /*
     function u128(uint256 x) internal pure returns (uint128) {
         require(x <= type(uint128).max, "x > u128 max");
         return uint128(x);
@@ -31,7 +32,9 @@ library Math {
         return W + n * x + n * (n - 1) / 2 * x * x / W + n * (n - 1) * (n - 2)
             / 6 * x * x / W * x / W;
     }
-}
+    */
+
+    }
 
 // TODO: stop and withdraw?
 // TODO: liq amm = oracle?
@@ -79,31 +82,38 @@ library Math {
 //      = D{0}[i] - D{1}[i - 1]
 //        (pre)     (post)
 
+// TODO: unbacked loss?
+
 // Pool value
 // P[i] = total amount owed to lenders (deposits + interest) at time i (pre)
 
-// Pool value invariant - pool value is constant between post i - 1 and pre i
-// P{0}[i] = P{1}[i - 1]
+// Pool value may change between post i - 1 and pre i (although not reflected in state variables)
+// P{0}[i] != P{1}[i - 1] is possible
 
 // Pool growth and lender shares
 // g[i] = pool growth (lender deposits + interest) from time i - 1 (post) to i (pre)
-//      = (P{0}[i] + y[i]) / P{0}[i] (assumes if y[i] < 0 -> P{0}[i] + y[i] >= 0)
-//      = 1 + y[i] / P{0}[i] (assuming P{0}[i] > 0)
+//      = (P{1}[i - 1] + y[i]) / P{1}[i - 1] (assumes if y[i] < 0 -> P{0}[i] + y[i] >= 0)
+//      = 1 + y[i] / P{1}[i - 1] (assuming P{1}[i - 1] > 0)
+// g[0] = 1
 
 // Lender deposits x at t = K, claims at t = K + N
 // x * g[K + 1] * g[K + 2] * ... * g[K + N]
 
 // Pool growth accumulator
-// G[0] = 1
-// G[N] = g[1] * g[2] * ... * g[N] (pre)
+// G[N] = g[0] * g[1] * g[2] * ... * g[N] (pre)
 
 // Lender claimable amount
 // = x * G[K + N] / G[K]
 // Lender shares = x / G[K]
 
-// Lender shares and amounts owed
+// Lender shares
 // s[u, i] = lender u's shares at time i
 // T[i] = total shares at time i
+
+// Total shares does not change between post i and pre i + 1
+// T{1}[i] = T{0}[i + 1]
+
+// Total owed to lenders
 // P{0}[i] = T{0}[i] * G[i]
 
 // Yield split
@@ -112,6 +122,7 @@ library Math {
 // y[i] * (1 - F) = lender yield
 
 contract Pool {
+    /*
     using SafeTransfer for IERC20;
 
     struct Cdp {
@@ -203,8 +214,6 @@ contract Pool {
         shares[dst] += s;
     }
 
-    /*
-
     function poke() public returns (uint128) {
         (bool ok, uint128 price) = oracle.poke(address(gem), address(coin));
         require(ok, "oracle not ok");
@@ -253,4 +262,5 @@ contract Pool {
     function flash(uint128 c, uint128 g) external {}
     function liquidate() external {}
     */
-}
+
+    }
