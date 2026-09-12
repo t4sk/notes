@@ -19,6 +19,8 @@
   - [Notes](./excalidraw/vault-inflation.png)
 - [63 / 64 gas rule](./foundry/test/Gas.t.sol)
 - [Lending interest rate PID controller](./python/pid.ipynb)
+- [Vault and rebase math equivalence](./excalidraw/vault-rebase.png)
+  - [Code](./foundry/test/VaultAndRebase.t.sol)
 
 # Algo
 
