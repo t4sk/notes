@@ -22,6 +22,10 @@
 - [Vault and rebase math equivalence](./excalidraw/vault-rebase.png)
   - [Code](./foundry/test/VaultAndRebase.t.sol)
 
+# EVM
+
+- [False array length](./foundry/test/FalseArrLen.t.sol)
+
 # Algo
 
 ### Merkle Tree
