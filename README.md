@@ -13,6 +13,7 @@
 
 # DeFi
 
+- [DCA vault](./foundry/src/dca/DCA.sol)
 - [Yield optimization between 2 Aave V3 pools](./python/yield-opt.ipynb)
 - [Vault inflation](./foundry/test/Vault.t.sol)
   - [Graph](https://www.desmos.com/calculator/orugjruk99)
