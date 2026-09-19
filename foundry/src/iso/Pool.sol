@@ -12,7 +12,10 @@ interface IOracle {
         returns (bool ok, uint128 price);
 }
 
-interface IRateController {}
+interface IRateController {
+    // [1e18], [1e18], [1e27]
+    function calc(uint128 net, uint128 debt) external returns (uint128 rate);
+}
 
 uint128 constant WAD = 1e18;
 uint128 constant RAY = 1e27;
@@ -66,9 +69,6 @@ library Math {
 // TODO: join adapters to normalize to 18 decimals?
 // TODO: protcol + treasury fee split
 // TODO: sync balance -> protocol yield
-
-// Utilization rate = total debt with interest / total coin supplied
-// borrow rate <- f(utilization rate)
 
 // pre = calculation to be done before state updates
 // post = calculation to be done after state updates
@@ -145,12 +145,20 @@ library Math {
 // y[i] * F = protocol yield
 // y[i] * (1 - F) = lender yield
 
+// Utilizatoin rate
+// C[i] = total coin supplied at time i
+// U[i] = utilization rate at time i
+//      = total debt with interest / (total coin supplied - loss)
+//      = D'{1}[i] / C{1}[i] (if C{1}[i] > 0)
+// utilization rate -> borrow rate -> lender yield
+
 // TODO: check rate >= 1 and rac > 0
 
 // TODO: ERC20
 // TODO: exit queue?
 // TODO: round down shares and round up debt?
 // TODO: transient lock
+// TODO: handle debt rate blow up
 contract Pool {
     using SafeTransfer for IERC20;
 
@@ -194,6 +202,9 @@ contract Pool {
     uint128 public pie;
     // Lender shares [1e18]
     mapping(address => uint128) public slices;
+    // TODO: Check net * RAY <= pie * pac
+    // Current supply (deposit - withdraw - borrow + repay - loss) [1e18]
+    uint128 public net;
 
     constructor(address g, address c, address o, address r) {
         gem = IERC20(g);
@@ -254,32 +265,40 @@ contract Pool {
         }
     }
 
+    function post() private {
+        // TODO: check rate >= 1
+        uint128 r = ctrl.calc(net, Math.muldiv(debt, rac, RAY));
+        rate = r;
+    }
+
     function mint(uint128 amt, uint128 min) external returns (uint128 slice) {
         sync();
 
-        slice = Math.muldiv(amt * cnorm, RAY, pac);
+        uint128 wad = amt * cnorm;
+        slice = Math.muldiv(wad, RAY, pac);
         require(slice >= min, "slice < min");
 
         pie += slice;
         slices[msg.sender] += slice;
-
-        // TODO: update rates
+        net += wad;
 
         coin.safeTransferFrom(msg.sender, address(this), amt);
+        post();
     }
 
     function burn(uint128 slice, uint128 min) external returns (uint128 amt) {
         sync();
 
-        amt = Math.muldiv(slice, pac, RAY) / cnorm;
+        uint128 wad = Math.muldiv(slice, pac, RAY);
+        amt = wad / cnorm;
         require(amt >= min, "amt < min");
 
         pie -= slice;
         slices[msg.sender] -= slice;
-
-        // TODO: update rates
+        net -= wad;
 
         coin.safeTransfer(msg.sender, amt);
+        post();
     }
 
     function poke() public returns (uint128) {
@@ -315,7 +334,8 @@ contract Pool {
         Cdp memory cdp = cdps[msg.sender];
         // TODO: check amt / rac > 0
         // Round up?
-        uint128 d = Math.muldiv(amt * cnorm, RAY, rac) + 1;
+        uint128 wad = amt * cnorm;
+        uint128 d = Math.muldiv(wad, RAY, rac) + 1;
         cdp.debt += d;
 
         // TODO: price safety margin?
@@ -324,9 +344,10 @@ contract Pool {
 
         debt += d;
         cdps[msg.sender].debt = cdp.debt;
+        net -= wad;
         coin.safeTransfer(msg.sender, amt);
 
-        // TODO: update rates
+        post();
     }
 
     function repay(uint128 amt) external {
@@ -341,14 +362,16 @@ contract Pool {
         } else {
             d = Math.min(Math.muldiv(amt * cnorm, RAY, rac) + 1, cdp.debt);
         }
+        uint128 wad = amt * cnorm;
         cdp.debt -= d;
         // TODO: require min debt
 
         debt -= d;
         cdps[msg.sender].debt = cdp.debt;
-
+        net += wad;
         coin.safeTransferFrom(msg.sender, address(this), amt);
-        // TODO: update rates
+
+        post();
     }
 
     function liquidate() external {}
@@ -356,4 +379,5 @@ contract Pool {
     function flash(uint128 c, uint128 g) external {}
     // TODO: pause
     // TODO: emergency recovery
+    // TODO: sweep dust to treasury
 }
