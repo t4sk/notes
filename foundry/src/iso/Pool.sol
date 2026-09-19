@@ -5,7 +5,8 @@ import {IERC20} from "../lib/IERC20.sol";
 import {SafeTransfer} from "../lib/SafeTransfer.sol";
 
 interface IOracle {
-    // return ok = false, if price is stale
+    // Returns price of gem in terms of coin (1e27 -> 1e27 gem = 1e27 coin)
+    // TODO: 1e27 enough decimals?
     function poke(address gem, address coin)
         external
         returns (bool ok, uint128 price);
@@ -142,10 +143,19 @@ library Math {
 contract Pool {
     using SafeTransfer for IERC20;
 
+    struct Cdp {
+        // TODO: 1e18?
+        uint128 gem;
+        // Normalized debt (TODO: 1e18?)
+        uint128 debt;
+    }
+
     // Collateral
     IERC20 public immutable gem;
     // Token to borrow
     IERC20 public immutable coin;
+    IOracle public immutable oracle;
+    IRateController public immutable ctrl;
     // Treasury
     address public immutable pot;
 
@@ -160,6 +170,8 @@ contract Pool {
     // Total normalized debt
     // Total debt with interest = debt * rac
     uint128 public debt;
+    // Borrower => CDP
+    mapping(address => Cdp) public cdps;
 
     // Total lender shares
     // Total coin's owed (deposit + interest - loss) = pac * pie
@@ -167,14 +179,17 @@ contract Pool {
     // Lender shares
     mapping(address => uint128) public slices;
 
-    constructor(address g, address c) {
+    constructor(address g, address c, address o, address r) {
         gem = IERC20(g);
         coin = IERC20(c);
+        oracle = IOracle(o);
+        ctrl = IRateController(r);
         pot = msg.sender;
         rate = RAY;
         rac = RAY;
         pac = RAY;
         last = Math.u64(block.timestamp);
+        // TODO: token decimals normalization to 1e18
     }
 
     function sync() public {
@@ -250,19 +265,39 @@ contract Pool {
 
         coin.safeTransfer(msg.sender, amt);
     }
+
+    function poke() public returns (uint128) {
+        (bool ok, uint128 price) = oracle.poke(address(gem), address(coin));
+        require(ok, "oracle not ok");
+        return price;
+    }
+
+    function lock(uint128 amt) external {
+        gem.safeTransferFrom(msg.sender, address(this), amt);
+        cdps[msg.sender].gem += amt;
+    }
+
+    function unlock(uint128 amt) external {
+        sync();
+
+        Cdp memory cdp = cdps[msg.sender];
+        cdp.gem -= amt;
+
+        // TODO: price safety margin?
+        uint128 p = poke();
+        require(Math.mul(cdp.debt, rac) < Math.mul(cdp.gem, p), "under collat");
+
+        cdps[msg.sender].gem -= amt;
+        gem.safeTransfer(msg.sender, amt);
+    }
+
+    // TODO: pause
+    // TODO: emergency recovery
 }
 /*
 using SafeTransfer for IERC20;
 
-struct Cdp {
-    // 1e18
-    uint128 gem;
-    // Normalized debt (1e18?)
-    uint128 debt;
-}
-
 IOracle public immutable oracle;
-// IRateController public immutable ctrl;
 
 uint128 public coin_in;
 uint128 public coin_out;
@@ -299,29 +334,6 @@ function sync() public returns (uint128 a) {
     }
 }
 
-function poke() public returns (uint128) {
-    (bool ok, uint128 price) = oracle.poke(address(gem), address(coin));
-    require(ok, "oracle not ok");
-    return price;
-}
-
-function lock(uint128 g) external {
-    gem.safeTransferFrom(msg.sender, address(this), g);
-    cdps[msg.sender].gem += g;
-}
-
-function unlock(uint128 g) external {
-    uint128 a = sync();
-
-    Cdp memory cdp = cdps[msg.sender];
-    cdp.gem -= g;
-
-    uint128 p = poke();
-    require(mul(cdp.debt, a) < mul(cdp.gem, p));
-
-    cdps[msg.sender].gem -= g;
-    gem.safeTransfer(msg.sender, g);
-}
 
 function borrow(uint128 d) external {
     uint128 a = sync();
