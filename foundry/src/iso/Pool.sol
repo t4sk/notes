@@ -14,7 +14,9 @@ interface IOracle {
 
 interface IRateController {
     // [1e18], [1e18], [1e27]
-    function calc(uint128 net, uint128 debt) external returns (uint128 rate);
+    function calc(uint128 net, uint128 debt, uint128 rate, uint64 dt)
+        external
+        returns (uint128 rate);
 }
 
 uint128 constant WAD = 1e18;
