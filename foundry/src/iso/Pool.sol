@@ -25,17 +25,25 @@ library Math {
         z = uint64(x);
     }
 
+    function u128(uint256 x) internal pure returns (uint128 z) {
+        require(x <= type(uint128).max, "x > u128 max");
+        z = uint128(x);
+    }
+
+    function min(uint128 x, uint128 y) internal pure returns (uint128 z) {
+        z = x <= y ? x : y;
+    }
+
+    function max(uint128 x, uint128 y) internal pure returns (uint128 z) {
+        z = x >= y ? x : y;
+    }
+
     // Binomial expansion
     // (1+x)^n = 1+n*x+(n*(n-1)/2)*x^2+[n*(n-1)*(n-2)/6*x^3...
     // TODO: check math
     function pow(uint128 x, uint128 n) internal pure returns (uint128 z) {
         z = RAY + n * x + n * (n - 1) / 2 * x * x / RAY + n * (n - 1) * (n - 2)
             / 6 * x * x / RAY * x / RAY;
-    }
-
-    function u128(uint256 x) internal pure returns (uint128 z) {
-        require(x <= type(uint128).max, "x > u128 max");
-        z = uint128(x);
     }
 
     function mul(uint128 x, uint128 y) internal pure returns (uint256 z) {
@@ -140,13 +148,16 @@ library Math {
 // TODO: check rate >= 1 and rac > 0
 
 // TODO: ERC20
+// TODO: exit queue?
+// TODO: round down shares and round up debt?
+// TODO: transient lock
 contract Pool {
     using SafeTransfer for IERC20;
 
     struct Cdp {
-        // TODO: 1e18?
+        // [1e18]
         uint128 gem;
-        // Normalized debt (TODO: 1e18?)
+        // Normalized debt [1e18]
         uint128 debt;
     }
 
@@ -159,24 +170,29 @@ contract Pool {
     // Treasury
     address public immutable pot;
 
-    // Current borrow rate r[i]
+    // Normalize gem decimals to 1e18
+    uint128 private immutable gnorm;
+    // Normalize coin decimals to 1e18
+    uint128 private immutable cnorm;
+
+    // Current borrow rate r[i] [1e27]
     uint128 public rate;
     // Last timestamp rates were updated
     uint64 public last;
-    // Rate accumulator R[N]
+    // Rate accumulator R[N] [1e27]
     uint128 public rac;
-    // Pool growth accumulator G[N]
+    // Pool growth accumulator G[N] [1e27]
     uint128 public pac;
-    // Total normalized debt
+    // Total normalized debt [1e18]
     // Total debt with interest = debt * rac
     uint128 public debt;
     // Borrower => CDP
     mapping(address => Cdp) public cdps;
 
-    // Total lender shares
+    // Total lender shares [1e18]
     // Total coin's owed (deposit + interest - loss) = pac * pie
     uint128 public pie;
-    // Lender shares
+    // Lender shares [1e18]
     mapping(address => uint128) public slices;
 
     constructor(address g, address c, address o, address r) {
@@ -189,7 +205,13 @@ contract Pool {
         rac = RAY;
         pac = RAY;
         last = Math.u64(block.timestamp);
-        // TODO: token decimals normalization to 1e18
+
+        uint8 gdec = gem.decimals();
+        require(gdec <= 18, "gem decimals > 18");
+        uint8 cdec = coin.decimals();
+        require(cdec <= 18, "coin decimals > 18");
+        gnorm = Math.u128(10 ** (18 - gdec));
+        cnorm = Math.u128(10 ** (18 - cdec));
     }
 
     function sync() public {
@@ -232,30 +254,24 @@ contract Pool {
         }
     }
 
-    function mint(uint128 amt, address dst, uint128 min)
-        external
-        returns (uint128 slice)
-    {
+    function mint(uint128 amt, uint128 min) external returns (uint128 slice) {
         sync();
 
-        slice = Math.muldiv(amt, RAY, pac);
+        slice = Math.muldiv(amt * cnorm, RAY, pac);
         require(slice >= min, "slice < min");
 
         pie += slice;
-        slices[dst] += slice;
+        slices[msg.sender] += slice;
 
         // TODO: update rates
 
         coin.safeTransferFrom(msg.sender, address(this), amt);
     }
 
-    function burn(uint128 slice, address dst, uint128 min)
-        external
-        returns (uint128 amt)
-    {
+    function burn(uint128 slice, uint128 min) external returns (uint128 amt) {
         sync();
 
-        amt = Math.muldiv(slice, pac, RAY);
+        amt = Math.muldiv(slice, pac, RAY) / cnorm;
         require(amt >= min, "amt < min");
 
         pie -= slice;
@@ -274,89 +290,70 @@ contract Pool {
 
     function lock(uint128 amt) external {
         gem.safeTransferFrom(msg.sender, address(this), amt);
-        cdps[msg.sender].gem += amt;
+        cdps[msg.sender].gem += amt * gnorm;
     }
 
     function unlock(uint128 amt) external {
         sync();
 
         Cdp memory cdp = cdps[msg.sender];
-        cdp.gem -= amt;
+        cdp.gem -= amt * gnorm;
 
         // TODO: price safety margin?
         uint128 p = poke();
-        require(Math.mul(cdp.debt, rac) < Math.mul(cdp.gem, p), "under collat");
+        require(Math.mul(cdp.debt, rac) < Math.mul(cdp.gem, p), "unsafe cdp");
 
-        cdps[msg.sender].gem -= amt;
+        cdps[msg.sender].gem = cdp.gem;
         gem.safeTransfer(msg.sender, amt);
     }
 
+    function borrow(uint128 amt) external {
+        sync();
+
+        // TODO: require amt >= min
+
+        Cdp memory cdp = cdps[msg.sender];
+        // TODO: check amt / rac > 0
+        // Round up?
+        uint128 d = Math.muldiv(amt * cnorm, RAY, rac) + 1;
+        cdp.debt += d;
+
+        // TODO: price safety margin?
+        uint128 p = poke();
+        require(Math.mul(cdp.debt, rac) < Math.mul(cdp.gem, p), "unsafe cdp");
+
+        debt += d;
+        cdps[msg.sender].debt = cdp.debt;
+        coin.safeTransfer(msg.sender, amt);
+
+        // TODO: update rates
+    }
+
+    function repay(uint128 amt) external {
+        sync();
+
+        Cdp memory cdp = cdps[msg.sender];
+        uint128 d;
+        uint128 max = Math.muldiv(cdp.debt, rac, RAY) + 1;
+        if (amt * cnorm >= max) {
+            d = cdp.debt;
+            amt = max / cnorm;
+        } else {
+            d = Math.min(Math.muldiv(amt * cnorm, RAY, rac) + 1, cdp.debt);
+        }
+        cdp.debt -= d;
+        // TODO: require min debt
+
+        debt -= d;
+        cdps[msg.sender].debt = cdp.debt;
+
+        coin.safeTransferFrom(msg.sender, address(this), amt);
+        // TODO: update rates
+    }
+
+    function liquidate() external {}
+
+    function flash(uint128 c, uint128 g) external {}
     // TODO: pause
     // TODO: emergency recovery
 }
-/*
-using SafeTransfer for IERC20;
-
-IOracle public immutable oracle;
-
-uint128 public coin_in;
-uint128 public coin_out;
-
-// Borrow rate accumulator
-uint128 public racc;
-// Lending yield rate accumulator
-uint128 public yacc;
-
-mapping(address => Cdp) public cdps;
-
-constructor(address _gem, address _coin, address _oracle, address _ctrl) {
-    // TODO: combine (join + decimal normalization)
-    gem = IERC20(_gem);
-    coin = IERC20(_coin);
-    oracle = IOracle(_oracle);
-    // ctrl = IRateController(_ctrl);
-    racc = W;
-    rate = W;
-    last = block.timestamp;
-}
-
-function calc() public view returns (uint128) {
-    return racc * Math.pow(rate, block.timestamp - last) / W;
-}
-
-function sync() public returns (uint128 a) {
-    // TODO: protocol fee
-    // TODO: util rate
-    if (block.timestamp > last) {
-        a = calc();
-        racc = a;
-        last = block.timestamp;
-    }
-}
-
-
-function borrow(uint128 d) external {
-    uint128 a = sync();
-
-    Cdp memory cdp = cdps[msg.sender];
-    cdp.debt += d;
-
-    uint128 p = poke();
-    require(a * cdp.debt < cdp.gem * p);
-
-    uint256 c = a * d / W;
-    coin_out += c;
-    coin_out <= coin_in
-    coin.safeTransfer(msg.sender, c);
-
-    // TODO: update rates
-}
-
-function repay(uint128 c) external {
-    uint256 a = sync();
-}
-
-function flash(uint128 c, uint128 g) external {}
-function liquidate() external {}
-*/
-
