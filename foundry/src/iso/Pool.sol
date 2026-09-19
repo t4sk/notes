@@ -138,6 +138,7 @@ library Math {
 
 // TODO: check rate >= 1 and rac > 0
 
+// TODO: ERC20
 contract Pool {
     using SafeTransfer for IERC20;
 
@@ -228,12 +229,27 @@ contract Pool {
         pie += slice;
         slices[dst] += slice;
 
-        coin.safeTransferFrom(msg.sender, address(this), amt);
-
         // TODO: update rates
+
+        coin.safeTransferFrom(msg.sender, address(this), amt);
     }
 
-    function burn(uint128 s) external {}
+    function burn(uint128 slice, address dst, uint128 min)
+        external
+        returns (uint128 amt)
+    {
+        sync();
+
+        amt = Math.muldiv(slice, pac, RAY);
+        require(amt >= min, "amt < min");
+
+        pie -= slice;
+        slices[msg.sender] -= slice;
+
+        // TODO: update rates
+
+        coin.safeTransfer(msg.sender, amt);
+    }
 }
 /*
 using SafeTransfer for IERC20;
@@ -281,38 +297,6 @@ function sync() public returns (uint128 a) {
         racc = a;
         last = block.timestamp;
     }
-}
-
-function mint(uint128 c) external returns (uint256 s) {
-    uint256 a = sync();
-
-    coin.safeTransferFrom(msg.sender, address(this), c);
-    coin_in += c;
-
-    uint256 s = c * W / a;
-    pie += s;
-    shares[msg.sender] += s;
-
-    // TODO: update rates
-}
-
-function burn(uint128 s) external returns (uint128 c) {
-    uint256 a = sync();
-
-    pie -= s;
-    shares[msg.sender] -= s;
-
-    uint256 c = s * a / W;
-    coin_in -= c;
-    coin.safeTransfer(msg.sender, c);
-
-    // TODO: update rates
-}
-
-function transfer(address dst, uint256 s) external {
-    uint128 s = Math.u128(s);
-    shares[msg.sender] -= s;
-    shares[dst] += s;
 }
 
 function poke() public returns (uint128) {
