@@ -13,7 +13,10 @@ interface IOracle {
 
 interface IRateController {}
 
-uint128 constant W = 1e18;
+uint128 constant WAD = 1e18;
+uint128 constant RAY = 1e27;
+// 1e18 = 100%
+uint128 constant FEE = 0.05e18;
 
 library Math {
     function u64(uint256 x) internal pure returns (uint64 z) {
@@ -25,8 +28,8 @@ library Math {
     // (1+x)^n = 1+n*x+(n*(n-1)/2)*x^2+[n*(n-1)*(n-2)/6*x^3...
     // TODO: check math
     function pow(uint128 x, uint128 n) internal pure returns (uint128 z) {
-        z = W + n * x + n * (n - 1) / 2 * x * x / W + n * (n - 1) * (n - 2) / 6
-            * x * x / W * x / W;
+        z = RAY + n * x + n * (n - 1) / 2 * x * x / RAY + n * (n - 1) * (n - 2)
+            / 6 * x * x / RAY * x / RAY;
     }
 
     function u128(uint256 x) internal pure returns (uint128 z) {
@@ -36,6 +39,14 @@ library Math {
 
     function mul(uint128 x, uint128 y) internal pure returns (uint256 z) {
         z = uint256(x) * uint256(y);
+    }
+
+    function muldiv(uint128 x, uint128 y, uint128 d)
+        internal
+        pure
+        returns (uint128 z)
+    {
+        z = u128(uint256(x) * uint256(y) / uint256(d));
     }
 }
 
@@ -103,6 +114,7 @@ library Math {
 // x * g[K + 1] * g[K + 2] * ... * g[K + N]
 
 // Pool growth accumulator
+// G[0] = 1
 // G[N] = g[0] * g[1] * g[2] * ... * g[N] (pre)
 
 // Lender claimable amount
@@ -124,14 +136,17 @@ library Math {
 // y[i] * F = protocol yield
 // y[i] * (1 - F) = lender yield
 
-// TODO: Invariants to check
-// rate >= 1 and rac > 0
+// TODO: check rate >= 1 and rac > 0
 
 contract Pool {
     using SafeTransfer for IERC20;
 
+    // Collateral
     IERC20 public immutable gem;
+    // Token to borrow
     IERC20 public immutable coin;
+    // Treasury
+    address public immutable pot;
 
     // Current borrow rate r[i]
     uint128 public rate;
@@ -145,10 +160,19 @@ contract Pool {
     // Total debt with interest = debt * rac
     uint128 public debt;
 
+    // Total lender shares
+    // Total coin's owed (deposit + interest - loss) = pac * pie
+    uint128 public pie;
+    // Lender shares
+    mapping(address => uint128) public slices;
+
     constructor(address g, address c) {
         gem = IERC20(g);
         coin = IERC20(c);
-        rate = W;
+        pot = msg.sender;
+        rate = RAY;
+        rac = RAY;
+        pac = RAY;
         last = Math.u64(block.timestamp);
     }
 
@@ -156,32 +180,57 @@ contract Pool {
         uint64 t = Math.u64(block.timestamp);
         uint64 dt = t - last;
 
+        // TODO: check calling sync twice in the same time stamp doesn't change state variables
         if (dt > 0) {
             uint128 d = debt;
             uint128 r0 = rac;
 
             uint256 d0 = Math.mul(d, r0);
-            // TODO: invariant r >= 1
-            uint128 r = Math.pow(rate - W, uint128(dt));
-            uint128 r1 = Math.u128(Math.mul(r0, r) / uint256(W));
+            // TODO: check r >= 1
+            uint128 r = Math.pow(rate - RAY, uint128(dt));
+            uint128 r1 = Math.muldiv(r0, r, RAY);
+            /* TODO: enforce non decrease?
+            r1 = Math.max(r1, r0);
+            */
             uint256 d1 = Math.mul(d, r1);
-            // y = d * (r1 - r0)
-            //   = d * (r0 * r - r0)
-            //   = d * r0 * (r - 1)
+            // y = (d1 - d0) * (1 - F) (TODO: check d1 >= d0)
+            //   = d * (r1 - r0) * (1 - F)
+            //   = d * (r0 * r - r0) * (1 - F)
+            //   = d * r0 * (r - 1) * (1 - F)
             // g = y / d0
-            //   = r - 1
-            uint128 g = r - W;
+            //   = (r - 1) * (1 - F)
+            uint128 g = r - RAY;
+            uint128 fee = Math.muldiv(g, FEE, WAD);
+            uint128 rem = g - fee;
 
-            pac = Math.u128(Math.mul(pac, r - W) / uint256(W));
+            // TODO: what to do with fee?
+            if (fee > 0) {
+                // mint fee * d to treasury?
+            }
+
+            // TODO: check g > 0 and pac > 0
+            // TODO: check rem > 0
+            pac = Math.muldiv(pac, rem, RAY);
             rac = r1;
             last = t;
         }
-        // Sync debt
-        // Sync lender yield
     }
 
-    function mint(uint128 amt, address dst) external {
+    function mint(uint128 amt, address dst, uint128 min)
+        external
+        returns (uint128 slice)
+    {
         sync();
+
+        slice = Math.muldiv(amt, RAY, pac);
+        require(slice >= min, "slice < min");
+
+        pie += slice;
+        slices[dst] += slice;
+
+        coin.safeTransferFrom(msg.sender, address(this), amt);
+
+        // TODO: update rates
     }
 
     function burn(uint128 s) external {}
@@ -206,11 +255,6 @@ uint128 public coin_out;
 uint128 public racc;
 // Lending yield rate accumulator
 uint128 public yacc;
-
-// Total lender shares
-// total coin with interest = yacc * pie
-uint128 public pie;
-mapping(address => uint128) public shares;
 
 mapping(address => Cdp) public cdps;
 
