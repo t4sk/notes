@@ -13,8 +13,8 @@ interface IOracle {
 }
 
 interface IRateController {
-    // [1e18], [1e18], [1e27]
-    function calc(uint128 net, uint128 debt, uint128 rate, uint64 dt)
+    // [1e18], [1e18], [1e27], [timestamp] -> [1e27]
+    function calc(uint128 net, uint128 debt, uint64 dt)
         external
         returns (uint128 rate);
 }
@@ -23,6 +23,8 @@ uint128 constant WAD = 1e18;
 uint128 constant RAY = 1e27;
 // 1e18 = 100%
 uint128 constant FEE = 0.05e18;
+// 1e18 = 100%
+uint128 constant FLASH_FEE = 0.001e18;
 
 library Math {
     function u64(uint256 x) internal pure returns (uint64 z) {
@@ -207,6 +209,8 @@ contract Pool {
     // TODO: Check net * RAY <= pie * pac
     // Current supply (deposit - withdraw - borrow + repay - loss) [1e18]
     uint128 public net;
+    // Unbacked loss [1e18]
+    uint128 public loss;
 
     constructor(address g, address c, address o, address r) {
         gem = IERC20(g);
@@ -269,8 +273,8 @@ contract Pool {
 
     function post() private {
         // TODO: check rate >= 1
-        uint128 r = ctrl.calc(net, Math.muldiv(debt, rac, RAY));
-        rate = r;
+        // uint128 r = ctrl.calc(net, Math.muldiv(debt, rac, RAY));
+        // rate = r;
     }
 
     function mint(uint128 amt, uint128 min) external returns (uint128 slice) {
@@ -379,6 +383,11 @@ contract Pool {
     function liquidate() external {}
 
     function flash(uint128 c, uint128 g) external {}
+
+    function donate(uint128 amt) external {
+        loss -= amt * cnorm;
+        coin.safeTransferFrom(msg.sender, address(this), amt);
+    }
     // TODO: pause
     // TODO: emergency recovery
     // TODO: sweep dust to treasury
