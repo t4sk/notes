@@ -4,6 +4,8 @@ pragma solidity 0.8.33;
 import {IERC20} from "../lib/IERC20.sol";
 import {SafeTransfer} from "../lib/SafeTransfer.sol";
 
+// TODO: separate pool code (pool = invariants, helper = calc)
+
 interface IOracle {
     // Returns price of gem in terms of coin (1e27 -> 1e27 gem = 1e27 coin)
     // TODO: 1e27 enough decimals?
@@ -21,12 +23,28 @@ interface IRateController {
 
 uint128 constant WAD = 1e18;
 uint128 constant RAY = 1e27;
+uint256 constant RAD = 1e45;
 // 1e18 = 100%
 uint128 constant FEE = 0.05e18;
 // 1e18 = 100%
 uint128 constant FLASH_FEE = 0.001e18;
+// Value to loan V <= (pos.gem / (pos.debt * rac)) [1e27]
+uint128 constant V = 1.5e27;
+// Liquidation threshold [1e27]
+// 1 < 1 + liquidation bonus < K < V
+uint128 constant K = 1.1e27;
+// DUST (pos.debt * rac) >= DUST
+uint256 constant DUST = 100 * 1e27 * 1e18;
 
 library Math {
+    function min(uint128 x, uint128 y) internal pure returns (uint128 z) {
+        z = x <= y ? x : y;
+    }
+
+    function max(uint128 x, uint128 y) internal pure returns (uint128 z) {
+        z = x >= y ? x : y;
+    }
+
     function u64(uint256 x) internal pure returns (uint64 z) {
         require(x <= type(uint64).max, "x > u64 max");
         z = uint64(x);
@@ -35,14 +53,6 @@ library Math {
     function u128(uint256 x) internal pure returns (uint128 z) {
         require(x <= type(uint128).max, "x > u128 max");
         z = uint128(x);
-    }
-
-    function min(uint128 x, uint128 y) internal pure returns (uint128 z) {
-        z = x <= y ? x : y;
-    }
-
-    function max(uint128 x, uint128 y) internal pure returns (uint128 z) {
-        z = x >= y ? x : y;
     }
 
     // Binomial expansion
@@ -156,6 +166,7 @@ library Math {
 //      = D'{1}[i] / C{1}[i] (if C{1}[i] > 0)
 // utilization rate -> borrow rate -> lender yield
 
+// TODO: check all math doesn't overflow ([ray] * [wad] > u128)
 // TODO: check rate >= 1 and rac > 0
 
 // TODO: ERC20
@@ -163,12 +174,13 @@ library Math {
 // TODO: round down shares and round up debt?
 // TODO: transient lock
 // TODO: handle debt rate blow up
+// TODO: check rounding (down = mint, token out, up for burn, token in)
 contract Pool {
     using SafeTransfer for IERC20;
 
     struct Cdp {
         // [1e18]
-        uint128 gem;
+        uint128 col;
         // Normalized debt [1e18]
         uint128 debt;
     }
@@ -211,6 +223,18 @@ contract Pool {
     uint128 public net;
     // Unbacked loss [1e18]
     uint128 public loss;
+
+    // Liquidation buckets
+    struct Bucket {
+        // Collateral amount [1e18]
+        uint128 col;
+        // Normalized debt [1e18]
+        uint128 debt;
+    }
+    // TODO: price band for slot
+    // TODO: unit of slot?
+    // Slot = pos.col / pos.debt
+    mapping(uint128 slot => Bucket) public buckets;
 
     constructor(address g, address c, address o, address r) {
         gem = IERC20(g);
@@ -315,20 +339,19 @@ contract Pool {
 
     function lock(uint128 amt) external {
         gem.safeTransferFrom(msg.sender, address(this), amt);
-        cdps[msg.sender].gem += amt * gnorm;
+        cdps[msg.sender].col += amt * gnorm;
     }
 
     function unlock(uint128 amt) external {
         sync();
 
         Cdp memory cdp = cdps[msg.sender];
-        cdp.gem -= amt * gnorm;
+        cdp.col -= amt * gnorm;
 
-        // TODO: price safety margin?
         uint128 p = poke();
-        require(Math.mul(cdp.debt, rac) < Math.mul(cdp.gem, p), "unsafe cdp");
+        require(Math.mul(cdp.debt, rac) < Math.mul(cdp.col, p), "unsafe cdp");
 
-        cdps[msg.sender].gem = cdp.gem;
+        cdps[msg.sender].col = cdp.col;
         gem.safeTransfer(msg.sender, amt);
     }
 
@@ -346,7 +369,7 @@ contract Pool {
 
         // TODO: price safety margin?
         uint128 p = poke();
-        require(Math.mul(cdp.debt, rac) < Math.mul(cdp.gem, p), "unsafe cdp");
+        require(Math.mul(cdp.debt, rac) < Math.mul(cdp.col, p), "unsafe cdp");
 
         debt += d;
         cdps[msg.sender].debt = cdp.debt;
@@ -380,7 +403,95 @@ contract Pool {
         post();
     }
 
-    function liquidate() external {}
+    // TODO: dynamic close factor
+    // TODO: multiple call for valid slot should not fail
+    function liquidate(
+        uint128 maxCoinIn,
+        uint128 minGemOut,
+        uint128 slot,
+        uint128 maxSlot
+    ) external returns (uint128 coinAmtIn, uint128 gemAmtOut) {
+        sync();
+
+        uint128 spot = poke();
+        // TODO: FIX rem goes above max when dust must be repaid
+        uint128 rem = maxCoinIn * cnorm / rac;
+        // debt
+        uint128 d;
+        // col
+        uint128 c;
+        // loss
+        uint128 l;
+
+        while (rem > 0 && slot <= maxSlot) {
+            // Liquidation condition
+            // pos.col * spot / (pos.debt * rac) <= K
+            require(Math.mul(slot, spot) <= Math.mul(K, rac), "invalid slot");
+            Bucket memory buck = buckets[slot];
+            // TODO:: handle buck.debt = 0 and buck.col = 0
+
+            // Maximum debt to repay from this bucket
+            uint128 cap = Math.min(buck.debt, rem);
+            // Caller cannot leave dust
+            if (Math.mul(buck.debt - cap, rac) < DUST) {
+                cap = buck.debt;
+            }
+
+            // TODO: calculate liquidation bonus
+            uint128 bonus = 0.05e18;
+
+            // Calculate repayment amount and col amount
+            // col * spot = repay * rac * (1 + bonus)
+            uint128 re = cap;
+            uint128 col;
+            if (spot == 0) {
+                col = buck.col;
+                re = 0;
+            } else {
+                // TODO: use Math to handle overflow and precision loss
+                //    [wad] * [ray] * [wad] / [ray] / [wad] = [wad]
+                col = re * rac * (WAD + bonus) / spot / WAD;
+            }
+
+            // Cap col and recalculate repayment amount
+            if (col > buck.col) {
+                col = buck.col;
+                // TODO: use Math to handle overflow and precision loss
+                //   [wad] * [ray] * [wad] / [ray] / [wad]
+                re = col * spot * WAD / rac / (WAD + bonus) + 1;
+            }
+
+            // TODO: check re <= b.debt
+            // TODO: check col <= b.col
+            Bucket storage b = buckets[slot];
+            b.debt -= re;
+            b.col -= col;
+
+            d += re;
+            c += col;
+            // TODO: check cap >= re
+            l += cap - re;
+            // TODO: FIX re >= rem when dust clean up is triggered
+            rem -= Math.min(re, rem);
+
+            // TODO: update slot
+            // slot = next slot
+        }
+
+        if (l > 0) {
+            loss += l;
+        }
+
+        // TODO: update net?
+
+        // coinAmtIn = d * rac / RAY / cnorm + 1;
+        // gemAmtOut = c / gnorm;
+
+        require(coinAmtIn <= maxCoinIn, "coin in > max");
+        require(gemAmtOut >= minGemOut, "gem out < min");
+        coin.safeTransferFrom(msg.sender, address(this), coinAmtIn);
+        gem.safeTransfer(msg.sender, gemAmtOut);
+    }
 
     function flash(uint128 c, uint128 g) external {}
 
@@ -388,6 +499,7 @@ contract Pool {
         loss -= amt * cnorm;
         coin.safeTransferFrom(msg.sender, address(this), amt);
     }
+    // TODO: auth set params (K, V, LIQ_MIN_BONUS, LIQ_MAX_BONUS)
     // TODO: pause
     // TODO: emergency recovery
     // TODO: sweep dust to treasury
