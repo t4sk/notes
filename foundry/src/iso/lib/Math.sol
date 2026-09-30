@@ -35,11 +35,13 @@ function muldiv(uint128 x, uint128 y, uint128 d) pure returns (uint128 z) {
 }
 
 // Binomial expansion
-// (1+x)^n = 1+n*x+(n*(n-1)/2)*x^2+[n*(n-1)*(n-2)/6*x^3...
+// (1+x)^n = 1 + n*x + n*(n-1)/2*x^2 + n*(n-1)*(n-2)/6*x^3 ...
 // TODO: check math
 // TODO: fix overflows
 function pow(uint128 x, uint128 n) pure returns (uint128 z) {
-    z = RAY_128 + n * x + n * (n - 1) / 2 * x * x / RAY_128 + n * (n - 1)
-        * (n - 2) / 6 * x * x / RAY_128 * x / RAY_128;
+    uint128 x1 = n * x;
+    uint128 x2 = n * (n - 1) / 2 * x * x / RAY_128;
+    uint128 x3 = n * (n - 1) * (n - 3) / 6 * x * x / RAY_128 * x / RAY_128;
+    z = RAY_128 + x1 + x2 + x3;
 }
 
