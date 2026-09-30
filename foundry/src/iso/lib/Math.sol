@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.33;
 
-uint128 constant WAD = 1e18;
-uint128 constant RAY = 1e27;
-uint256 constant RAD = 1e45;
+uint128 constant WAD_128 = 1e18;
+uint128 constant RAY_128 = 1e27;
+
+uint256 constant WAD_256 = 1e18;
+uint256 constant RAY_256 = 1e27;
+uint256 constant RAD_256 = 1e45;
 
 function min(uint128 x, uint128 y) pure returns (uint128 z) {
     z = x <= y ? x : y;
@@ -34,8 +37,9 @@ function muldiv(uint128 x, uint128 y, uint128 d) pure returns (uint128 z) {
 // Binomial expansion
 // (1+x)^n = 1+n*x+(n*(n-1)/2)*x^2+[n*(n-1)*(n-2)/6*x^3...
 // TODO: check math
+// TODO: fix overflows
 function pow(uint128 x, uint128 n) pure returns (uint128 z) {
-    z = RAY + n * x + n * (n - 1) / 2 * x * x / RAY + n * (n - 1) * (n - 2) / 6
-        * x * x / RAY * x / RAY;
+    z = RAY_128 + n * x + n * (n - 1) / 2 * x * x / RAY_128 + n * (n - 1)
+        * (n - 2) / 6 * x * x / RAY_128 * x / RAY_128;
 }
 

@@ -4,9 +4,11 @@ pragma solidity 0.8.33;
 import {IERC20} from "../lib/IERC20.sol";
 import {SafeTransfer} from "../lib/SafeTransfer.sol";
 import {
-    WAD,
-    RAY,
-    RAD,
+    WAD_128,
+    RAY_128,
+    WAD_256,
+    RAY_256,
+    RAD_256,
     min,
     max,
     u64,
@@ -211,9 +213,9 @@ contract Pool {
         oracle = IOracle(o);
         ctrl = IRateController(r);
         pot = msg.sender;
-        rate = RAY;
-        rac = RAY;
-        pac = RAY;
+        rate = RAY_128;
+        rac = RAY_128;
+        pac = RAY_128;
         last = u64(block.timestamp);
 
         uint8 gdec = gem.decimals();
@@ -235,8 +237,8 @@ contract Pool {
 
             uint256 d0 = mul(d, r0);
             // TODO: check r >= 1
-            uint128 r = pow(rate - RAY, uint128(dt));
-            uint128 r1 = muldiv(r0, r, RAY);
+            uint128 r = pow(rate - RAY_128, uint128(dt));
+            uint128 r1 = muldiv(r0, r, RAY_128);
             /* TODO: enforce non decrease?
             r1 = Math.max(r1, r0);
             */
@@ -247,8 +249,8 @@ contract Pool {
             //   = d * r0 * (r - 1) * (1 - F)
             // g = y / d0
             //   = (r - 1) * (1 - F)
-            uint128 g = r - RAY;
-            uint128 fee = muldiv(g, FEE, WAD);
+            uint128 g = r - RAY_128;
+            uint128 fee = muldiv(g, FEE, WAD_128);
             uint128 rem = g - fee;
 
             // TODO: what to do with fee?
@@ -258,7 +260,7 @@ contract Pool {
 
             // TODO: check g > 0 and pac > 0
             // TODO: check rem > 0
-            pac = muldiv(pac, rem, RAY);
+            pac = muldiv(pac, rem, RAY_128);
             rac = r1;
             last = t;
         }
@@ -266,7 +268,7 @@ contract Pool {
 
     function post() private {
         // TODO: check rate >= 1
-        // uint128 r = ctrl.calc(net, Math.muldiv(debt, rac, RAY));
+        // uint128 r = ctrl.calc(net, Math.muldiv(debt, rac, RAY_128));
         // rate = r;
     }
 
@@ -274,7 +276,7 @@ contract Pool {
         sync();
 
         uint128 wad = amt * cnorm;
-        slice = muldiv(wad, RAY, pac);
+        slice = muldiv(wad, RAY_128, pac);
         require(slice >= min, "slice < min");
 
         pie += slice;
@@ -288,7 +290,7 @@ contract Pool {
     function burn(uint128 slice, uint128 min) external returns (uint128 amt) {
         sync();
 
-        uint128 wad = muldiv(slice, pac, RAY);
+        uint128 wad = muldiv(slice, pac, RAY_128);
         amt = wad / cnorm;
         require(amt >= min, "amt < min");
 
@@ -333,7 +335,7 @@ contract Pool {
         // TODO: check amt / rac > 0
         // Round up?
         uint128 wad = amt * cnorm;
-        uint128 d = muldiv(wad, RAY, rac) + 1;
+        uint128 d = muldiv(wad, RAY_128, rac) + 1;
         cdp.debt += d;
 
         // TODO: price safety margin?
@@ -353,12 +355,12 @@ contract Pool {
 
         Cdp memory cdp = cdps[msg.sender];
         uint128 d;
-        uint128 max = muldiv(cdp.debt, rac, RAY) + 1;
+        uint128 max = muldiv(cdp.debt, rac, RAY_128) + 1;
         if (amt * cnorm >= max) {
             d = cdp.debt;
             amt = max / cnorm;
         } else {
-            d = min(muldiv(amt * cnorm, RAY, rac) + 1, cdp.debt);
+            d = min(muldiv(amt * cnorm, RAY_128, rac) + 1, cdp.debt);
         }
         uint128 wad = amt * cnorm;
         cdp.debt -= d;
@@ -419,7 +421,7 @@ contract Pool {
             } else {
                 // TODO: use Math to handle overflow and precision loss
                 //    [wad] * [ray] * [wad] / [ray] / [wad] = [wad]
-                col = re * rac * (WAD + bonus) / spot / WAD;
+                col = re * rac * (WAD_128 + bonus) / spot / WAD_128;
             }
 
             // Cap col and recalculate repayment amount
@@ -427,7 +429,7 @@ contract Pool {
                 col = buck.col;
                 // TODO: use Math to handle overflow and precision loss
                 //   [wad] * [ray] * [wad] / [ray] / [wad]
-                re = col * spot * WAD / rac / (WAD + bonus) + 1;
+                re = col * spot * WAD_128 / rac / (WAD_128 + bonus) + 1;
             }
 
             // TODO: check re <= b.debt
