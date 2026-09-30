@@ -475,3 +475,34 @@ contract Pool {
     // TODO: emergency recovery
     // TODO: sweep dust to treasury
 }
+
+// TODO: price band or linked list?
+// Doubly linked list
+// insert   O(N)
+// remove   O(1)
+// update (remove + insert) O(1) + O(N)
+// find top O(1)
+
+// Price band
+//             [wad] * [ray] / [wad]
+// C * slot <= pos.col * RAY / pos.debt < C * (slot + 1)
+// slot = pos.col * RAY / pos.debt / C
+
+// Compression
+// C small -> sparse slots
+// C large -> large price range grouped into a single slot
+//                        C = 10 | 100
+// 1 * 100 / 10 = 10 / C   |  1  |   0
+// 2 * 100 / 10 = 20 / C   |  2  |   0
+// 3 * 100 / 10 = 30 / C   |  3  |   0
+// 11 * 100 / 10 = 110 / C | 11  |   1
+
+// Range estimate
+// 1e18 * [1e18] * [1e27] / [1e18] / C <= 1e18 * [1e27] / C
+// pos.col * RAY / pos.debt / C
+// slot <= 1e18 * [1e27] / C (1e18 units, 1e27 decimals / C)
+
+// liquidation price
+// spot <= K * (pos.debt * rac) / pos.col = K * rac / slot
+// compression
+// spot / C <= K * rac / slot / C
