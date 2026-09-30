@@ -3,6 +3,18 @@ pragma solidity 0.8.33;
 
 import {IERC20} from "../lib/IERC20.sol";
 import {SafeTransfer} from "../lib/SafeTransfer.sol";
+import {
+    WAD,
+    RAY,
+    RAD,
+    min,
+    max,
+    u64,
+    u128,
+    mul,
+    muldiv,
+    pow
+} from "./lib/Math.sol";
 
 // TODO: separate pool code (pool = invariants, helper = calc)
 
@@ -21,9 +33,6 @@ interface IRateController {
         returns (uint128 rate);
 }
 
-uint128 constant WAD = 1e18;
-uint128 constant RAY = 1e27;
-uint256 constant RAD = 1e45;
 // 1e18 = 100%
 uint128 constant FEE = 0.05e18;
 // 1e18 = 100%
@@ -35,46 +44,6 @@ uint128 constant V = 1.5e27;
 uint128 constant K = 1.1e27;
 // DUST (pos.debt * rac) >= DUST
 uint256 constant DUST = 100 * 1e27 * 1e18;
-
-library Math {
-    function min(uint128 x, uint128 y) internal pure returns (uint128 z) {
-        z = x <= y ? x : y;
-    }
-
-    function max(uint128 x, uint128 y) internal pure returns (uint128 z) {
-        z = x >= y ? x : y;
-    }
-
-    function u64(uint256 x) internal pure returns (uint64 z) {
-        require(x <= type(uint64).max, "x > u64 max");
-        z = uint64(x);
-    }
-
-    function u128(uint256 x) internal pure returns (uint128 z) {
-        require(x <= type(uint128).max, "x > u128 max");
-        z = uint128(x);
-    }
-
-    // Binomial expansion
-    // (1+x)^n = 1+n*x+(n*(n-1)/2)*x^2+[n*(n-1)*(n-2)/6*x^3...
-    // TODO: check math
-    function pow(uint128 x, uint128 n) internal pure returns (uint128 z) {
-        z = RAY + n * x + n * (n - 1) / 2 * x * x / RAY + n * (n - 1) * (n - 2)
-            / 6 * x * x / RAY * x / RAY;
-    }
-
-    function mul(uint128 x, uint128 y) internal pure returns (uint256 z) {
-        z = uint256(x) * uint256(y);
-    }
-
-    function muldiv(uint128 x, uint128 y, uint128 d)
-        internal
-        pure
-        returns (uint128 z)
-    {
-        z = u128(uint256(x) * uint256(y) / uint256(d));
-    }
-}
 
 // TODO: stop and withdraw?
 // TODO: liq amm = oracle?
@@ -245,18 +214,18 @@ contract Pool {
         rate = RAY;
         rac = RAY;
         pac = RAY;
-        last = Math.u64(block.timestamp);
+        last = u64(block.timestamp);
 
         uint8 gdec = gem.decimals();
         require(gdec <= 18, "gem decimals > 18");
         uint8 cdec = coin.decimals();
         require(cdec <= 18, "coin decimals > 18");
-        gnorm = Math.u128(10 ** (18 - gdec));
-        cnorm = Math.u128(10 ** (18 - cdec));
+        gnorm = u128(10 ** (18 - gdec));
+        cnorm = u128(10 ** (18 - cdec));
     }
 
     function sync() public {
-        uint64 t = Math.u64(block.timestamp);
+        uint64 t = u64(block.timestamp);
         uint64 dt = t - last;
 
         // TODO: check calling sync twice in the same time stamp doesn't change state variables
@@ -264,14 +233,14 @@ contract Pool {
             uint128 d = debt;
             uint128 r0 = rac;
 
-            uint256 d0 = Math.mul(d, r0);
+            uint256 d0 = mul(d, r0);
             // TODO: check r >= 1
-            uint128 r = Math.pow(rate - RAY, uint128(dt));
-            uint128 r1 = Math.muldiv(r0, r, RAY);
+            uint128 r = pow(rate - RAY, uint128(dt));
+            uint128 r1 = muldiv(r0, r, RAY);
             /* TODO: enforce non decrease?
             r1 = Math.max(r1, r0);
             */
-            uint256 d1 = Math.mul(d, r1);
+            uint256 d1 = mul(d, r1);
             // y = (d1 - d0) * (1 - F) (TODO: check d1 >= d0)
             //   = d * (r1 - r0) * (1 - F)
             //   = d * (r0 * r - r0) * (1 - F)
@@ -279,7 +248,7 @@ contract Pool {
             // g = y / d0
             //   = (r - 1) * (1 - F)
             uint128 g = r - RAY;
-            uint128 fee = Math.muldiv(g, FEE, WAD);
+            uint128 fee = muldiv(g, FEE, WAD);
             uint128 rem = g - fee;
 
             // TODO: what to do with fee?
@@ -289,7 +258,7 @@ contract Pool {
 
             // TODO: check g > 0 and pac > 0
             // TODO: check rem > 0
-            pac = Math.muldiv(pac, rem, RAY);
+            pac = muldiv(pac, rem, RAY);
             rac = r1;
             last = t;
         }
@@ -305,7 +274,7 @@ contract Pool {
         sync();
 
         uint128 wad = amt * cnorm;
-        slice = Math.muldiv(wad, RAY, pac);
+        slice = muldiv(wad, RAY, pac);
         require(slice >= min, "slice < min");
 
         pie += slice;
@@ -319,7 +288,7 @@ contract Pool {
     function burn(uint128 slice, uint128 min) external returns (uint128 amt) {
         sync();
 
-        uint128 wad = Math.muldiv(slice, pac, RAY);
+        uint128 wad = muldiv(slice, pac, RAY);
         amt = wad / cnorm;
         require(amt >= min, "amt < min");
 
@@ -349,7 +318,7 @@ contract Pool {
         cdp.col -= amt * gnorm;
 
         uint128 p = poke();
-        require(Math.mul(cdp.debt, rac) < Math.mul(cdp.col, p), "unsafe cdp");
+        require(mul(cdp.debt, rac) < mul(cdp.col, p), "unsafe cdp");
 
         cdps[msg.sender].col = cdp.col;
         gem.safeTransfer(msg.sender, amt);
@@ -364,12 +333,12 @@ contract Pool {
         // TODO: check amt / rac > 0
         // Round up?
         uint128 wad = amt * cnorm;
-        uint128 d = Math.muldiv(wad, RAY, rac) + 1;
+        uint128 d = muldiv(wad, RAY, rac) + 1;
         cdp.debt += d;
 
         // TODO: price safety margin?
         uint128 p = poke();
-        require(Math.mul(cdp.debt, rac) < Math.mul(cdp.col, p), "unsafe cdp");
+        require(mul(cdp.debt, rac) < mul(cdp.col, p), "unsafe cdp");
 
         debt += d;
         cdps[msg.sender].debt = cdp.debt;
@@ -384,12 +353,12 @@ contract Pool {
 
         Cdp memory cdp = cdps[msg.sender];
         uint128 d;
-        uint128 max = Math.muldiv(cdp.debt, rac, RAY) + 1;
+        uint128 max = muldiv(cdp.debt, rac, RAY) + 1;
         if (amt * cnorm >= max) {
             d = cdp.debt;
             amt = max / cnorm;
         } else {
-            d = Math.min(Math.muldiv(amt * cnorm, RAY, rac) + 1, cdp.debt);
+            d = min(muldiv(amt * cnorm, RAY, rac) + 1, cdp.debt);
         }
         uint128 wad = amt * cnorm;
         cdp.debt -= d;
@@ -426,14 +395,14 @@ contract Pool {
         while (rem > 0 && slot <= maxSlot) {
             // Liquidation condition
             // pos.col * spot / (pos.debt * rac) <= K
-            require(Math.mul(slot, spot) <= Math.mul(K, rac), "invalid slot");
+            require(mul(slot, spot) <= mul(K, rac), "invalid slot");
             Bucket memory buck = buckets[slot];
             // TODO:: handle buck.debt = 0 and buck.col = 0
 
             // Maximum debt to repay from this bucket
-            uint128 cap = Math.min(buck.debt, rem);
+            uint128 cap = min(buck.debt, rem);
             // Caller cannot leave dust
-            if (Math.mul(buck.debt - cap, rac) < DUST) {
+            if (mul(buck.debt - cap, rac) < DUST) {
                 cap = buck.debt;
             }
 
@@ -472,7 +441,7 @@ contract Pool {
             // TODO: check cap >= re
             l += cap - re;
             // TODO: FIX re >= rem when dust clean up is triggered
-            rem -= Math.min(re, rem);
+            rem -= min(re, rem);
 
             // TODO: update slot
             // slot = next slot
