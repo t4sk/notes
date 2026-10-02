@@ -503,3 +503,9 @@ contract Pool {
 
 // liquidation price
 // pos.col * spot <= K * pos.debt * rac
+
+// Tree
+// 256 = 2^8
+// 3 level tree = 256^3 = 2^24
+// 4 level tree = 256^4 = 2^32
+
