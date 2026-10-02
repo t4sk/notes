@@ -208,6 +208,7 @@ contract Pool {
     mapping(uint128 slot => Bucket) public buckets;
 
     constructor(address g, address c, address o, address r) {
+        // TODO: allow g = c?
         gem = IERC20(g);
         coin = IERC20(c);
         oracle = IOracle(o);
@@ -477,7 +478,7 @@ contract Pool {
 }
 
 // TODO: price band or linked list?
-// Doubly linked list
+// Doubly linked list <- still need compression for buckets to be useful
 // insert   O(N)
 // remove   O(1)
 // update (remove + insert) O(1) + O(N)
@@ -485,7 +486,7 @@ contract Pool {
 
 // Price band
 //             [wad] * [ray] / [wad]
-// C * slot <= pos.col * RAY / pos.debt < C * (slot + 1)
+// C * slot <= pos.col * RAY / pos.debt < C * slot + 1
 // slot = pos.col * RAY / pos.debt / C
 
 // Compression
@@ -497,12 +498,8 @@ contract Pool {
 // 3 * 100 / 10 = 30 / C   |  3  |   0
 // 11 * 100 / 10 = 110 / C | 11  |   1
 
-// Range estimate
-// 1e18 * [1e18] * [1e27] / [1e18] / C <= 1e18 * [1e27] / C
-// pos.col * RAY / pos.debt / C
-// slot <= 1e18 * [1e27] / C (1e18 units, 1e27 decimals / C)
+//        [1e18] * [1e27] / [1e18] = [1e27] / [C]
+// slot = pos.col * RAY / pos.debt / C
 
 // liquidation price
-// spot <= K * (pos.debt * rac) / pos.col = K * rac / slot
-// compression
-// spot / C <= K * rac / slot / C
+// pos.col * spot <= K * pos.debt * rac
