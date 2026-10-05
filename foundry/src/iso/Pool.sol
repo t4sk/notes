@@ -504,8 +504,21 @@ contract Pool {
 // liquidation price
 // pos.col * spot <= K * pos.debt * rac
 
+// Uniswap v3 tick
+//                2.94e-39  to 3.4e38
+// tick = int24 (-8,388,608 to +8,388,607)
+
+// Slot precision
+// 1 slot = 1e18
+// 0 <= slot <= 1e18
+// slot <= 1e18 * [1e18] < 2**128
+
+// Bitmap
+//                       upper 64 | lower 64
+// 128 / 2 = 64 -> mapping(uint64 => uint64)
+// 128 / 4 = 32
+
 // Tree
 // 256 = 2^8
 // 3 level tree = 256^3 = 2^24
 // 4 level tree = 256^4 = 2^32
-
