@@ -48,6 +48,10 @@
 - [Bit reversal](./excalidraw/algo/fft/fft-bit-reversal.png)
 - [Code](./python/algo/fft.ipynb)
 
+# Groth16
+
+- [R1CS](./excalidraw/groth16/r1cs.png)
+
 # ZKStark
 
 - [Anatomy of a Stark](https://aszepieniec.github.io/stark-anatomy/)
