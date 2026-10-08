@@ -4,11 +4,8 @@ pragma solidity 0.8.33;
 import "forge-std/Test.sol";
 
 // 2**8 = 256
-
-// Tree
-// 256 = 2^8
-// 3 levels = 256^3 = 2^24
-// 4 levels = 256^4 = 2^32
+// 1e18 < 2**64
+// 1e9 < 2**32
 
 contract BitMap {
     // [15 to 8] -> [7 to 0]
@@ -47,20 +44,82 @@ contract BitMap {
         b5[x6] |= uint256(1) << x5;
         b6[x7] |= uint256(1) << x6;
     }
+}
 
-    // TODO:
-    function next() public {}
+contract BitMap2 {
+    // 64 bits
+    //       32     8     8     8     8
+    // x = [ x0 ][ x1 ][ x2 ][ x3 ][ x4 ]
+    // x0 => x1
+    mapping(uint32 => uint256) b0;
+    // x1 => x2
+    mapping(uint8 => uint256) b1;
+    // x2 => x3
+    mapping(uint8 => uint256) b2;
+    // x3 => x4
+    mapping(uint8 => uint256) b3;
+
+    function insert(uint64 x) public {
+        // [63...32]
+        uint32 x0 = uint32(x >> 32);
+        // [31...24]
+        uint8 x1 = uint8(x >> 24);
+        // [23...16]
+        uint8 x2 = uint8(x >> 16);
+        // [15...8]
+        uint8 x3 = uint8(x >> 8);
+        // [7...0]
+        uint8 x4 = uint8(x >> 0);
+
+        b0[x0] |= uint256(1) << x1;
+        b1[x1] |= uint256(1) << x2;
+        b2[x2] |= uint256(1) << x3;
+        b3[x3] |= uint256(1) << x4;
+    }
+}
+
+contract BitMap3 {
+    // 64 bits
+    //       32     8    16     8
+    // x = [ x0 ][ x1 ][ x2 ][ x3 ]
+    // x0 => x1
+    mapping(uint32 => uint256) b0;
+    // x2 => x3
+    mapping(uint16 => uint256) b1;
+
+    function insert(uint64 x) public {
+        // [63...32]
+        uint32 x0 = uint32(x >> 32);
+        // [31...24]
+        uint8 x1 = uint8(x >> 24);
+        // [23...8]
+        uint8 x2 = uint8(x >> 8);
+        // [7...0]
+        uint8 x3 = uint8(x >> 0);
+
+        b0[x0] |= uint256(1) << x1;
+        b1[x2] |= uint256(1) << x3;
+    }
 }
 
 contract BitMapTest is Test {
     BitMap bitMap;
+    BitMap2 bitMap2;
+    BitMap3 bitMap3;
 
     function setUp() public {
         bitMap = new BitMap();
+        bitMap2 = new BitMap2();
+        bitMap3 = new BitMap3();
     }
 
     function test() public {
         // 171945 gas
-        bitMap.insert(1);
+        // bitMap.insert(1);
+
+        // 101181 gas
+        // bitMap2.insert(1);
+
+        bitMap3.insert(1);
     }
 }
