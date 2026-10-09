@@ -6,54 +6,100 @@ import "forge-std/Test.sol";
 // Sorted doubly linked list
 contract List {
     struct Node {
+        bool init;
         uint256 prev;
         uint256 next;
         uint256 val;
     }
 
     // id
-    uint256 i;
+    uint256 public i;
     // start
-    uint256 s;
+    uint256 public s;
     // end
-    uint256 e;
-    mapping(uint256 => Node) nodes;
+    uint256 public e;
+    uint256 public len;
+    mapping(uint256 => Node) public nodes;
 
+    // Set p = 0 to insert in front of s
     function insert(uint256 p, uint256 val) public {
         i += 1;
-        require(p < i);
+        require(p < i, "p >= i");
 
         // Not initialized
-        require(nodes[i].prev == 0);
-        require(nodes[i].next == 0);
+        Node storage node = nodes[i];
+        require(!node.init, "node already initialized");
 
-        Node storage prev = nodes[p];
-        uint256 n = prev.next;
-        Node storage next = nodes[n];
+        uint256 n;
+        if (p == 0) {
+            Node storage start = nodes[s];
 
-        // TODO: fix code to handle uninitialized prev or next
-        prev.next = i;
-        next.prev = i;
+            if (start.init) {
+                n = start.next;
+                require(val <= start.val);
+            }
 
-        require(val >= prev.val);
-        require(val <= next.val);
+            node.init = true;
+            node.prev = 0;
+            node.next = s;
+            node.val = val;
+        } else {
+            Node storage prev = nodes[p];
+            n = prev.next;
+            Node storage next = nodes[n];
 
-        nodes[i] = Node({
-            prev: p,
-            next: n,
-            val: val
-        });
+            prev.next = i;
+            next.prev = i;
+
+            require(val >= prev.val);
+            require(val <= next.val);
+
+            node.init = true;
+            node.prev = p;
+            node.next = n;
+            node.val = val;
+        }
 
         // TODO: update s and e
+        if (p == 0) {
+            s = i;
+        }
+        if (p != 0 && prev.prev == 0) {
+            s = p;
+        }
+
+        if (n == 0) {
+            e = i;
+        }
+        if (n != 0 && next.next == 0) {
+            e = n;
+        }
+
+        len += 1;
     }
 
     function remove(uint256 i) public {
         Node memory curr = nodes[i];
+
+        // Initialized
+        require(curr.prev != 0 || curr.next != 0);
+
         Node storage prev = nodes[curr.prev];
         Node storage next = nodes[curr.next];
         // prev <-> cur <-> next
         prev.next = curr.next;
         next.prev = curr.prev;
+
+        if (curr.prev == 0) {
+            s = curr.next;
+        }
+        if (curr.next == 0) {
+            e = curr.prev;
+        }
+
+        delete nodes[i];
+
+        len -= 1;
     }
 
     function find(uint256 val) public {}

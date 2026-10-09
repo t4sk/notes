@@ -3,13 +3,17 @@
 # Math
 
 - [Notes on `mulDiv`](./foundry/src/MulDiv.sol)
+- [Extended euclidean algo](./python/math/euclid.ipynb)
+
+# Cryptography
+
 - [Elliptic curve addition](https://www.desmos.com/calculator/efumvebyyn)
 - [ECDSA](./excalidraw/math/ecdsa.png)
 - [ECDSA nonce reuse](./excalidraw/math/ecdsa-nonce-reuse.png)
   - [code](./python/math/ecdsa.ipynb)
 - [Schnorr](./excalidraw/math/schnorr.png)
 - [Schnorr multisig](./excalidraw/math/schnorr-multisig.png)
-- [Extended euclidean algo](./python/math/euclid.ipynb)
+- [ECDH](./md/ecdh.md)
 
 # DeFi
 
