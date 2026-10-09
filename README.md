@@ -2,7 +2,7 @@
 
 # Math
 
-- [Notes on `mulDiv`](./foundry/src/MulDiv.sol)
+- [`mulDiv`](./foundry/src/MulDiv.sol)
 - [Extended euclidean algo](./python/math/euclid.ipynb)
 
 # Cryptography
