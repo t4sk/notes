@@ -57,6 +57,7 @@
 - [R1CS](./excalidraw/groth16/r1cs.png)
 - [QAP](./excalidraw/groth16/qap.png)
 - [Schwartz-Zippel Lemma](./excalidraw/groth16/schwartz-zippel.png)
+- [Polynomial evaluation at EC point](./excalidraw/groth16/ec-poly-eval.png)
 
 # ZKStark
 

@@ -273,7 +273,11 @@ contract LinkedListTest is Test {
         // Check find
         for (uint256 i = 0; i < n; i++) {
             uint256 p = list.find(h.vals(i));
-            assertLe(p, h.ids(i));
+            if (i == 0) {
+                assertEq(p, 0);
+            } else {
+                assertEq(p, h.ids(i - 1));
+            }
         }
 
         // Check nodes
