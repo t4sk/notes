@@ -4,7 +4,7 @@ pragma solidity 0.8.33;
 // Sorted doubly linked list
 contract List {
     // Pointers and length
-    struct P {
+    struct Pointer {
         // id
         uint64 i;
         // start
@@ -24,24 +24,24 @@ contract List {
         uint256 val;
     }
 
-    P public p;
+    Pointer public ptr;
     mapping(uint256 => Node) public nodes;
 
     function get(uint256 i) public view returns (Node memory) {
         return nodes[i];
     }
 
-    // Insert to the right of pi
-    // Set pi = 0 to insert to the left of s
-    function insert(uint64 pi, uint256 val) public returns (uint256) {
-        P memory m = p;
+    // Insert to the right of p
+    // Set p = 0 to insert to the left of s
+    function insert(uint64 p, uint256 val) public returns (uint256) {
+        Pointer memory m = ptr;
         // Previous id must already exist
-        require(pi <= m.i, "pi > i");
+        require(p <= m.i, "p > i");
 
         m.i += 1;
         Node storage node = nodes[m.i];
 
-        if (pi == 0) {
+        if (p == 0) {
             Node storage next = nodes[m.s];
 
             if (next.init) {
@@ -58,11 +58,11 @@ contract List {
                 m.e = m.i;
             }
         } else {
-            Node storage prev = nodes[pi];
+            Node storage prev = nodes[p];
             require(prev.init, "!init");
 
-            uint64 ni = prev.next;
-            Node storage next = nodes[ni];
+            uint64 n = prev.next;
+            Node storage next = nodes[n];
 
             require(prev.val <= val, "val < prev");
             prev.next = m.i;
@@ -73,8 +73,8 @@ contract List {
             }
 
             node.init = true;
-            node.prev = pi;
-            node.next = ni;
+            node.prev = p;
+            node.next = n;
             node.val = val;
 
             if (!next.init) {
@@ -83,13 +83,13 @@ contract List {
         }
 
         m.len += 1;
-        p = m;
+        ptr = m;
 
         return m.i;
     }
 
     function remove(uint64 i) public {
-        P memory m = p;
+        Pointer memory m = ptr;
         Node memory node = nodes[i];
         require(node.init, "!init");
 
@@ -110,27 +110,26 @@ contract List {
         delete nodes[i];
 
         m.len -= 1;
-        p = m;
+        ptr = m;
     }
 
     // Last node with val < target, not found = 0
-    function find(uint256 val) public view returns (uint64 pi) {
-        uint64 c = p.s;
-        // TODO: here
+    function find(uint256 val) public view returns (uint64 p) {
+        uint64 c = ptr.s;
         while (c != 0 && nodes[c].val < val) {
-            pi = c;
+            p = c;
             c = nodes[c].next;
         }
     }
 
-    function vals() public view returns (uint256[] memory vals) {
-        P memory m = p;
-        vals = new uint256[](m.len);
+    function vals() public view returns (uint256[] memory vs) {
+        Pointer memory m = ptr;
+        vs = new uint256[](m.len);
         uint256 c = m.s;
         uint256 i = 0;
         while (c != 0) {
             Node memory node = nodes[c];
-            vals[i] = node.val;
+            vs[i] = node.val;
             i++;
             c = node.next;
         }

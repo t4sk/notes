@@ -80,69 +80,76 @@ contract LinkedListTest is Test {
         targetContract(address(h));
     }
 
-    function invariant_cursors() public view {
-        (uint64 i, uint64 s, uint64 e, uint64 len) = list.p();
+    function invariant_pointers() public view {
+        (uint64 i, uint64 s, uint64 e, uint64 len) = list.ptr();
 
         List.Node memory start = list.get(s);
         List.Node memory end = list.get(e);
 
         if (len == 0) {
-            assertEq(uint256(s), 0);
-            assertEq(uint256(e), 0);
-            assertTrue(!start.init);
-            assertTrue(!end.init);
+            assertEq(uint256(s), 0, "s != 0");
+            assertEq(uint256(e), 0, "e != 0");
+            assertTrue(!start.init, "start init");
+            assertTrue(!end.init, "end init");
         } else if (len == 1) {
-            assertGt(s, 0);
-            assertGt(e, 0);
-            assertEq(s, e);
-            assertTrue(start.init);
-            assertTrue(end.init);
+            assertGt(s, 0, "s = 0");
+            assertGt(e, 0, "e = 0");
+            assertEq(s, e, "s != e");
+            assertTrue(start.init, "start not init");
+            assertTrue(end.init, "end not init");
         } else {
-            assertGt(s, 0);
-            assertGt(e, 0);
-            assertNotEq(s, e);
-            assertTrue(start.init);
-            assertTrue(end.init);
+            assertGt(s, 0, "s = 0");
+            assertGt(e, 0, "e = 0");
+            assertNotEq(s, e, "s = e");
+            assertTrue(start.init, "start not init");
+            assertTrue(end.init, "end not init");
         }
 
         // Start - prev = 0
-        assertEq(start.prev, 0);
+        assertEq(start.prev, 0, "start.prev != 0");
 
         // End - next = 0
-        assertEq(end.next, 0);
+        assertEq(end.next, 0, "end.next != 0");
 
         // Next node for insertion is not initialized
         i += 1;
-        List.Node memory node = list.get(i);
-        assertTrue(!node.init);
-        assertEq(node.prev, 0);
-        assertEq(node.next, 0);
-        assertEq(node.val, 0);
+        List.Node memory next = list.get(i);
+        assertTrue(!next.init, "next init");
+        assertEq(next.prev, 0, "next.prev != 0");
+        assertEq(next.next, 0, "next.next != 0");
+        assertEq(next.val, 0, "next.val != 0");
     }
 
-    // TODO: invariant on find
-
     function invariant_eq() public view {
-        (, uint64 s, uint64 e, uint64 len) = list.p();
+        (, uint64 s, uint64 e, uint64 len) = list.ptr();
 
         uint256 n = h.len();
-        assertEq(uint256(len), n);
+        assertEq(uint256(len), n, "handler: len");
 
         // Check vals
         uint256[] memory vals = list.vals();
-        assertEq(uint256(len), vals.length);
+        assertEq(uint256(len), vals.length, "handler: vals len");
 
         for (uint256 i = 0; i < n; i++) {
-            assertEq(vals[i], h.vals(i));
+            assertEq(vals[i], h.vals(i), "handler: vals");
         }
 
         // Check find
         for (uint256 i = 0; i < n; i++) {
-            uint256 p = list.find(h.vals(i));
+            uint256 val = h.vals(i);
+            uint64 p = list.find(val);
+
+            List.Node memory prev = list.get(p);
+
+            assertLe(prev.val, val, "find: prev val");
+
             if (i == 0) {
-                assertEq(p, 0);
+                assertEq(p, 0, "find: p != 0");
+                assertTrue(!prev.init, "find: prev init");
             } else {
-                // assertEq(p, h.ids(i - 1));
+                if (p != 0) {
+                    assertTrue(prev.init, "find: prev not init");
+                }
             }
         }
 
@@ -152,24 +159,26 @@ contract LinkedListTest is Test {
         for (uint256 i = 0; i < n; i++) {
             List.Node memory node = list.get(c);
 
-            assertTrue(node.init);
-            assertEq(node.prev, p);
-            assertEq(node.val, h.vals(i));
-            assertEq(c, h.ids(i));
+            assertTrue(node.init, "nodes: node not init");
+            assertEq(node.prev, p, "nodes: node.prev");
+            assertEq(node.val, h.vals(i), "nodes: val");
+            assertEq(c, h.ids(i), "nodes: id");
 
             if (node.prev != 0) {
                 List.Node memory prev = list.get(node.prev);
-                assertLe(prev.val, node.val);
+                assertTrue(prev.init, "nodes: prev not init");
+                assertLe(prev.val, node.val, "nodes: prev.val");
             }
             if (node.next != 0) {
                 List.Node memory next = list.get(node.next);
-                assertLe(node.val, next.val);
+                assertTrue(next.init, "nodes: next not init");
+                assertLe(node.val, next.val, "nodes: next.val");
             }
 
             p = c;
             c = node.next;
         }
-        assertEq(c, 0);
-        assertEq(e, p);
+        assertEq(c, 0, "nodes: c != 0");
+        assertEq(p, e, "nodes: p != e");
     }
 }
