@@ -113,7 +113,9 @@ contract List {
         ptr = m;
     }
 
-    // Last node with val < target, not found = 0
+    // Returns the id of the last node whose value is strictly less than `val`,
+    // prev.val < val
+    // Returns 0 if no such node exists (empty list, or `val` <= the first value)
     function find(uint256 val) public view returns (uint64 p) {
         uint64 c = ptr.s;
         while (c != 0 && nodes[c].val < val) {

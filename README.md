@@ -33,24 +33,20 @@
 
 # Algo
 
-### Merkle Tree
-
-- [Algorithm](./excalidraw/algo/merkle-algo.png)
-- [Code](./python/algo/merkle.ipynb)
-
-### Incremental Merkle Tree
-
-- [Algorithm](./excalidraw/algo/merkle-inc.png)
-- [Code](./python/algo/merkle_inc.ipynb)
-- [Solidity](./foundry/src/MerkleInc.sol)
-
-# Fast Fourier Transform
-
-- [Intro](./excalidraw/algo/fft/fft-intro.png)
-- [Definitions](./excalidraw/algo/fft/fft-definitions.png)
-- [Algorithm](./excalidraw/algo/fft/fft-algo.png)
-- [Bit reversal](./excalidraw/algo/fft/fft-bit-reversal.png)
-- [Code](./python/algo/fft.ipynb)
+- [Sorted doubly linked list](./foundry/src/LinkedList.sol)
+- Merkle Tree
+  - [Algorithm](./excalidraw/algo/merkle-algo.png)
+  - [Code](./python/algo/merkle.ipynb)
+- Incremental Merkle Tree
+  - [Algorithm](./excalidraw/algo/merkle-inc.png)
+  - [Code](./python/algo/merkle_inc.ipynb)
+  - [Solidity](./foundry/src/MerkleInc.sol)
+- Fast Fourier Transform
+  - [Intro](./excalidraw/algo/fft/fft-intro.png)
+  - [Definitions](./excalidraw/algo/fft/fft-definitions.png)
+  - [Algorithm](./excalidraw/algo/fft/fft-algo.png)
+  - [Bit reversal](./excalidraw/algo/fft/fft-bit-reversal.png)
+  - [Code](./python/algo/fft.ipynb)
 
 # Groth16
 
