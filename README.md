@@ -14,6 +14,7 @@
 - [Schnorr](./excalidraw/math/schnorr.png)
 - [Schnorr multisig](./excalidraw/math/schnorr-multisig.png)
 - [ECDH](./md/ecdh.md)
+- [EVM EC operations](./foundry/test/ECOps.t.sol)
 
 # DeFi
 
