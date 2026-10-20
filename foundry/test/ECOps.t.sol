@@ -74,6 +74,8 @@ contract ECOpts is Test {
         view
         returns (uint256)
     {
+        // All x, y coordinates must be < P
+        // All G1 and G2 points must be valid points on their elliptic curve
         uint256[12] memory input = [
             a.x,
             a.y,
