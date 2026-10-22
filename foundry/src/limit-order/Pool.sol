@@ -17,6 +17,7 @@ import {SafeTransfer} from "../lib/SafeTransfer.sol";
 // For i < t -> L[i] = Y[i]
 // For t < i -> L[i] = p(i) * X[i]
 
+uint128 constant RAY_128 = 1e27;
 uint256 constant RAY_256 = 1e27;
 
 function mul(uint128 x, uint128 y) pure returns (uint256 z) {
@@ -28,7 +29,7 @@ function u128(uint256 x) pure returns (uint128 z) {
     z = uint128(x);
 }
 
-function pow(uint256 b, uint256 x) pure returns (uint128 z) {}
+function pow(uint256 b, uint256 x) pure returns (uint256 z) {}
 
 // TODO: multi token
 uint256 constant B = 1.0001 * 1e27;
@@ -42,7 +43,7 @@ contract Pool {
         uint128 x;
         // Normalized coin Y amount [1e18]
         uint128 y;
-        // Liquidity = p(i) * X[i] + Y[i]
+        // Liquidity = p(i) * X[i] + Y[i] [1e27]
         uint256 l;
     }
 
@@ -61,7 +62,7 @@ contract Pool {
 
     int24 public tick;
     mapping(int24 => Bucket) public buckets;
-    // Tick => user => liquidity
+    // Tick => user => liquidity [1e27]
     mapping(int24 => mapping(address => uint256)) public liqs;
 
     constructor(address c0, address c1, int24 t) {
@@ -78,7 +79,7 @@ contract Pool {
         tick = t;
     }
 
-    function inc(int24 i, uint128 c0, uint128 c1, address dst)
+    function inc(int24 i, uint128 c0, uint128 c1, uint256 min)
         external
         returns (uint128, uint128, uint256)
     {
@@ -93,28 +94,58 @@ contract Pool {
 
         uint128 x = c0 * norm0;
         uint128 y = c1 * norm1;
-        // TODO: calc price at t
-        // uint128 p = pow(B, t);
-        uint128 p = 0;
-        uint256 dl = mul(p, x) / RAY_256 + uint256(y);
+        uint128 p = t >= 0
+            ? u128(pow(B, uint256(uint24(t))))
+            : u128(RAY_256 / pow(B, uint256(uint24(-t))));
+        uint256 l = mul(p, x) + mul(y, RAY_128);
+        require(l >= min, "l < min");
 
         Bucket storage buck = buckets[t];
         buck.x += x;
         buck.y += y;
-        buck.l += dl;
+        buck.l += l;
 
-        liqs[t][dst] += dl;
+        liqs[t][msg.sender] += l;
 
         if (c0 > 0) {
-            coin0.safeTransferFrom(msg.sender, address(this), c0);
+            coin0.safeTransferFrom(msg.sender, address(this), uint256(c0));
         }
         if (c1 > 0) {
-            coin1.safeTransferFrom(msg.sender, address(this), c1);
+            coin1.safeTransferFrom(msg.sender, address(this), uint256(c1));
         }
 
-        return (c0, c1, dl);
+        return (c0, c1, l);
     }
 
-    function dec(uint256 t, uint128 dx, uint128 dy) external {}
-    function swap() external {}
+    function dec(int24 t, uint256 l, uint128 min0, uint128 min1)
+        external
+        returns (uint128 c0, uint128 c1)
+    {
+        liqs[t][msg.sender] -= l;
+
+        Bucket storage buck = buckets[t];
+        // TODO: use muldiv?
+        uint128 x = u128(uint256(buck.x) * l / buck.l);
+        uint128 y = u128(uint256(buck.y) * l / buck.l);
+
+        buck.x -= x;
+        buck.y -= y;
+        buck.l -= l;
+
+        c0 = x / norm0;
+        c1 = y / norm1;
+
+        require(c0 >= min0, "c0 < min");
+        require(c1 >= min1, "c1 < min");
+
+        if (c0 > 0) {
+            coin0.safeTransfer(msg.sender, uint256(c0));
+        }
+        if (c1 > 0) {
+            coin1.safeTransfer(msg.sender, uint256(c1));
+        }
+    }
+
+    function swap(uint128 max_in, uint128 min_out, int24 tick_limit, bool zero)
+        external {}
 }
