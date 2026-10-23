@@ -20,6 +20,14 @@ import {SafeTransfer} from "../lib/SafeTransfer.sol";
 uint128 constant RAY_128 = 1e27;
 uint256 constant RAY_256 = 1e27;
 
+function min(uint128 x, uint128 y) pure returns (uint128 z) {
+    z = x <= y ? x : y;
+}
+
+function max(uint128 x, uint128 y) pure returns (uint128 z) {
+    z = x >= y ? x : y;
+}
+
 function mul(uint128 x, uint128 y) pure returns (uint256 z) {
     z = uint256(x) * uint256(y);
 }
@@ -146,6 +154,24 @@ contract Pool {
         }
     }
 
-    function swap(uint128 max_in, uint128 min_out, int24 tick_limit, bool zero)
-        external {}
+    function swap(uint128 max_in, uint128 min_out, int24 tick_limit, bool zero) external {
+        int24 t = tick;
+        Bucket storage buck = buckets[t];
+        (uint128 x, uint128 y) = (buck.x, buck.y);
+        uint128 p = t >= 0
+            ? u128(pow(B, uint256(uint24(t))))
+            : u128(RAY_256 / pow(B, uint256(uint24(-t))));
+        // px = y
+        uint128 cin;
+        uint128 cout;
+        if (zero) {
+            // x -> y
+            cin = min(max_in, x);
+            cout = min(p*cin, y);
+        } else {
+            // y -> x
+            cin = min(max_in, y);
+            cout = min(cin * RAY_128 / p, x);
+        }
+    }
 }
