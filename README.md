@@ -48,6 +48,7 @@
   - [Algorithm](./excalidraw/algo/fft/fft-algo.png)
   - [Bit reversal](./excalidraw/algo/fft/fft-bit-reversal.png)
   - [Code](./python/algo/fft.ipynb)
+- [Most and least significant bits using clz](./foundry/test/Bit.t.sol)
 
 # Groth16
 

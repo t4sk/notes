@@ -43,12 +43,80 @@ function u128(uint256 x) pure returns (uint128 z) {
 
 function pow(uint256 b, uint256 x) pure returns (uint256 z) {}
 
-library Bitmap {}
+// TODO: compressed
+library Bitmap {
+    function lsb(uint256 x) internal pure returns (uint8 z) {
+        require(x > 0, "x = 0");
+        // Why -x = ~x + 1
+        // x & ~x = all 1s = 2^256 - 1
+        // 2^256 = 0
+        // -x = ~x + 1
+
+        // Why lsb = x & (~x + 1) = x & -x
+        //  x     = 110100
+        // ~x     = 001011 (negate x, least significant bit of x is now 0, all lower bits = 1)
+        // ~x + 1 = 001100 (move from least to most significant bit of ~x, flip all 1 to 0, flip first 0 to 1, stop)
+        //              LEFT             | LSB      | RIGHT
+        // ~x + 1 = opposite of x's bits | 1 at lsb | all 0s
+        // x & (~x + 1)
+        // LEFT = AND x's bits and its opposite = 0s
+        // LSB = both x and (~x + 1) = 1
+        // RIGHT = (~x + 1) is all 0s = 0s
+        assembly {
+            // x & -x
+            z := sub(255, clz(and(x, sub(0, x))))
+        }
+    }
+
+    function msb(uint256 x) internal pure returns (uint8 z) {
+        require(x > 0, "x = 0");
+        // clz(x) = Number of leading 0s in x, 256 if x = 0
+        assembly {
+            z := sub(255, clz(x))
+        }
+    }
+
+    // int24
+    //     16    8
+    // x = x0 | x1
+    function flip(mapping(int16 => uint256) storage map, int24 t) internal {
+        int16 x0 = int16(t >> 8);
+        uint8 x1 = uint8(uint24(t));
+        map[x0] ^= uint256(1) << x1;
+    }
+
+    function next(mapping(int16 => uint256) storage map, int24 t, bool gt)
+        internal
+        view
+        returns (int24 n)
+    {
+        int16 x0 = int16(t >> 8);
+        uint8 x1 = uint8(uint24(t));
+
+        // TODO: does search direction depend on sign of t?
+        // gt -> next bit to the left of t
+        // lt -> next bit to the right of t
+        if (gt) {
+            // 1s to the left of x1
+            uint256 mask = ~((uint256(1) << x1) - 1) - (uint256(1) << x1);
+            uint256 bits = map[x0] & mask;
+            // TODO: if bits = 0
+            n = int24(x0 << 8) + int24(int8(lsb(bits)));
+        } else {
+            // 1s to the right of x1
+            uint256 mask = (uint256(1) << x1) - 1;
+            uint256 bits = map[x0] & mask;
+            // TODO: if bits = 0
+            n = int24(x0 << 8) + int24(int8(msb(bits)));
+        }
+    }
+}
 
 uint256 constant B = 1.0001 * 1e27;
 
 // TODO: multi token
 // TODO: limit order hook
+// TODO: Lean / tama?
 contract Pool {
     using SafeTransfer for IERC20;
     using Bitmap for mapping(int24 => uint256);
@@ -85,7 +153,8 @@ contract Pool {
     // - <- tick -> +
 
     int24 public tick;
-    mapping(int24 => uint256) public bitmap;
+    // int24 = int16 | int8
+    mapping(int16 => uint256) public bitmap;
     mapping(int24 => Bucket) public buckets;
     // Tick => user => liquidity [1e27]
     mapping(int24 => mapping(address => uint256)) public liqs;
@@ -185,6 +254,7 @@ contract Pool {
 
         while (rem > 0 && zero ? t >= tick_limit : t <= tick_limit) {
             Bucket storage buck = buckets[t];
+            // TODO: store in storage?
             uint128 p = t >= 0
                 ? u128(pow(B, uint256(uint24(t))))
                 : u128(RAY_256 / pow(B, uint256(uint24(-t))));
@@ -226,11 +296,14 @@ contract Pool {
                 buck.xfee += f;
             }
 
+            fee += f;
             rem -= cin;
             out += cout;
 
             // TODO: get next tick
             t = 0;
         }
+
+        tick = t;
     }
 }

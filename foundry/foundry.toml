@@ -4,6 +4,7 @@ out = "out"
 libs = ["lib"]
 remappings = ["@src/=src/"]
 via_ir = true
+evm_version = "osaka"
 
 [fmt]
 line_length = 80
