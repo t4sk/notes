@@ -57,7 +57,8 @@
 - [Schwartz-Zippel Lemma](./excalidraw/groth16/schwartz-zippel.png)
 - [Polynomial evaluation at EC point](./excalidraw/groth16/ec-poly-eval.png)
 - [EC pairing](./excalidraw/groth16/ec-pairing.png)
-- [Groth16](./excalidraw/groth16/groth16.png)
+- [Groth16 - part 0 - overview](./excalidraw/groth16/groth16.png)
+- [Groth16 - part 1 - first attempt](./excalidraw/groth16/groth16-1.png)
 
 # ZKStark
 
