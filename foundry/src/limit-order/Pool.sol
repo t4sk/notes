@@ -133,6 +133,12 @@ uint256 constant B = 1.0001 * 1e27;
 // TODO: multi token
 // TODO: limit order hook
 // TODO: Lean / tama?
+
+// Liquidity
+// L = Px + y
+// Liquidity shares
+// (T + s) / T = (a + L) / L -> s / T = a / L
+// withdraw = P * bucket.x * s / T + bucket.y * s / T = (P*bucket.x + bucket.y) * s / T = L * s / T
 contract Pool {
     using SafeTransfer for IERC20;
     using Bitmap for mapping(int16 => uint256);
@@ -145,10 +151,6 @@ contract Pool {
         // TODO: use uint128?
         // Liquidity = p(i) * X[i] + Y[i] [1e27]
         uint256 l;
-        // X
-        uint128 xfee;
-        // Y
-        uint128 yfee;
     }
 
     // X
@@ -218,6 +220,7 @@ contract Pool {
         // TODO: use vault math or include fees in liq calc?
         buck.l += l;
 
+        // TODO: vault math
         liqs[t][msg.sender] += l;
 
         bitmap.set(t);
@@ -236,28 +239,25 @@ contract Pool {
         external
         returns (uint128 c0, uint128 c1)
     {
+        // TODO: vault math
         liqs[t][msg.sender] -= l;
 
         Bucket storage buck = buckets[t];
         // TODO: use muldiv?
         uint128 x = u128(uint256(buck.x) * l / buck.l);
         uint128 y = u128(uint256(buck.y) * l / buck.l);
-        uint128 xf = u128(uint256(buck.xfee) * l / buck.l);
-        uint128 yf = u128(uint256(buck.yfee) * l / buck.l);
 
         buck.x -= x;
         buck.y -= y;
         buck.l -= l;
-        buck.xfee -= xf;
-        buck.yfee -= yf;
 
         if (buck.l == 0) {
             bitmap.del(t);
             // TODO: clear out x, y, xfee and yfee?
         }
 
-        c0 = (x + xf) / norm0;
-        c1 = (y + yf) / norm1;
+        c0 = x / norm0;
+        c1 = y / norm1;
 
         require(c0 >= min0, "c0 < min");
         require(c1 >= min1, "c1 < min");
@@ -286,43 +286,55 @@ contract Pool {
             // px = y
             uint128 cin;
             uint128 cout;
+            // Fee on amount in
+            uint128 fin;
             if (zero) {
                 // x -> y
                 // px = y -> max x = y / p
                 // TODO: check buck.y * RAY / p <= u128
                 // TODO: p > 0?
                 uint128 max_cin = min(muldiv(buck.y, RAY_128, p), buck.x);
-                cin = min(rem, max_cin);
+                uint128 max_fin = max_cin * FEE / 1e5;
+
+                if (rem >= max_cin + max_fin) {
+                    fin = max_fin;
+                    cin = max_cin;
+                } else {
+                    fin = rem * FEE / 1e5;
+                    cin = rem - fin;
+                }
+
                 // TODO: check round trip rounding errors
                 // TODO: check p*cin/RAY_128 <= u128
                 cout = min(muldiv(p, cin, RAY_128), buck.y);
 
-                buck.x += cin;
+                buck.x += cin + fin;
                 buck.y -= cout;
             } else {
                 // y -> x
                 // px = y -> max y = px
                 uint128 max_cin = min(muldiv(buck.x, p, RAY_128), buck.y);
-                cin = min(rem, max_cin);
+                uint128 max_fin = max_cin * FEE / 1e5;
+
+                if (rem >= max_cin + max_fin) {
+                    fin = max_fin;
+                    cin = max_cin;
+                } else {
+                    fin = rem * FEE / 1e5;
+                    cin = rem - fin;
+                }
+
                 // TODO: check p*cin/RAY_128 <= u128
                 // TODO: check p > 0?
                 cout = min(muldiv(cin, RAY_128, p), buck.x);
 
                 buck.x -= cout;
-                buck.y += cin;
+                buck.y += cin + fin;
             }
 
-            // TODO: fee
-            uint128 f = cout * FEE / 1e5;
-            cout -= f;
-            if (zero) {
-                buck.yfee += f;
-            } else {
-                buck.xfee += f;
-            }
-
-            fee += f;
-            rem -= cin;
+            fee += fin;
+            // TODO: check underflow
+            rem -= cin + fin;
             out += cout;
 
             // TODO: next tick
