@@ -3,6 +3,7 @@ pragma solidity 0.8.33;
 
 import {IERC20} from "../lib/IERC20.sol";
 import {SafeTransfer} from "../lib/SafeTransfer.sol";
+import {Liq} from "./lib/Liq.sol";
 import {Bitmap} from "./lib/Bitmap.sol";
 
 // Swap
@@ -64,9 +65,13 @@ contract Pool {
         uint128 x;
         // Normalized coin Y amount [1e18]
         uint128 y;
+        // TODO: remove liq, store price, calc total liq when needed?
         // TODO: use uint128?
         // Liquidity = p(i) * X[i] + Y[i] [1e27]
         uint256 l;
+        // TODO: split total shares into mapping? - avoids sload on swap
+        // Total shares
+        uint128 t;
     }
 
     // X
@@ -80,7 +85,9 @@ contract Pool {
     uint128 public immutable norm1;
 
     // 0.3%
-    uint128 public constant FEE = 0.003 * 1e5;
+    uint128 constant FEE = 0.003 * 1e5;
+    // Virtual shares offset (1 unit of liquidity = 10**off shares)
+    uint128 constant OFF = 3;
 
     // Liquidity
     //      Y | X
@@ -90,8 +97,8 @@ contract Pool {
     // int24 = int16 | int8
     mapping(int16 => uint256) public bitmap;
     mapping(int24 => Bucket) public buckets;
-    // Tick => user => liquidity [1e27]
-    mapping(int24 => mapping(address => uint256)) public liqs;
+    // Tick => user => liquidity shares
+    mapping(int24 => mapping(address => uint256)) public shares;
 
     constructor(address c0, address c1, int24 t) {
         coin0 = IERC20(c0);
@@ -128,16 +135,21 @@ contract Pool {
             ? u128(pow(B, uint256(uint24(t))))
             : u128(RAY_256 / pow(B, uint256(uint24(-t))));
         uint256 l = mul(p, x) + mul(y, RAY_128);
-        require(l >= min, "l < min");
 
         Bucket storage buck = buckets[t];
+        // TODO: check type (uint128 big enough)?
+        // TODO: fix cast
+        uint128 s =
+            Liq.shares(uint128(l), uint128(buck.l), uint128(buck.t), OFF);
+        require(s >= min, "s < min");
+
         buck.x += x;
         buck.y += y;
         // TODO: use vault math or include fees in liq calc?
         buck.l += l;
+        buck.t += s;
 
-        // TODO: vault math
-        liqs[t][msg.sender] += l;
+        shares[t][msg.sender] += s;
 
         bitmap.set(t);
 
@@ -151,14 +163,17 @@ contract Pool {
         return (c0, c1, l);
     }
 
-    function dec(int24 t, uint256 l, uint128 min0, uint128 min1)
+    function dec(int24 t, uint128 s, uint128 min0, uint128 min1)
         external
         returns (uint128 c0, uint128 c1)
     {
         // TODO: vault math
-        liqs[t][msg.sender] -= l;
+        shares[t][msg.sender] -= s;
 
         Bucket storage buck = buckets[t];
+        // TODO: fix cast
+        uint128 l = Liq.amt(s, buck.t, uint128(buck.l), OFF);
+
         // TODO: use muldiv?
         uint128 x = u128(uint256(buck.x) * l / buck.l);
         uint128 y = u128(uint256(buck.y) * l / buck.l);
@@ -166,7 +181,9 @@ contract Pool {
         buck.x -= x;
         buck.y -= y;
         buck.l -= l;
+        buck.t -= s;
 
+        // TODO: when t = 0?
         if (buck.l == 0) {
             bitmap.del(t);
             // TODO: clear out x, y, xfee and yfee?
