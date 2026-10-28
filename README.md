@@ -60,6 +60,7 @@
 - [Groth16 - part 0 - overview](./excalidraw/groth16/groth16.png)
 - [Groth16 - part 1 - first attempt](./excalidraw/groth16/groth16-1.png)
 - [Groth16 - part 2 - separating factor](./excalidraw/groth16/groth16-2.png)
+- [Groth16 - part 3 - witness consistency check](./excalidraw/groth16/groth16-3.png)
 
 # ZKStark
 
