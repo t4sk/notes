@@ -211,6 +211,7 @@ contract Pool {
         rem = max_in * (zero ? norm0 : norm1);
 
         while (rem > 0 && zero ? t >= tick_limit : t <= tick_limit) {
+            // TODO: skip not init or liq = 0
             Bucket storage buck = buckets[t];
             // TODO: store in storage?
             uint128 p = t >= 0
