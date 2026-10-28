@@ -145,7 +145,6 @@ contract Pool {
 
         buck.x += x;
         buck.y += y;
-        // TODO: use vault math or include fees in liq calc?
         buck.l += l;
         buck.t += s;
 
