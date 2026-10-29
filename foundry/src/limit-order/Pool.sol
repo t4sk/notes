@@ -88,6 +88,7 @@ contract Pool {
     uint128 constant FEE = 0.003 * 1e5;
     // Virtual shares offset (1 unit of liquidity = 10**off shares)
     uint128 constant OFF = 3;
+    int24 constant TICK_SPACING = 1;
 
     // Liquidity
     //      Y | X
@@ -150,7 +151,7 @@ contract Pool {
 
         shares[t][msg.sender] += s;
 
-        bitmap.set(t);
+        bitmap.set(t, TICK_SPACING);
 
         if (c0 > 0) {
             coin0.safeTransferFrom(msg.sender, address(this), uint256(c0));
@@ -184,7 +185,7 @@ contract Pool {
 
         // TODO: when t = 0?
         if (buck.l == 0) {
-            bitmap.del(t);
+            bitmap.del(t, TICK_SPACING);
             // TODO: clear out x, y, xfee and yfee?
         }
 
@@ -271,7 +272,7 @@ contract Pool {
             out += cout;
 
             // TODO: skip to next tick if not init
-            (t,) = bitmap.next(t, !zero);
+            (t,) = bitmap.next(t, TICK_SPACING, !zero);
         }
 
         tick = t;

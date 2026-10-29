@@ -5,28 +5,45 @@ import {Bit} from "./Bit.sol";
 
 // TODO: compressed
 library Bitmap {
+    // Tick spacing
+    // 1 ~ 0.01%
+    // 10 ~ 0.1%
+    // 100 ~ 1.005%
+    // delta price % = (1.0001^S - 1)
+
     // int24
     //     16    8
     // x = x0 | x1
-    function set(mapping(int16 => uint256) storage map, int24 t) internal {
-        int16 x0 = int16(t >> 8);
-        uint8 x1 = uint8(uint24(t));
+    function set(mapping(int16 => uint256) storage map, int24 t, int24 s)
+        internal
+    {
+        require(t % s == 0, "tick spacing");
+        int24 c = t / s;
+        int16 x0 = int16(c >> 8);
+        uint8 x1 = uint8(uint24(c));
         map[x0] |= uint256(1) << x1;
     }
 
-    function del(mapping(int16 => uint256) storage map, int24 t) internal {
-        int16 x0 = int16(t >> 8);
-        uint8 x1 = uint8(uint24(t));
+    function del(mapping(int16 => uint256) storage map, int24 t, int24 s)
+        internal
+    {
+        require(t % s == 0, "tick spacing");
+        int24 c = t / s;
+        int16 x0 = int16(c >> 8);
+        uint8 x1 = uint8(uint24(c));
         map[x0] &= ~(uint256(1) << x1);
     }
 
-    function next(mapping(int16 => uint256) storage map, int24 t, bool gt)
-        internal
-        view
-        returns (int24 n, bool init)
-    {
-        int16 x0 = int16(t >> 8);
-        uint8 x1 = uint8(uint24(t));
+    function next(
+        mapping(int16 => uint256) storage map,
+        int24 t,
+        int24 s,
+        bool gt
+    ) internal view returns (int24 n, bool init) {
+        require(t % s == 0, "tick spacing");
+        int24 c = t / s;
+        int16 x0 = int16(c >> 8);
+        uint8 x1 = uint8(uint24(c));
 
         // TODO: does search direction depend on sign of t?
         if (gt) {
@@ -38,8 +55,8 @@ library Bitmap {
 
             // TODO: check cast
             n = init
-                ? int24(x0 << 8) | int24(uint24(Bit.lsb(bits)))
-                : int24((x0 + 1) << 8);
+                ? s * (int24(x0 << 8) | int24(uint24(Bit.lsb(bits))))
+                : s * (int24((x0 + 1) << 8));
         } else {
             // 1s to the right of x1
             uint256 mask = (uint256(1) << x1) - 1;
@@ -49,8 +66,8 @@ library Bitmap {
 
             // TODO: check cast
             n = init
-                ? int24(x0 << 8) | int24(uint24(Bit.msb(bits)))
-                : int24((x0 - 1) << 8);
+                ? s * (int24(x0 << 8) | int24(uint24(Bit.msb(bits))))
+                : s * (int24((x0 - 1) << 8));
         }
     }
 }
