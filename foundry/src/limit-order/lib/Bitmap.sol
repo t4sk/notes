@@ -53,7 +53,7 @@ library Bitmap {
         // TODO: does search direction depend on sign of t?
         if (gt) {
             if (x1 == 255) {
-                return (s * (int24(x0 + 1) << 8), map[x0 + 1] != 0);
+                return (s * ((int24(x0) + 1) << 8), map[x0 + 1] != 0);
             }
 
             // x1 < 255
@@ -65,11 +65,11 @@ library Bitmap {
 
             // TODO: check cast
             n = init
-                ? s * (int24(x0 << 8) | int24(uint24(Bit.lsb(bits))))
-                : s * (int24((x0 + 1) << 8));
+                ? s * ((int24(x0) << 8) | int24(uint24(Bit.lsb(bits))))
+                : s * ((int24(x0) + 1) << 8);
         } else {
             if (x1 == 0) {
-                return (s * (int24(x0 - 1) << 8), map[x0 - 1] != 0);
+                return (s * ((int24(x0) - 1) << 8), map[x0 - 1] != 0);
             }
 
             // x1 > 0
@@ -81,8 +81,8 @@ library Bitmap {
 
             // TODO: check cast
             n = init
-                ? s * (int24(x0 << 8) | int24(uint24(Bit.msb(bits))))
-                : s * (int24((x0 - 1) << 8));
+                ? s * ((int24(x0) << 8) | int24(uint24(Bit.msb(bits))))
+                : s * ((int24(x0) - 1) << 8);
         }
     }
 }
