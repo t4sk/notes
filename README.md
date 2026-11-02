@@ -62,6 +62,7 @@
 - [Groth16 - part 2 - separating factor](./excalidraw/groth16/groth16-2.png)
 - [Groth16 - part 3 - witness consistency check](./excalidraw/groth16/groth16-3.png)
 - [Groth16 - part 4 - additional explanation of witness consistency check](./excalidraw/groth16/groth16-4.png)
+- [Groth16 - part 5 - merging constraints](./excalidraw/groth16/groth16-5.png)
 
 # ZKStark
 
