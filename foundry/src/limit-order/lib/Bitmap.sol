@@ -3,6 +3,9 @@ pragma solidity 0.8.33;
 
 import {Bit} from "./Bit.sol";
 
+// TODO: require s > 0
+// TODO: need to bound t so that x0 + 1 (int16) and x0 - 1 (int16) doesn't overflow
+
 library Bitmap {
     // Tick spacing
     // 1 ~ 0.01%
@@ -21,6 +24,8 @@ library Bitmap {
         require(t % s == 0, "tick spacing");
         // Compressed tick
         int24 c = t / s;
+        // c = (x0 << 8) + x1
+        // t = c*s
         x0 = int16(c >> 8);
         x1 = uint8(uint24(c));
     }
@@ -39,21 +44,29 @@ library Bitmap {
         map[x0] &= ~(uint256(1) << x1);
     }
 
-    // TODO: need to bound t so that x0 + 1 and x0 - 1 doesn't overflow
     function next(
         mapping(int16 => uint256) storage map,
         // Tick
         int24 t,
         // Tick spacing
         int24 s,
+        // Greater or less than
         bool gt
-    ) internal view returns (int24 n, bool init) {
+    )
+        internal
+        view
+        returns (
+            // next tick
+            int24 n,
+            // init = true if map[x0] & mask != 0
+            bool init
+        )
+    {
         (int16 x0, uint8 x1) = split(t, s);
 
-        // TODO: does search direction depend on sign of t?
         if (gt) {
             if (x1 == 255) {
-                return (s * ((int24(x0) + 1) << 8), map[x0 + 1] != 0);
+                return (s * (int24(x0 + 1) << 8), false);
             }
 
             // x1 < 255
@@ -66,10 +79,10 @@ library Bitmap {
             // TODO: check cast
             n = init
                 ? s * ((int24(x0) << 8) | int24(uint24(Bit.lsb(bits))))
-                : s * ((int24(x0) + 1) << 8);
+                : s * (int24(x0 + 1) << 8);
         } else {
             if (x1 == 0) {
-                return (s * ((int24(x0) - 1) << 8), map[x0 - 1] != 0);
+                return (s * (int24(x0 - 1) << 8), false);
             }
 
             // x1 > 0
@@ -82,7 +95,7 @@ library Bitmap {
             // TODO: check cast
             n = init
                 ? s * ((int24(x0) << 8) | int24(uint24(Bit.msb(bits))))
-                : s * ((int24(x0) - 1) << 8);
+                : s * (int24(x0 - 1) << 8);
         }
     }
 }
