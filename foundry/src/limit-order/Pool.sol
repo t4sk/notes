@@ -84,6 +84,8 @@ contract Pool {
     // 10^(18 - token X decimals)
     uint128 public immutable norm1;
 
+    // TODO: transient lock
+
     // 0.3%
     uint128 constant FEE = 0.003 * 1e5;
     // Virtual shares offset (1 unit of liquidity = 10**off shares)
@@ -211,67 +213,70 @@ contract Pool {
         rem = max_in * (zero ? norm0 : norm1);
 
         while (rem > 0 && zero ? t >= tick_limit : t <= tick_limit) {
-            // TODO: skip not init or liq = 0
+            // TODO: Skip if tick not init?
+
+            // TODO: use memory?
             Bucket storage buck = buckets[t];
-            // TODO: store in storage?
-            uint128 p = t >= 0
-                ? u128(pow(B, uint256(uint24(t))))
-                : u128(RAY_256 / pow(B, uint256(uint24(-t))));
-            // px = y
-            uint128 cin;
-            uint128 cout;
-            // Fee on amount in
-            uint128 fin;
-            if (zero) {
-                // x -> y
-                // px = y -> max x = y / p
-                // TODO: check buck.y * RAY / p <= u128
-                // TODO: p > 0?
-                uint128 max_cin = min(muldiv(buck.y, RAY_128, p), buck.x);
-                uint128 max_fin = max_cin * FEE / 1e5;
+            if (buck.l > 0) {
+                // TODO: store in storage?
+                uint128 p = t >= 0
+                    ? u128(pow(B, uint256(uint24(t))))
+                    : u128(RAY_256 / pow(B, uint256(uint24(-t))));
+                // px = y
+                uint128 cin;
+                uint128 cout;
+                // Fee on amount in
+                uint128 fin;
+                if (zero) {
+                    // x -> y
+                    // px = y -> max x = y / p
+                    // TODO: check buck.y * RAY / p <= u128
+                    // TODO: p > 0?
+                    uint128 max_cin = min(muldiv(buck.y, RAY_128, p), buck.x);
+                    uint128 max_fin = max_cin * FEE / 1e5;
 
-                if (rem >= max_cin + max_fin) {
-                    fin = max_fin;
-                    cin = max_cin;
+                    if (rem >= max_cin + max_fin) {
+                        fin = max_fin;
+                        cin = max_cin;
+                    } else {
+                        fin = rem * FEE / 1e5;
+                        cin = rem - fin;
+                    }
+
+                    // TODO: check round trip rounding errors
+                    // TODO: check p*cin/RAY_128 <= u128
+                    cout = min(muldiv(p, cin, RAY_128), buck.y);
+
+                    buck.x += cin + fin;
+                    buck.y -= cout;
                 } else {
-                    fin = rem * FEE / 1e5;
-                    cin = rem - fin;
+                    // y -> x
+                    // px = y -> max y = px
+                    uint128 max_cin = min(muldiv(buck.x, p, RAY_128), buck.y);
+                    uint128 max_fin = max_cin * FEE / 1e5;
+
+                    if (rem >= max_cin + max_fin) {
+                        fin = max_fin;
+                        cin = max_cin;
+                    } else {
+                        fin = rem * FEE / 1e5;
+                        cin = rem - fin;
+                    }
+
+                    // TODO: check p*cin/RAY_128 <= u128
+                    // TODO: check p > 0?
+                    cout = min(muldiv(cin, RAY_128, p), buck.x);
+
+                    buck.x -= cout;
+                    buck.y += cin + fin;
                 }
 
-                // TODO: check round trip rounding errors
-                // TODO: check p*cin/RAY_128 <= u128
-                cout = min(muldiv(p, cin, RAY_128), buck.y);
-
-                buck.x += cin + fin;
-                buck.y -= cout;
-            } else {
-                // y -> x
-                // px = y -> max y = px
-                uint128 max_cin = min(muldiv(buck.x, p, RAY_128), buck.y);
-                uint128 max_fin = max_cin * FEE / 1e5;
-
-                if (rem >= max_cin + max_fin) {
-                    fin = max_fin;
-                    cin = max_cin;
-                } else {
-                    fin = rem * FEE / 1e5;
-                    cin = rem - fin;
-                }
-
-                // TODO: check p*cin/RAY_128 <= u128
-                // TODO: check p > 0?
-                cout = min(muldiv(cin, RAY_128, p), buck.x);
-
-                buck.x -= cout;
-                buck.y += cin + fin;
+                fee += fin;
+                // TODO: check underflow
+                rem -= cin + fin;
+                out += cout;
             }
 
-            fee += fin;
-            // TODO: check underflow
-            rem -= cin + fin;
-            out += cout;
-
-            // TODO: skip to next tick if not init
             (t,) = bitmap.next(t, TICK_SPACING, !zero);
         }
 

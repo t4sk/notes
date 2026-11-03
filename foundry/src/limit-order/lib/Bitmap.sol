@@ -58,8 +58,9 @@ library Bitmap {
         returns (
             // next tick
             int24 n,
-            // init = true if map[x0] & mask != 0
-            bool init
+            // TODO: remove?
+            // True if there are more initialized ticks at map[x0] to the left or right of x1
+            bool more
         )
     {
         (int16 x0, uint8 x1) = split(t, s);
@@ -74,10 +75,10 @@ library Bitmap {
             uint256 mask = type(uint256).max << (x1 + 1);
             uint256 bits = map[x0] & mask;
 
-            init = bits != 0;
+            more = bits != 0;
 
             // TODO: check cast
-            n = init
+            n = more
                 ? s * ((int24(x0) << 8) | int24(uint24(Bit.lsb(bits))))
                 : s * (int24(x0 + 1) << 8);
         } else {
@@ -90,10 +91,10 @@ library Bitmap {
             uint256 mask = (uint256(1) << x1) - 1;
             uint256 bits = map[x0] & mask;
 
-            init = bits != 0;
+            more = bits != 0;
 
             // TODO: check cast
-            n = init
+            n = more
                 ? s * ((int24(x0) << 8) | int24(uint24(Bit.msb(bits))))
                 : s * (int24(x0 - 1) << 8);
         }
