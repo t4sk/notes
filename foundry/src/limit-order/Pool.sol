@@ -71,7 +71,7 @@ contract Pool {
         uint256 l;
         // TODO: split total shares into mapping? - avoids sload on swap
         // Total shares
-        uint128 t;
+        uint128 s;
     }
 
     // X
@@ -141,13 +141,13 @@ contract Pool {
         // TODO: check type (uint128 big enough)?
         // TODO: fix cast
         uint128 s =
-            Liq.shares(uint128(l), uint128(buck.l), uint128(buck.t), OFF);
+            Liq.shares(uint128(l), uint128(buck.l), uint128(buck.s), OFF);
         require(s >= min, "s < min");
 
         buck.x += x;
         buck.y += y;
         buck.l += l;
-        buck.t += s;
+        buck.s += s;
 
         shares[t][msg.sender] += s;
 
@@ -172,7 +172,7 @@ contract Pool {
 
         Bucket storage buck = buckets[t];
         // TODO: fix cast
-        uint128 l = Liq.amt(s, buck.t, uint128(buck.l), OFF);
+        uint128 l = Liq.amt(s, buck.s, uint128(buck.l), OFF);
 
         // TODO: use muldiv?
         uint128 x = u128(uint256(buck.x) * l / buck.l);
@@ -181,7 +181,7 @@ contract Pool {
         buck.x -= x;
         buck.y -= y;
         buck.l -= l;
-        buck.t -= s;
+        buck.s -= s;
 
         // TODO: when t = 0?
         if (buck.l == 0) {
