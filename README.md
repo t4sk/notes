@@ -64,6 +64,7 @@
 - [Groth16 - part 4 - additional explanation of witness consistency check](./excalidraw/groth16/groth16-4.png)
 - [Groth16 - part 5 - merging constraints](./excalidraw/groth16/groth16-5.png)
 - [Groth16 - part 6 - public inputs](./excalidraw/groth16/groth16-6.png)
+- [Groth16 - part 7 - zero knowledge](./excalidraw/groth16/groth16-7.png)
 
 # ZKStark
 
