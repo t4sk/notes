@@ -74,6 +74,14 @@ contract Pool {
         uint128 s;
     }
 
+    bool private transient locked;
+
+    // 0.3%
+    uint128 constant FEE = 0.003 * 1e5;
+    // Virtual shares offset (1 unit of liquidity = 10**off shares)
+    uint128 constant OFF = 3;
+    int24 constant TICK_SPACING = 1;
+
     // X
     IERC20 public immutable coin0;
     // Y
@@ -83,14 +91,6 @@ contract Pool {
     uint128 public immutable norm0;
     // 10^(18 - token X decimals)
     uint128 public immutable norm1;
-
-    bool private transient locked;
-
-    // 0.3%
-    uint128 constant FEE = 0.003 * 1e5;
-    // Virtual shares offset (1 unit of liquidity = 10**off shares)
-    uint128 constant OFF = 3;
-    int24 constant TICK_SPACING = 1;
 
     // Liquidity
     //      Y | X
@@ -194,8 +194,8 @@ contract Pool {
         buck.l -= l;
         buck.s -= s;
 
-        // TODO: when t = 0?
-        if (buck.l == 0) {
+        // TODO: when l = 0 and / or s = 0?
+        if (buck.s == 0) {
             bitmap.del(t, TICK_SPACING);
             // TODO: clear out x, y, xfee and yfee?
         }

@@ -4,7 +4,7 @@ pragma solidity 0.8.33;
 import {Bit} from "./Bit.sol";
 
 // TODO: require s > 0
-// TODO: need to bound t so that x0 + 1 (int16) and x0 - 1 (int16) doesn't overflow
+// TODO: need to bound t so that hi + 1 (int16) and hi - 1 (int16) doesn't overflow
 
 library Bitmap {
     // Tick spacing
@@ -15,33 +15,33 @@ library Bitmap {
 
     // int24
     //     16    8
-    // x = x0 | x1
+    // x = hi | lo
     function split(int24 t, int24 s)
         internal
         pure
-        returns (int16 x0, uint8 x1)
+        returns (int16 hi, uint8 lo)
     {
         require(t % s == 0, "tick spacing");
         // Compressed tick
         int24 c = t / s;
-        // c = (x0 << 8) + x1
+        // c = (hi << 8) + lo
         // t = c*s
-        x0 = int16(c >> 8);
-        x1 = uint8(uint24(c));
+        hi = int16(c >> 8);
+        lo = uint8(uint24(c));
     }
 
     function set(mapping(int16 => uint256) storage map, int24 t, int24 s)
         internal
     {
-        (int16 x0, uint8 x1) = split(t, s);
-        map[x0] |= uint256(1) << x1;
+        (int16 hi, uint8 lo) = split(t, s);
+        map[hi] |= uint256(1) << lo;
     }
 
     function del(mapping(int16 => uint256) storage map, int24 t, int24 s)
         internal
     {
-        (int16 x0, uint8 x1) = split(t, s);
-        map[x0] &= ~(uint256(1) << x1);
+        (int16 hi, uint8 lo) = split(t, s);
+        map[hi] &= ~(uint256(1) << lo);
     }
 
     function next(
@@ -59,44 +59,44 @@ library Bitmap {
             // next tick
             int24 n,
             // TODO: remove?
-            // True if there are more ticks at map[x0] to the left or right of x1
+            // True if there are more ticks at map[hi] to the left or right of lo
             bool more
         )
     {
-        (int16 x0, uint8 x1) = split(t, s);
+        (int16 hi, uint8 lo) = split(t, s);
 
         if (gt) {
-            if (x1 == 255) {
-                return (s * (int24(x0 + 1) << 8), false);
+            if (lo == 255) {
+                return (s * (int24(hi + 1) << 8), false);
             }
 
-            // x1 < 255
-            // 1s to the left of x1
-            uint256 mask = type(uint256).max << (x1 + 1);
-            uint256 bits = map[x0] & mask;
+            // lo < 255
+            // 1s to the left of lo
+            uint256 mask = type(uint256).max << (lo + 1);
+            uint256 bits = map[hi] & mask;
 
             more = bits != 0;
 
             // TODO: check cast
             n = more
-                ? s * ((int24(x0) << 8) | int24(uint24(Bit.lsb(bits))))
-                : s * (int24(x0 + 1) << 8);
+                ? s * ((int24(hi) << 8) | int24(uint24(Bit.lsb(bits))))
+                : s * (int24(hi + 1) << 8);
         } else {
-            if (x1 == 0) {
-                return (s * (int24(x0 - 1) << 8), false);
+            if (lo == 0) {
+                return (s * (int24(hi - 1) << 8), false);
             }
 
-            // x1 > 0
-            // 1s to the right of x1
-            uint256 mask = (uint256(1) << x1) - 1;
-            uint256 bits = map[x0] & mask;
+            // lo > 0
+            // 1s to the right of lo
+            uint256 mask = (uint256(1) << lo) - 1;
+            uint256 bits = map[hi] & mask;
 
             more = bits != 0;
 
             // TODO: check cast
             n = more
-                ? s * ((int24(x0) << 8) | int24(uint24(Bit.msb(bits))))
-                : s * (int24(x0 - 1) << 8);
+                ? s * ((int24(hi) << 8) | int24(uint24(Bit.msb(bits))))
+                : s * (int24(hi - 1) << 8);
         }
     }
 }
