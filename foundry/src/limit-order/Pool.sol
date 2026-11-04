@@ -84,7 +84,7 @@ contract Pool {
     // 10^(18 - token X decimals)
     uint128 public immutable norm1;
 
-    // TODO: transient lock
+    bool private transient locked;
 
     // 0.3%
     uint128 constant FEE = 0.003 * 1e5;
@@ -103,6 +103,13 @@ contract Pool {
     // Tick => user => liquidity shares
     mapping(int24 => mapping(address => uint256)) public shares;
 
+    modifier lock() {
+        require(!locked, "locked");
+        locked = true;
+        _;
+        locked = false;
+    }
+
     constructor(address c0, address c1, int24 t) {
         coin0 = IERC20(c0);
         coin1 = IERC20(c1);
@@ -119,6 +126,7 @@ contract Pool {
 
     function inc(int24 i, uint128 c0, uint128 c1, uint256 min)
         external
+        lock
         returns (uint128, uint128, uint256)
     {
         require(min > 0, "min = 0");
@@ -167,6 +175,7 @@ contract Pool {
 
     function dec(int24 t, uint128 s, uint128 min0, uint128 min1)
         external
+        lock
         returns (uint128 c0, uint128 c1)
     {
         // TODO: vault math
@@ -207,6 +216,7 @@ contract Pool {
 
     function swap(uint128 max_in, uint128 min_out, int24 tick_limit, bool zero)
         external
+        lock
         returns (uint128 rem, uint128 out, uint128 fee)
     {
         int24 t = tick;

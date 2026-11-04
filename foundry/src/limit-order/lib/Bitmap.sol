@@ -59,7 +59,7 @@ library Bitmap {
             // next tick
             int24 n,
             // TODO: remove?
-            // True if there are more initialized ticks at map[x0] to the left or right of x1
+            // True if there are more ticks at map[x0] to the left or right of x1
             bool more
         )
     {
