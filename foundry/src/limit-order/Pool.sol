@@ -66,6 +66,8 @@ contract Pool {
         // Normalized coin Y amount [1e18]
         uint128 y;
         // TODO: remove liq, store price, calc total liq when needed?
+        // Price of X in terms of Y [1e27]
+        uint128 p;
         // TODO: use uint128?
         // Liquidity = p(i) * X[i] + Y[i] [1e27]
         uint256 l;
@@ -148,6 +150,12 @@ contract Pool {
         uint256 l = mul(p, x) + mul(y, RAY_128);
 
         Bucket storage buck = buckets[t];
+        if (buck.p == 0) {
+            buck.p = p;
+        } else {
+            assert(p == buck.p);
+        }
+
         // TODO: check type (uint128 big enough)?
         // TODO: fix cast
         uint128 s =
@@ -228,10 +236,6 @@ contract Pool {
             // TODO: use memory?
             Bucket storage buck = buckets[t];
             if (buck.l > 0) {
-                // TODO: store in storage?
-                uint128 p = t >= 0
-                    ? u128(pow(B, uint256(uint24(t))))
-                    : u128(RAY_256 / pow(B, uint256(uint24(-t))));
                 // px = y
                 uint128 cin;
                 uint128 cout;
@@ -242,7 +246,8 @@ contract Pool {
                     // px = y -> max x = y / p
                     // TODO: check buck.y * RAY / p <= u128
                     // TODO: p > 0?
-                    uint128 max_cin = min(muldiv(buck.y, RAY_128, p), buck.x);
+                    uint128 max_cin =
+                        min(muldiv(buck.y, RAY_128, buck.p), buck.x);
                     uint128 max_fin = max_cin * FEE / 1e5;
 
                     if (rem >= max_cin + max_fin) {
@@ -255,14 +260,15 @@ contract Pool {
 
                     // TODO: check round trip rounding errors
                     // TODO: check p*cin/RAY_128 <= u128
-                    cout = min(muldiv(p, cin, RAY_128), buck.y);
+                    cout = min(muldiv(buck.p, cin, RAY_128), buck.y);
 
                     buck.x += cin + fin;
                     buck.y -= cout;
                 } else {
                     // y -> x
                     // px = y -> max y = px
-                    uint128 max_cin = min(muldiv(buck.x, p, RAY_128), buck.y);
+                    uint128 max_cin =
+                        min(muldiv(buck.x, buck.p, RAY_128), buck.y);
                     uint128 max_fin = max_cin * FEE / 1e5;
 
                     if (rem >= max_cin + max_fin) {
@@ -275,7 +281,7 @@ contract Pool {
 
                     // TODO: check p*cin/RAY_128 <= u128
                     // TODO: check p > 0?
-                    cout = min(muldiv(cin, RAY_128, p), buck.x);
+                    cout = min(muldiv(cin, RAY_128, buck.p), buck.x);
 
                     buck.x -= cout;
                     buck.y += cin + fin;
