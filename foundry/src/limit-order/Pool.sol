@@ -45,6 +45,56 @@ function u128(uint256 x) pure returns (uint128 z) {
 
 function pow(uint256 b, uint256 x) pure returns (uint256 z) {}
 
+library Swap {
+    function xy(uint128 x, uint128 y, uint128 p, uint128 fee, uint128 rem)
+        internal
+        pure
+        returns (uint128 cin, uint128 cout, uint128 fin)
+    {
+        // x -> y
+        // px = y -> max x = y / p
+        // TODO: check bin.y * RAY / p <= u128
+        // TODO: p > 0?
+        uint128 max_cin = min(muldiv(y, RAY_128, p), x);
+        uint128 max_fin = max_cin * fee / 1e5;
+
+        if (rem >= max_cin + max_fin) {
+            fin = max_fin;
+            cin = max_cin;
+        } else {
+            fin = rem * fee / 1e5;
+            cin = rem - fin;
+        }
+
+        // TODO: check round trip rounding errors
+        // TODO: check p*cin/RAY_128 <= u128
+        cout = min(muldiv(p, cin, RAY_128), y);
+    }
+
+    function yx(uint128 x, uint128 y, uint128 p, uint128 fee, uint128 rem)
+        internal
+        pure
+        returns (uint128 cin, uint128 cout, uint128 fin)
+    {
+        // y -> x
+        // px = y -> max y = px
+        uint128 max_cin = min(muldiv(x, p, RAY_128), y);
+        uint128 max_fin = max_cin * fee / 1e5;
+
+        if (rem >= max_cin + max_fin) {
+            fin = max_fin;
+            cin = max_cin;
+        } else {
+            fin = rem * fee / 1e5;
+            cin = rem - fin;
+        }
+
+        // TODO: check p*cin/RAY_128 <= u128
+        // TODO: check p > 0?
+        cout = min(muldiv(cin, RAY_128, p), x);
+    }
+}
+
 uint256 constant B = 1.0001 * 1e27;
 
 // TODO: multi token
@@ -55,12 +105,13 @@ uint256 constant B = 1.0001 * 1e27;
 // L = Px + y
 // Liquidity shares
 // (T + s) / T = (a + L) / L -> s / T = a / L
-// withdraw = P * bucket.x * s / T + bucket.y * s / T = (P*bucket.x + bucket.y) * s / T = L * s / T
+// withdraw = P * bin.x * s / T + bin.y * s / T = (P*bin.x + bin.y) * s / T = L * s / T
 contract Pool {
     using SafeTransfer for IERC20;
     using Bitmap for mapping(int16 => uint256);
 
-    struct Bucket {
+    // Liquidity
+    struct Bin {
         // Normalized coin X amount [1e18]
         uint128 x;
         // Normalized coin Y amount [1e18]
@@ -74,6 +125,8 @@ contract Pool {
         // TODO: split total shares into mapping? - avoids sload on swap
         // Total shares
         uint128 s;
+        // TODO: track limit order liquidity?
+        // uint128 top;
     }
 
     bool private transient locked;
@@ -101,9 +154,100 @@ contract Pool {
     int24 public tick;
     // int24 = int16 | int8
     mapping(int16 => uint256) public bitmap;
-    mapping(int24 => Bucket) public buckets;
+    mapping(int24 => Bin) public bins;
     // Tick => user => liquidity shares
     mapping(int24 => mapping(address => uint256)) public shares;
+
+    // Swap
+    // - limit orders are execute first before market swaps
+    // - limit order fees goes to liquidity providers
+    // Bundle of limit orders in the same price
+    struct Bundle {
+        // TODO: store price?
+        uint128 p;
+        // [1e18]
+        uint128 x;
+        // [1e18]
+        uint128 y;
+        // bool zero;
+    }
+
+    // tick => slot
+    mapping(int24 => uint256) public slots;
+    // tick => slot => Bundle
+    mapping(int24 => mapping(uint256 => Bundle)) public book;
+    // tick => slot => user => amount in
+    mapping(int24 => mapping(uint256 => mapping(address => uint128))) public
+        ins;
+
+    function put(int24 t, uint128 amt, bool zero) external returns (uint256 s) {
+        // TODO: check tick bounds
+        require(t % TICK_SPACING == 0, "invalid tick");
+        if (zero) {
+            require(tick < t, "tick >= current");
+        } else {
+            require(t < tick, "tick <= current");
+        }
+
+        require(amt > 0, "amt = 0");
+
+        s = slots[t];
+        Bundle storage bun = book[t][s];
+        // TODO: check eq if already init?
+        // bun.zero = zero;
+        if (zero) {
+            bun.x += amt * norm0;
+        } else {
+            bun.y += amt * norm1;
+        }
+        ins[t][s][msg.sender] += amt;
+
+        bitmap.set(t, TICK_SPACING);
+
+        if (zero) {
+            coin0.safeTransferFrom(msg.sender, address(this), uint256(amt));
+        } else {
+            coin1.safeTransferFrom(msg.sender, address(this), uint256(amt));
+        }
+    }
+
+    // TODO: split (take and decrease size?)
+    function take(
+        int24 t,
+        uint256 s,
+        uint128 delta,
+        uint128 x_min,
+        uint128 y_min
+    ) external returns (uint128 x, uint128 y) {
+        // TODO: check tick bounds
+        require(t % TICK_SPACING == 0, "invalid tick");
+
+        require(s <= slots[t], "invalid slot");
+
+        ins[t][s][msg.sender] -= delta;
+
+        // TODO: use memory?
+        Bundle storage bun = book[t][s];
+
+        // TODO: is this correct?
+        x = bun.x / delta / norm0;
+        y = bun.y / delta / norm1;
+        require(x >= x_min, "x < min");
+        require(y >= y_min, "y < min");
+
+        bun.x -= x;
+        bun.y -= y;
+
+        // TODO: delete bun if 0 coins?
+        // TODO: delete from tick bitmap?
+
+        if (x > 0) {
+            coin0.safeTransferFrom(msg.sender, address(this), uint256(x));
+        }
+        if (y > 0) {
+            coin1.safeTransferFrom(msg.sender, address(this), uint256(y));
+        }
+    }
 
     modifier lock() {
         require(!locked, "locked");
@@ -126,19 +270,20 @@ contract Pool {
         tick = t;
     }
 
-    function inc(int24 i, uint128 c0, uint128 c1, uint256 min)
+    function inc(int24 t, uint128 c0, uint128 c1, uint256 min)
         external
         lock
         returns (uint128, uint128, uint256)
     {
+        // TODO: check tick bounds
+        require(t % TICK_SPACING == 0, "invalid tick");
         require(min > 0, "min = 0");
 
-        int24 t = tick;
-
-        if (i < t) {
+        // TODO: gas save
+        if (t < tick) {
             c0 = 0;
         }
-        if (t < i) {
+        if (t < tick) {
             c1 = 0;
         }
 
@@ -149,23 +294,22 @@ contract Pool {
             : u128(RAY_256 / pow(B, uint256(uint24(-t))));
         uint256 l = mul(p, x) + mul(y, RAY_128);
 
-        Bucket storage buck = buckets[t];
-        if (buck.p == 0) {
-            buck.p = p;
+        Bin storage bin = bins[t];
+        if (bin.p == 0) {
+            bin.p = p;
         } else {
-            assert(p == buck.p);
+            assert(p == bin.p);
         }
 
         // TODO: check type (uint128 big enough)?
         // TODO: fix cast
-        uint128 s =
-            Liq.shares(uint128(l), uint128(buck.l), uint128(buck.s), OFF);
+        uint128 s = Liq.shares(uint128(l), uint128(bin.l), uint128(bin.s), OFF);
         require(s >= min, "s < min");
 
-        buck.x += x;
-        buck.y += y;
-        buck.l += l;
-        buck.s += s;
+        bin.x += x;
+        bin.y += y;
+        bin.l += l;
+        bin.s += s;
 
         shares[t][msg.sender] += s;
 
@@ -186,24 +330,28 @@ contract Pool {
         lock
         returns (uint128 c0, uint128 c1)
     {
+        // TODO: check tick bounds
+        require(t % TICK_SPACING == 0, "invalid tick");
+
         // TODO: vault math
         shares[t][msg.sender] -= s;
 
-        Bucket storage buck = buckets[t];
+        Bin storage bin = bins[t];
         // TODO: fix cast
-        uint128 l = Liq.amt(s, buck.s, uint128(buck.l), OFF);
+        uint128 l = Liq.amt(s, bin.s, uint128(bin.l), OFF);
 
         // TODO: use muldiv?
-        uint128 x = u128(uint256(buck.x) * l / buck.l);
-        uint128 y = u128(uint256(buck.y) * l / buck.l);
+        uint128 x = u128(uint256(bin.x) * l / bin.l);
+        uint128 y = u128(uint256(bin.y) * l / bin.l);
 
-        buck.x -= x;
-        buck.y -= y;
-        buck.l -= l;
-        buck.s -= s;
+        bin.x -= x;
+        bin.y -= y;
+        bin.l -= l;
+        bin.s -= s;
 
         // TODO: when l = 0 and / or s = 0?
-        if (buck.s == 0) {
+        if (bin.s == 0) {
+            // TODO: del tick if no bundle
             bitmap.del(t, TICK_SPACING);
             // TODO: clear out x, y, xfee and yfee?
         }
@@ -232,59 +380,46 @@ contract Pool {
 
         while (rem > 0 && zero ? t >= tick_limit : t <= tick_limit) {
             // TODO: Skip if tick not init?
+            // px = y
+            uint128 cin;
+            uint128 cout;
+            // Fee on amount in
+            uint128 fin;
+
+            Bundle storage bun = book[t][slots[t]];
+            if (zero ? bun.y > 0 : bun.x > 0) {
+                if (zero) {
+                    (cin, cout, fin) = Swap.xy(bun.x, bun.y, bun.p, FEE, rem);
+                    // TODO: exclude fin
+                    bun.x += cin + fin;
+                    bun.y -= cout;
+                } else {
+                    (cin, cout, fin) = Swap.yx(bun.x, bun.y, bun.p, FEE, rem);
+                    bun.x -= cout;
+                    // TODO: exclude fin
+                    bun.y += cin + fin;
+                }
+            }
 
             // TODO: use memory?
-            Bucket storage buck = buckets[t];
-            if (buck.l > 0) {
-                // px = y
-                uint128 cin;
-                uint128 cout;
-                // Fee on amount in
-                uint128 fin;
+            Bin storage bin = bins[t];
+            if (bin.l > 0) {
                 if (zero) {
-                    // x -> y
-                    // px = y -> max x = y / p
-                    // TODO: check buck.y * RAY / p <= u128
-                    // TODO: p > 0?
-                    uint128 max_cin =
-                        min(muldiv(buck.y, RAY_128, buck.p), buck.x);
-                    uint128 max_fin = max_cin * FEE / 1e5;
-
-                    if (rem >= max_cin + max_fin) {
-                        fin = max_fin;
-                        cin = max_cin;
-                    } else {
-                        fin = rem * FEE / 1e5;
-                        cin = rem - fin;
-                    }
-
-                    // TODO: check round trip rounding errors
-                    // TODO: check p*cin/RAY_128 <= u128
-                    cout = min(muldiv(buck.p, cin, RAY_128), buck.y);
-
-                    buck.x += cin + fin;
-                    buck.y -= cout;
+                    (uint128 i, uint128 o, uint128 f) =
+                        Swap.xy(bin.x, bin.y, bin.p, FEE, rem);
+                    cin += i;
+                    cout += o;
+                    fin += f;
+                    bin.x += cin + fin;
+                    bin.y -= cout;
                 } else {
-                    // y -> x
-                    // px = y -> max y = px
-                    uint128 max_cin =
-                        min(muldiv(buck.x, buck.p, RAY_128), buck.y);
-                    uint128 max_fin = max_cin * FEE / 1e5;
-
-                    if (rem >= max_cin + max_fin) {
-                        fin = max_fin;
-                        cin = max_cin;
-                    } else {
-                        fin = rem * FEE / 1e5;
-                        cin = rem - fin;
-                    }
-
-                    // TODO: check p*cin/RAY_128 <= u128
-                    // TODO: check p > 0?
-                    cout = min(muldiv(cin, RAY_128, buck.p), buck.x);
-
-                    buck.x -= cout;
-                    buck.y += cin + fin;
+                    (uint128 i, uint128 o, uint128 f) =
+                        Swap.yx(bin.x, bin.y, bin.p, FEE, rem);
+                    cin += i;
+                    cout += o;
+                    fin += f;
+                    bin.x -= cout;
+                    bin.y += cin + fin;
                 }
 
                 fee += fin;
@@ -297,5 +432,26 @@ contract Pool {
         }
 
         tick = t;
+
+        out /= zero ? norm1 : norm0;
+        require(out >= min_out, "out < min");
+
+        if (zero) {
+            // Round in favor of the pool
+            coin0.safeTransferFrom(
+                msg.sender, address(this), max_in - rem / norm0
+            );
+            if (out > 0) {
+                coin1.safeTransfer(msg.sender, uint256(out));
+            }
+        } else {
+            // Round in favor of the pool
+            coin1.safeTransferFrom(
+                msg.sender, address(this), max_in - rem / norm1
+            );
+            if (out > 0) {
+                coin0.safeTransfer(msg.sender, uint256(out));
+            }
+        }
     }
 }
