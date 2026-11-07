@@ -390,19 +390,34 @@ contract Pool {
             if (zero ? bun.y > 0 : bun.x > 0) {
                 if (zero) {
                     (cin, cout, fin) = Swap.xy(bun.x, bun.y, bun.p, FEE, rem);
-                    // TODO: exclude fin
-                    bun.x += cin + fin;
+                    // Exclude fin
+                    bun.x += cin;
                     bun.y -= cout;
+                    if (bun.y == 0) {
+                        slots[t] += 1;
+                    }
                 } else {
                     (cin, cout, fin) = Swap.yx(bun.x, bun.y, bun.p, FEE, rem);
                     bun.x -= cout;
-                    // TODO: exclude fin
-                    bun.y += cin + fin;
+                    // Exclude fin
+                    bun.y += cin;
+                    if (bun.x == 0) {
+                        slots[t] += 1;
+                    }
                 }
             }
 
             // TODO: use memory?
             Bin storage bin = bins[t];
+            // Limit order fee goes to LP
+            // TODO: does this cause errors in LP shares?
+            if (fin > 0) {
+                if (zero) {
+                    bin.x += fin;
+                } else {
+                    bin.y += fin;
+                }
+            }
             if (bin.l > 0) {
                 if (zero) {
                     (uint128 i, uint128 o, uint128 f) =
