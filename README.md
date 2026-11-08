@@ -37,19 +37,20 @@
 - [Sorted doubly linked list](./foundry/src/LinkedList.sol)
 - Merkle Tree
   - [Algorithm](./excalidraw/algo/merkle-algo.png)
-  - [Code](./python/algo/merkle.ipynb)
+  - [Python](./python/algo/merkle.ipynb)
 - Incremental Merkle Tree
   - [Algorithm](./excalidraw/algo/merkle-inc.png)
-  - [Code](./python/algo/merkle_inc.ipynb)
+  - [Python](./python/algo/merkle_inc.ipynb)
   - [Solidity](./foundry/src/MerkleInc.sol)
 - Incremental Merkle Tree with batch insert
-  - [Code](./foundry/src/MerkleIncBatch.sol)
+  - [Python](./python/algo/merkle_inc_batch.ipynb)
+  - [Solidity](./foundry/src/MerkleIncBatch.sol)
 - Fast Fourier Transform
   - [Intro](./excalidraw/algo/fft/fft-intro.png)
   - [Definitions](./excalidraw/algo/fft/fft-definitions.png)
   - [Algorithm](./excalidraw/algo/fft/fft-algo.png)
   - [Bit reversal](./excalidraw/algo/fft/fft-bit-reversal.png)
-  - [Code](./python/algo/fft.ipynb)
+  - [Python](./python/algo/fft.ipynb)
 - [Most and least significant bits using clz](./foundry/test/Bit.t.sol)
 
 # Groth16
