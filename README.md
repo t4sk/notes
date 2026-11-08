@@ -42,6 +42,8 @@
   - [Algorithm](./excalidraw/algo/merkle-inc.png)
   - [Code](./python/algo/merkle_inc.ipynb)
   - [Solidity](./foundry/src/MerkleInc.sol)
+- Incremental Merkle Tree with batch insert
+  - [Code](./foundry/src/MerkleIncBatch.sol)
 - Fast Fourier Transform
   - [Intro](./excalidraw/algo/fft/fft-intro.png)
   - [Definitions](./excalidraw/algo/fft/fft-definitions.png)

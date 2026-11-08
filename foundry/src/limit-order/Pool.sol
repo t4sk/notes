@@ -241,7 +241,11 @@ contract Pool {
         }
     }
 
-    function put(int24 t, uint128 amt, bool zero) external returns (uint256 s) {
+    function put(int24 t, uint128 amt, bool zero)
+        external
+        lock
+        returns (uint256 s)
+    {
         // TODO: check tick bounds
         require(t % TICK_SPACING == 0, "invalid tick");
         if (zero) {
@@ -285,7 +289,7 @@ contract Pool {
         uint128 delta,
         uint128 x_min,
         uint128 y_min
-    ) external returns (uint128 x, uint128 y) {
+    ) external lock returns (uint128 x, uint128 y) {
         // TODO: check tick bounds
         require(t % TICK_SPACING == 0, "invalid tick");
 
