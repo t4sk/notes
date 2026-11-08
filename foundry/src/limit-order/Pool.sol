@@ -3,6 +3,16 @@ pragma solidity 0.8.33;
 
 import {IERC20} from "../lib/IERC20.sol";
 import {SafeTransfer} from "../lib/SafeTransfer.sol";
+import {
+    RAY_128,
+    RAY_256,
+    min,
+    max,
+    mul,
+    muldiv,
+    u128,
+    pow
+} from "./lib/Math.sol";
 import {Liq} from "./lib/Liq.sol";
 import {Bitmap} from "./lib/Bitmap.sol";
 
@@ -18,32 +28,6 @@ import {Bitmap} from "./lib/Bitmap.sol";
 // t = current tick
 // For i < t -> L[i] = Y[i]
 // For t < i -> L[i] = p(i) * X[i]
-
-uint128 constant RAY_128 = 1e27;
-uint256 constant RAY_256 = 1e27;
-
-function min(uint128 x, uint128 y) pure returns (uint128 z) {
-    z = x <= y ? x : y;
-}
-
-function max(uint128 x, uint128 y) pure returns (uint128 z) {
-    z = x >= y ? x : y;
-}
-
-function mul(uint128 x, uint128 y) pure returns (uint256 z) {
-    z = uint256(x) * uint256(y);
-}
-
-function muldiv(uint128 x, uint128 y, uint128 d) pure returns (uint128 z) {
-    z = u128(uint256(x) * uint256(y) / uint256(d));
-}
-
-function u128(uint256 x) pure returns (uint128 z) {
-    require(x <= type(uint128).max, "x > u128 max");
-    z = uint128(x);
-}
-
-function pow(uint256 b, uint256 x) pure returns (uint256 z) {}
 
 library Swap {
     function xy(uint128 x, uint128 y, uint128 p, uint128 fee, uint128 rem)
