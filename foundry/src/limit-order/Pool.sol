@@ -55,6 +55,7 @@ contract Pool {
         // Price of X in terms of Y [1e27]
         uint128 p;
         // TODO: use uint128?
+        // TODO: remove?
         // Liquidity = p(i) * X[i] + Y[i] [1e27]
         uint256 l;
         // TODO: split total shares into mapping? - avoids sload on swap
@@ -97,6 +98,7 @@ contract Pool {
     // - limit orders are execute first before market swaps
     // - limit order fees goes to liquidity providers
     // Bundle of limit orders in the same price
+    // TODO: pack storage for cheaper gas
     struct Bundle {
         // TODO: store price?
         uint128 p;
@@ -104,7 +106,7 @@ contract Pool {
         uint128 x;
         // [1e18]
         uint128 y;
-        // bool zero;
+        bool zero;
     }
 
     // tick => slot
@@ -114,75 +116,6 @@ contract Pool {
     // tick => slot => user => amount in
     mapping(int24 => mapping(uint256 => mapping(address => uint128))) public
         ins;
-
-    function put(int24 t, uint128 amt, bool zero) external returns (uint256 s) {
-        // TODO: check tick bounds
-        require(t % TICK_SPACING == 0, "invalid tick");
-        if (zero) {
-            require(tick < t, "tick >= current");
-        } else {
-            require(t < tick, "tick <= current");
-        }
-
-        require(amt > 0, "amt = 0");
-
-        s = slots[t];
-        Bundle storage bun = book[t][s];
-        // TODO: check eq if already init?
-        // bun.zero = zero;
-        if (zero) {
-            bun.x += amt * norm0;
-        } else {
-            bun.y += amt * norm1;
-        }
-        ins[t][s][msg.sender] += amt;
-
-        bitmap.set(t, TICK_SPACING);
-
-        if (zero) {
-            coin0.safeTransferFrom(msg.sender, address(this), uint256(amt));
-        } else {
-            coin1.safeTransferFrom(msg.sender, address(this), uint256(amt));
-        }
-    }
-
-    // TODO: split (take and decrease size?)
-    function take(
-        int24 t,
-        uint256 s,
-        uint128 delta,
-        uint128 x_min,
-        uint128 y_min
-    ) external returns (uint128 x, uint128 y) {
-        // TODO: check tick bounds
-        require(t % TICK_SPACING == 0, "invalid tick");
-
-        require(s <= slots[t], "invalid slot");
-
-        ins[t][s][msg.sender] -= delta;
-
-        // TODO: use memory?
-        Bundle storage bun = book[t][s];
-
-        // TODO: is this correct?
-        x = bun.x / delta / norm0;
-        y = bun.y / delta / norm1;
-        require(x >= x_min, "x < min");
-        require(y >= y_min, "y < min");
-
-        bun.x -= x;
-        bun.y -= y;
-
-        // TODO: delete bun if 0 coins?
-        // TODO: delete from tick bitmap?
-
-        if (x > 0) {
-            coin0.safeTransferFrom(msg.sender, address(this), uint256(x));
-        }
-        if (y > 0) {
-            coin1.safeTransferFrom(msg.sender, address(this), uint256(y));
-        }
-    }
 
     modifier lock() {
         require(!locked, "locked");
@@ -286,8 +219,11 @@ contract Pool {
 
         // TODO: when l = 0 and / or s = 0?
         if (bin.s == 0) {
-            // TODO: del tick if no bundle
-            bitmap.del(t, TICK_SPACING);
+            Bundle memory bun = book[t][slots[t]];
+            if (bun.x == 0 && bun.y == 0) {
+                // TODO: del tick if no bundle
+                bitmap.del(t, TICK_SPACING);
+            }
             // TODO: clear out x, y, xfee and yfee?
         }
 
@@ -302,6 +238,96 @@ contract Pool {
         }
         if (c1 > 0) {
             coin1.safeTransfer(msg.sender, uint256(c1));
+        }
+    }
+
+    function put(int24 t, uint128 amt, bool zero) external returns (uint256 s) {
+        // TODO: check tick bounds
+        require(t % TICK_SPACING == 0, "invalid tick");
+        if (zero) {
+            require(tick < t, "tick >= current");
+        } else {
+            require(t < tick, "tick <= current");
+        }
+
+        require(amt > 0, "amt = 0");
+
+        uint128 p = t >= 0
+            ? u128(pow(B, uint256(uint24(t))))
+            : u128(RAY_256 / pow(B, uint256(uint24(-t))));
+
+        s = slots[t];
+        Bundle storage bun = book[t][s];
+        // TODO: check p is not init?
+        bun.p = p;
+        // TODO: check eq if already init?
+        bun.zero = zero;
+        if (zero) {
+            bun.x += amt * norm0;
+        } else {
+            bun.y += amt * norm1;
+        }
+        ins[t][s][msg.sender] += amt;
+
+        bitmap.set(t, TICK_SPACING);
+
+        if (zero) {
+            coin0.safeTransferFrom(msg.sender, address(this), uint256(amt));
+        } else {
+            coin1.safeTransferFrom(msg.sender, address(this), uint256(amt));
+        }
+    }
+
+    // TODO: split (take and decrease size?)
+    function take(
+        int24 t,
+        uint256 s,
+        uint128 delta,
+        uint128 x_min,
+        uint128 y_min
+    ) external returns (uint128 x, uint128 y) {
+        // TODO: check tick bounds
+        require(t % TICK_SPACING == 0, "invalid tick");
+
+        require(s <= slots[t], "invalid slot");
+
+        ins[t][s][msg.sender] -= delta;
+
+        // TODO: use memory?
+        Bundle storage bun = book[t][s];
+
+        // TODO: is this correct?
+        x = bun.x / delta / norm0;
+        y = bun.y / delta / norm1;
+        require(x >= x_min, "x < min");
+        require(y >= y_min, "y < min");
+
+        bun.x -= x;
+        bun.y -= y;
+
+        // TODO: delete bun if 0 coins?
+        // TODO: delete from tick bitmap?
+        if (bun.zero) {
+            if (bun.x == 0) {
+                delete book[t][s];
+                if (bins[t].l == 0) {
+                    bitmap.del(t, TICK_SPACING);
+                }
+            }
+        } else {
+            if (bun.y == 0) {
+                delete book[t][s];
+                if (bins[t].l == 0) {
+                    bitmap.del(t, TICK_SPACING);
+                }
+            }
+        }
+
+        if (x > 0) {
+            coin0.safeTransferFrom(msg.sender, address(this), uint256(x));
+        }
+        if (y > 0) {
+            coin1.safeTransferFrom(msg.sender, address(this), uint256(y));
         }
     }
 
@@ -324,19 +350,21 @@ contract Pool {
             Bundle storage bun = book[t][slots[t]];
             if (zero ? bun.y > 0 : bun.x > 0) {
                 if (zero) {
+                    // y <- x
                     (cin, cout, fin) = Swap.xy(bun.x, bun.y, bun.p, FEE, rem);
                     // Exclude fin
                     bun.x += cin;
                     bun.y -= cout;
-                    if (bun.y == 0) {
+                    if (!bun.zero && bun.y == 0) {
                         slots[t] += 1;
                     }
                 } else {
+                    // y -> x
                     (cin, cout, fin) = Swap.yx(bun.x, bun.y, bun.p, FEE, rem);
                     bun.x -= cout;
                     // Exclude fin
                     bun.y += cin;
-                    if (bun.x == 0) {
+                    if (bun.zero && bun.x == 0) {
                         slots[t] += 1;
                     }
                 }
@@ -360,6 +388,7 @@ contract Pool {
                     cin += i;
                     cout += o;
                     fin += f;
+                    // TODO: need to inc liq?
                     bin.x += cin + fin;
                     bin.y -= cout;
                 } else {
@@ -369,6 +398,7 @@ contract Pool {
                     cout += o;
                     fin += f;
                     bin.x -= cout;
+                    // TODO: need to inc liq?
                     bin.y += cin + fin;
                 }
 
