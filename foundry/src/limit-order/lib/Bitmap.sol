@@ -3,6 +3,7 @@ pragma solidity 0.8.33;
 
 import {Bit} from "./Bit.sol";
 
+// TODO: test
 // TODO: require s > 0
 // TODO: need to bound t so that hi + 1 (int16) and hi - 1 (int16) doesn't overflow
 
