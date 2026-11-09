@@ -15,6 +15,7 @@ import {
 } from "./lib/Math.sol";
 import {Liq} from "./lib/Liq.sol";
 import {Swap} from "./lib/Swap.sol";
+import {Price} from "./lib/Price.sol";
 import {Bitmap} from "./lib/Bitmap.sol";
 
 // Swap
@@ -29,8 +30,6 @@ import {Bitmap} from "./lib/Bitmap.sol";
 // t = current tick
 // For i < t -> L[i] = Y[i]
 // For t < i -> L[i] = p(i) * X[i]
-
-uint256 constant B = 1.0001 * 1e27;
 
 // TODO: multi token
 // TODO: limit order hook
@@ -157,9 +156,7 @@ contract Pool {
 
         uint128 x = c0 * norm0;
         uint128 y = c1 * norm1;
-        uint128 p = t >= 0
-            ? u128(pow(B, uint256(uint24(t))))
-            : u128(RAY_256 / pow(B, uint256(uint24(-t))));
+        uint128 p = Price.calc(t);
         uint256 l = mul(p, x) + mul(y, RAY_128);
 
         Bin storage bin = bins[t];
@@ -256,9 +253,7 @@ contract Pool {
 
         require(amt > 0, "amt = 0");
 
-        uint128 p = t >= 0
-            ? u128(pow(B, uint256(uint24(t))))
-            : u128(RAY_256 / pow(B, uint256(uint24(-t))));
+        uint128 p = Price.calc(t);
 
         s = slots[t];
         Bundle storage bun = book[t][s];
@@ -351,11 +346,15 @@ contract Pool {
             // Fee on amount in
             uint128 fin;
 
+            // TODO: use memory?
+            Bin storage bin = bins[t];
             Bundle storage bun = book[t][slots[t]];
+
             if (zero ? bun.y > 0 : bun.x > 0) {
                 if (zero) {
                     // y <- x
-                    (cin, cout, fin) = Swap.xy(bun.x, bun.y, bun.p, FEE, rem);
+                    (cin, cout, fin) =
+                        Swap.xy(bun.x, bun.y, bun.p, bin.l > 0 ? FEE : 0, rem);
                     // Exclude fin
                     bun.x += cin;
                     bun.y -= cout;
@@ -364,7 +363,8 @@ contract Pool {
                     }
                 } else {
                     // y -> x
-                    (cin, cout, fin) = Swap.yx(bun.x, bun.y, bun.p, FEE, rem);
+                    (cin, cout, fin) =
+                        Swap.yx(bun.x, bun.y, bun.p, bin.l > 0 ? FEE : 0, rem);
                     bun.x -= cout;
                     // Exclude fin
                     bun.y += cin;
@@ -374,17 +374,17 @@ contract Pool {
                 }
             }
 
-            // TODO: use memory?
-            Bin storage bin = bins[t];
             // Limit order fee goes to LP
             // TODO: does this cause errors in LP shares?
             if (fin > 0) {
+                // TODO: assert bin.l > 0
                 if (zero) {
                     bin.x += fin;
                 } else {
                     bin.y += fin;
                 }
             }
+
             if (bin.l > 0) {
                 if (zero) {
                     (uint128 i, uint128 o, uint128 f) =
