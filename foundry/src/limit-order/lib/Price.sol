@@ -9,6 +9,6 @@ library Price {
     function calc(int24 t) internal pure returns (uint128 p) {
         p = t >= 0
             ? u128(pow(B, uint256(uint24(t)), RAY_256))
-            : u128(RAY_256 / pow(B, uint256(uint24(-t)), RAY_256));
+            : u128(RAY_256 * RAY_256 / pow(B, uint256(uint24(-t)), RAY_256));
     }
 }
