@@ -64,13 +64,28 @@ contract Pool {
         // uint128 top;
     }
 
-    bool private transient locked;
+    // Swap
+    // - limit orders are execute first before market swaps
+    // - limit order fees goes to liquidity providers
+    // Bundle of limit orders in the same price
+    // TODO: pack storage for cheaper gas
+    struct Bundle {
+        // TODO: store price?
+        uint128 p;
+        // [1e18]
+        uint128 x;
+        // [1e18]
+        uint128 y;
+        bool zero;
+    }
 
     // 0.3%
     uint128 constant FEE = 0.003 * 1e5;
     // Virtual shares offset (1 unit of liquidity = 10**off shares)
     uint128 constant OFF = 3;
     int24 constant TICK_SPACING = 1;
+
+    bool private transient locked;
 
     // X
     IERC20 public immutable coin0;
@@ -93,21 +108,6 @@ contract Pool {
     // Tick => user => liquidity shares
     mapping(int24 => mapping(address => uint256)) public shares;
 
-    // Swap
-    // - limit orders are execute first before market swaps
-    // - limit order fees goes to liquidity providers
-    // Bundle of limit orders in the same price
-    // TODO: pack storage for cheaper gas
-    struct Bundle {
-        // TODO: store price?
-        uint128 p;
-        // [1e18]
-        uint128 x;
-        // [1e18]
-        uint128 y;
-        bool zero;
-    }
-
     // tick => slot
     mapping(int24 => uint256) public slots;
     // tick => slot => Bundle
@@ -124,6 +124,7 @@ contract Pool {
     }
 
     constructor(address c0, address c1, int24 t) {
+        // TODO: require coin0 < coin1?
         coin0 = IERC20(c0);
         coin1 = IERC20(c1);
 
