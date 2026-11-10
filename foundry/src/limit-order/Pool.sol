@@ -154,8 +154,8 @@ contract Pool {
         uint128 x = c0 * norm0;
         uint128 y = c1 * norm1;
         uint128 p = Price.calc(t);
-        uint128 dl = Liq.val(p, x, y);
-        uint128 l = Liq.val(p, bin.x, bin.y);
+        uint128 dl = Liq.calc(p, x, y);
+        uint128 l = Liq.calc(p, bin.x, bin.y);
 
         if (bin.p == 0) {
             bin.p = p;
@@ -199,8 +199,8 @@ contract Pool {
 
         Bin storage bin = bins[t];
         // TODO: fix cast
-        uint128 l = Liq.val(bin.p, bin.x, bin.y);
-        uint128 dl = Liq.amt(s, bin.s, l, OFF);
+        uint128 l = Liq.calc(bin.p, bin.x, bin.y);
+        uint128 dl = Liq.val(s, bin.s, l, OFF);
 
         // TODO: use muldiv?
         uint128 x = u128(uint256(bin.x) * dl / l);
@@ -307,7 +307,7 @@ contract Pool {
             if (bun.x == 0) {
                 delete book[t][s];
                 Bin storage bin = bins[t];
-                uint128 l = Liq.val(bun.p, bin.x, bin.y);
+                uint128 l = Liq.calc(bun.p, bin.x, bin.y);
                 if (l == 0) {
                     bitmap.del(t, TICK_SPACING);
                 }
@@ -316,7 +316,7 @@ contract Pool {
             if (bun.y == 0) {
                 delete book[t][s];
                 Bin storage bin = bins[t];
-                uint128 l = Liq.val(bun.p, bin.x, bin.y);
+                uint128 l = Liq.calc(bun.p, bin.x, bin.y);
                 if (l == 0) {
                     bitmap.del(t, TICK_SPACING);
                 }
@@ -354,7 +354,7 @@ contract Pool {
 
             // TODO: fix
             uint128 p;
-            uint128 l = Liq.val(p, bin.x, bin.y);
+            uint128 l = Liq.calc(p, bin.x, bin.y);
 
             if (zero ? bun.y > 0 : bun.x > 0) {
                 if (zero) {
