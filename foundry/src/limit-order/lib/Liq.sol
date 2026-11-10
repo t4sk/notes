@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.33;
 
+import {u128, mul, RAY_128} from "./Math.sol";
+
 // TODO: test
 // Liquidity shares math
 library Liq {
@@ -35,5 +37,15 @@ library Liq {
     {
         // TODO: check overflow
         a = s * (b + 1) / (t + uint128(10 ** off));
+    }
+
+    // TODO: rename?
+    function val(uint128 p, uint128 x, uint128 y)
+        internal
+        pure
+        returns (uint128 l)
+    {
+        // TODO: uint128 or uint256?
+        l = u128(mul(p, x) + mul(y, RAY_128));
     }
 }

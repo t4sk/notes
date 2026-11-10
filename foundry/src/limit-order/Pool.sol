@@ -53,15 +53,9 @@ contract Pool {
         // TODO: remove liq, store price, calc total liq when needed?
         // Price of X in terms of Y [1e27]
         uint128 p;
-        // TODO: use uint128?
-        // TODO: remove?
-        // Liquidity = p(i) * X[i] + Y[i] [1e27]
-        uint256 l;
         // TODO: split total shares into mapping? - avoids sload on swap
         // Total shares
         uint128 s;
-        // TODO: track limit order liquidity?
-        // uint128 top;
     }
 
     // Swap
@@ -155,12 +149,14 @@ contract Pool {
             c1 = 0;
         }
 
+        Bin storage bin = bins[t];
+
         uint128 x = c0 * norm0;
         uint128 y = c1 * norm1;
         uint128 p = Price.calc(t);
-        uint256 l = mul(p, x) + mul(y, RAY_128);
+        uint128 dl = Liq.val(p, x, y);
+        uint128 l = Liq.val(p, bin.x, bin.y);
 
-        Bin storage bin = bins[t];
         if (bin.p == 0) {
             bin.p = p;
         } else {
@@ -169,12 +165,11 @@ contract Pool {
 
         // TODO: check type (uint128 big enough)?
         // TODO: fix cast
-        uint128 s = Liq.shares(uint128(l), uint128(bin.l), uint128(bin.s), OFF);
+        uint128 s = Liq.shares(uint128(dl), uint128(l), uint128(bin.s), OFF);
         require(s >= min, "s < min");
 
         bin.x += x;
         bin.y += y;
-        bin.l += l;
         bin.s += s;
 
         shares[t][msg.sender] += s;
@@ -188,7 +183,7 @@ contract Pool {
             coin1.safeTransferFrom(msg.sender, address(this), uint256(c1));
         }
 
-        return (c0, c1, l);
+        return (c0, c1, dl);
     }
 
     function dec(int24 t, uint128 s, uint128 min0, uint128 min1)
@@ -204,15 +199,15 @@ contract Pool {
 
         Bin storage bin = bins[t];
         // TODO: fix cast
-        uint128 l = Liq.amt(s, bin.s, uint128(bin.l), OFF);
+        uint128 l = Liq.val(bin.p, bin.x, bin.y);
+        uint128 dl = Liq.amt(s, bin.s, l, OFF);
 
         // TODO: use muldiv?
-        uint128 x = u128(uint256(bin.x) * l / bin.l);
-        uint128 y = u128(uint256(bin.y) * l / bin.l);
+        uint128 x = u128(uint256(bin.x) * dl / l);
+        uint128 y = u128(uint256(bin.y) * dl / l);
 
         bin.x -= x;
         bin.y -= y;
-        bin.l -= l;
         bin.s -= s;
 
         // TODO: when l = 0 and / or s = 0?
@@ -307,17 +302,22 @@ contract Pool {
 
         // TODO: delete bun if 0 coins?
         // TODO: delete from tick bitmap?
+
         if (bun.zero) {
             if (bun.x == 0) {
                 delete book[t][s];
-                if (bins[t].l == 0) {
+                Bin storage bin = bins[t];
+                uint128 l = Liq.val(bun.p, bin.x, bin.y);
+                if (l == 0) {
                     bitmap.del(t, TICK_SPACING);
                 }
             }
         } else {
             if (bun.y == 0) {
                 delete book[t][s];
-                if (bins[t].l == 0) {
+                Bin storage bin = bins[t];
+                uint128 l = Liq.val(bun.p, bin.x, bin.y);
+                if (l == 0) {
                     bitmap.del(t, TICK_SPACING);
                 }
             }
@@ -350,12 +350,17 @@ contract Pool {
             // TODO: use memory?
             Bin storage bin = bins[t];
             Bundle storage bun = book[t][slots[t]];
+            // TODO: assert bun.p = bin.p
+
+            // TODO: fix
+            uint128 p;
+            uint128 l = Liq.val(p, bin.x, bin.y);
 
             if (zero ? bun.y > 0 : bun.x > 0) {
                 if (zero) {
                     // y <- x
                     (cin, cout, fin) =
-                        Swap.xy(bun.x, bun.y, bun.p, bin.l > 0 ? FEE : 0, rem);
+                        Swap.xy(bun.x, bun.y, bun.p, l > 0 ? FEE : 0, rem);
                     // Exclude fin
                     bun.x += cin;
                     bun.y -= cout;
@@ -365,7 +370,7 @@ contract Pool {
                 } else {
                     // y -> x
                     (cin, cout, fin) =
-                        Swap.yx(bun.x, bun.y, bun.p, bin.l > 0 ? FEE : 0, rem);
+                        Swap.yx(bun.x, bun.y, bun.p, l > 0 ? FEE : 0, rem);
                     bun.x -= cout;
                     // Exclude fin
                     bun.y += cin;
@@ -386,7 +391,7 @@ contract Pool {
                 }
             }
 
-            if (bin.l > 0) {
+            if (l > 0) {
                 if (zero) {
                     (uint128 i, uint128 o, uint128 f) =
                         Swap.xy(bin.x, bin.y, bin.p, FEE, rem);
