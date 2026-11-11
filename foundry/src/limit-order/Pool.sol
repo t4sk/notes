@@ -50,9 +50,7 @@ contract Pool {
         uint128 x;
         // Normalized coin Y amount [1e18]
         uint128 y;
-        // TODO: remove liq, store price, calc total liq when needed?
-        // Price of X in terms of Y [1e27]
-        uint128 p;
+        // TODO: remove?
         // TODO: split total shares into mapping? - avoids sload on swap
         // Total shares
         uint128 s;
@@ -62,14 +60,13 @@ contract Pool {
     // - limit orders are execute first before market swaps
     // - limit order fees goes to liquidity providers
     // Bundle of limit orders in the same price
-    // TODO: pack storage for cheaper gas
     struct Bundle {
-        // TODO: store price?
-        uint128 p;
         // [1e18]
         uint128 x;
         // [1e18]
         uint128 y;
+        // TODO: remove?
+        uint128 p;
         bool zero;
     }
 
@@ -98,6 +95,9 @@ contract Pool {
     int24 public tick;
     // int24 = int16 | int8
     mapping(int16 => uint256) public bitmap;
+    // int24 => price
+    // Price of X in terms of Y [1e27]
+    mapping(int24 => uint128) public prices;
     mapping(int24 => Bin) public bins;
     // Tick => user => liquidity shares
     mapping(int24 => mapping(address => uint256)) public shares;
@@ -157,10 +157,10 @@ contract Pool {
         uint128 dl = Liq.calc(p, x, y);
         uint128 l = Liq.calc(p, bin.x, bin.y);
 
-        if (bin.p == 0) {
-            bin.p = p;
+        if (prices[t] == 0) {
+            prices[t] = p;
         } else {
-            assert(p == bin.p);
+            assert(p == prices[t]);
         }
 
         // TODO: check type (uint128 big enough)?
@@ -197,9 +197,10 @@ contract Pool {
         // TODO: vault math
         shares[t][msg.sender] -= s;
 
+        uint128 p = prices[t];
         Bin storage bin = bins[t];
         // TODO: fix cast
-        uint128 l = Liq.calc(bin.p, bin.x, bin.y);
+        uint128 l = Liq.calc(p, bin.x, bin.y);
         uint128 dl = Liq.val(s, bin.s, l, OFF);
 
         // TODO: use muldiv?
@@ -217,7 +218,7 @@ contract Pool {
                 // TODO: del tick if no bundle
                 bitmap.del(t, TICK_SPACING);
             }
-            // TODO: clear out x, y, xfee and yfee?
+            // TODO: clear out x, y?
         }
 
         c0 = x / norm0;
@@ -251,11 +252,14 @@ contract Pool {
 
         uint128 p = Price.calc(t);
 
+        if (prices[t] == 0) {
+            prices[t] = p;
+        } else {
+            assert(p == prices[t]);
+        }
+
         s = slots[t];
         Bundle storage bun = book[t][s];
-        // TODO: check p is not init?
-        bun.p = p;
-        // TODO: check eq if already init?
         bun.zero = zero;
         if (zero) {
             bun.x += amt * norm0;
@@ -302,12 +306,14 @@ contract Pool {
 
         // TODO: delete bun if 0 coins?
         // TODO: delete from tick bitmap?
+        // TODO: check p > 0?
+        uint128 p = prices[t];
 
         if (bun.zero) {
             if (bun.x == 0) {
                 delete book[t][s];
                 Bin storage bin = bins[t];
-                uint128 l = Liq.calc(bun.p, bin.x, bin.y);
+                uint128 l = Liq.calc(p, bin.x, bin.y);
                 if (l == 0) {
                     bitmap.del(t, TICK_SPACING);
                 }
@@ -316,7 +322,7 @@ contract Pool {
             if (bun.y == 0) {
                 delete book[t][s];
                 Bin storage bin = bins[t];
-                uint128 l = Liq.calc(bun.p, bin.x, bin.y);
+                uint128 l = Liq.calc(p, bin.x, bin.y);
                 if (l == 0) {
                     bitmap.del(t, TICK_SPACING);
                 }
@@ -352,15 +358,15 @@ contract Pool {
             Bundle storage bun = book[t][slots[t]];
             // TODO: assert bun.p = bin.p
 
-            // TODO: fix
-            uint128 p;
+            // TODO: check p > 0?
+            uint128 p = prices[t];
             uint128 l = Liq.calc(p, bin.x, bin.y);
 
             if (zero ? bun.y > 0 : bun.x > 0) {
                 if (zero) {
                     // y <- x
                     (cin, cout, fin) =
-                        Swap.xy(bun.x, bun.y, bun.p, l > 0 ? FEE : 0, rem);
+                        Swap.xy(bun.x, bun.y, p, l > 0 ? FEE : 0, rem);
                     // Exclude fin
                     bun.x += cin;
                     bun.y -= cout;
@@ -370,7 +376,7 @@ contract Pool {
                 } else {
                     // y -> x
                     (cin, cout, fin) =
-                        Swap.yx(bun.x, bun.y, bun.p, l > 0 ? FEE : 0, rem);
+                        Swap.yx(bun.x, bun.y, p, l > 0 ? FEE : 0, rem);
                     bun.x -= cout;
                     // Exclude fin
                     bun.y += cin;
@@ -394,7 +400,7 @@ contract Pool {
             if (l > 0) {
                 if (zero) {
                     (uint128 i, uint128 o, uint128 f) =
-                        Swap.xy(bin.x, bin.y, bin.p, FEE, rem);
+                        Swap.xy(bin.x, bin.y, p, FEE, rem);
                     cin += i;
                     cout += o;
                     fin += f;
@@ -403,7 +409,7 @@ contract Pool {
                     bin.y -= cout;
                 } else {
                     (uint128 i, uint128 o, uint128 f) =
-                        Swap.yx(bin.x, bin.y, bin.p, FEE, rem);
+                        Swap.yx(bin.x, bin.y, p, FEE, rem);
                     cin += i;
                     cout += o;
                     fin += f;
