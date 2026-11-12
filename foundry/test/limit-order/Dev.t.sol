@@ -7,9 +7,14 @@ import {Price} from "@src/limit-order/lib/Price.sol";
 
 contract Dev is Test {
     function test() public {
+        // 4.128e15 ~ 2.422e38
+        int24 t = 1 << 18;
+
         uint256 g0 = gasleft();
         // uint128 p = Price.calc(type(int24).max >> 5);
-        uint128 p = Price.calc(type(int24).min >> 4);
+        // uint128 p = Price.calc(type(int24).min >> 4);
+
+        uint128 p = Price.calc(-t);
         uint256 g1 = gasleft();
 
         console.log("p %e", p);

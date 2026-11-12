@@ -50,6 +50,7 @@ contract Pool {
         uint128 x;
         // Normalized coin Y amount [1e18]
         uint128 y;
+        // TODO: store price?
         // TODO: remove?
         // TODO: split total shares into mapping? - avoids sload on swap
         // Total shares
@@ -65,8 +66,6 @@ contract Pool {
         uint128 x;
         // [1e18]
         uint128 y;
-        // TODO: remove?
-        uint128 p;
         bool zero;
     }
 
@@ -97,6 +96,7 @@ contract Pool {
     mapping(int16 => uint256) public bitmap;
     // int24 => price
     // Price of X in terms of Y [1e27]
+    // TODO: store or calc?
     mapping(int24 => uint128) public prices;
     mapping(int24 => Bin) public bins;
     // Tick => user => liquidity shares
@@ -159,9 +159,8 @@ contract Pool {
 
         if (prices[t] == 0) {
             prices[t] = p;
-        } else {
-            assert(p == prices[t]);
         }
+        // assert(p == prices[t]);
 
         // TODO: check type (uint128 big enough)?
         // TODO: fix cast
@@ -254,9 +253,8 @@ contract Pool {
 
         if (prices[t] == 0) {
             prices[t] = p;
-        } else {
-            assert(p == prices[t]);
         }
+        assert(p == prices[t]);
 
         s = slots[t];
         Bundle storage bun = book[t][s];
