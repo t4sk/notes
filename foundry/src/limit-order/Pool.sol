@@ -13,10 +13,11 @@ import {
     u128,
     pow
 } from "./lib/Math.sol";
+import {Bitmap} from "./lib/Bitmap.sol";
+import {Tick} from "./lib/Tick.sol";
 import {Liq} from "./lib/Liq.sol";
 import {Swap} from "./lib/Swap.sol";
 import {Price} from "./lib/Price.sol";
-import {Bitmap} from "./lib/Bitmap.sol";
 
 // Swap
 // p*dx = dy
@@ -35,11 +36,6 @@ import {Bitmap} from "./lib/Bitmap.sol";
 // TODO: limit order hook
 // TODO: Lean / tama?
 
-// Liquidity
-// L = Px + y
-// Liquidity shares
-// (T + s) / T = (a + L) / L -> s / T = a / L
-// withdraw = P * bin.x * s / T + bin.y * s / T = (P*bin.x + bin.y) * s / T = L * s / T
 contract Pool {
     using SafeTransfer for IERC20;
     using Bitmap for mapping(int16 => uint256);
@@ -50,36 +46,35 @@ contract Pool {
         uint128 x;
         // Normalized coin Y amount [1e18]
         uint128 y;
-        // TODO: store price?
-        // TODO: remove?
-        // TODO: split total shares into mapping? - avoids sload on swap
         // Total shares
         uint128 s;
     }
 
     // Swap
-    // - limit orders are execute first before market swaps
+    // - limit orders are execute first before bin liquidity
     // - limit order fees goes to liquidity providers
     // Bundle of limit orders in the same price
     struct Bundle {
-        // [1e18]
+        // Normalized coin X amount [1e18]
         uint128 x;
-        // [1e18]
+        // Normalized coin Y amount [1e18]
         uint128 y;
+        // Swap coin 0 to 1
         bool zero;
     }
 
     // 0.3%
-    uint128 constant FEE = 0.003 * 1e5;
+    uint128 private constant FEE = 0.003 * 1e5;
     // Virtual shares offset (1 unit of liquidity = 10**off shares)
-    uint128 constant OFF = 3;
-    int24 constant TICK_SPACING = 1;
+    uint128 private constant OFF = 3;
+    // TODO: immutable?
+    int24 private constant TICK_SPACING = 1;
 
     bool private transient locked;
 
-    // X
+    // Coin X
     IERC20 public immutable coin0;
-    // Y
+    // Coin Y
     IERC20 public immutable coin1;
 
     // 10^(18 - token X decimals)
@@ -90,22 +85,22 @@ contract Pool {
     // Liquidity
     //      Y | X
     // - <- tick -> +
-
     int24 public tick;
     // int24 = int16 | int8
     mapping(int16 => uint256) public bitmap;
-    // int24 => price
-    // Price of X in terms of Y [1e27]
-    // TODO: store or calc?
+    // int24 => price of X in terms of Y [1e27]
     mapping(int24 => uint128) public prices;
+
+    // Bin
     mapping(int24 => Bin) public bins;
     // Tick => user => liquidity shares
     mapping(int24 => mapping(address => uint256)) public shares;
 
+    // Bundle
     // tick => slot
     mapping(int24 => uint256) public slots;
     // tick => slot => Bundle
-    mapping(int24 => mapping(uint256 => Bundle)) public book;
+    mapping(int24 => mapping(uint256 => Bundle)) public buns;
     // tick => slot => user => amount in
     mapping(int24 => mapping(uint256 => mapping(address => uint128))) public
         ins;
@@ -118,7 +113,7 @@ contract Pool {
     }
 
     constructor(address c0, address c1, int24 t) {
-        // TODO: require coin0 < coin1?
+        require(coin0 != coin1, "coin 0 = coin 1");
         coin0 = IERC20(c0);
         coin1 = IERC20(c1);
 
@@ -129,6 +124,7 @@ contract Pool {
         norm0 = u128(10 ** (18 - dec0));
         norm1 = u128(10 ** (18 - dec1));
 
+        Tick.check(t, TICK_SPACING);
         tick = t;
     }
 
@@ -137,8 +133,7 @@ contract Pool {
         lock
         returns (uint128, uint128, uint256)
     {
-        // TODO: check tick bounds
-        require(t % TICK_SPACING == 0, "invalid tick");
+        Tick.check(t, TICK_SPACING);
         require(min > 0, "min = 0");
 
         // TODO: gas save
@@ -190,8 +185,7 @@ contract Pool {
         lock
         returns (uint128 c0, uint128 c1)
     {
-        // TODO: check tick bounds
-        require(t % TICK_SPACING == 0, "invalid tick");
+        Tick.check(t, TICK_SPACING);
 
         // TODO: vault math
         shares[t][msg.sender] -= s;
@@ -212,7 +206,7 @@ contract Pool {
 
         // TODO: when l = 0 and / or s = 0?
         if (bin.s == 0) {
-            Bundle memory bun = book[t][slots[t]];
+            Bundle memory bun = buns[t][slots[t]];
             if (bun.x == 0 && bun.y == 0) {
                 // TODO: del tick if no bundle
                 bitmap.del(t, TICK_SPACING);
@@ -239,8 +233,8 @@ contract Pool {
         lock
         returns (uint256 s)
     {
-        // TODO: check tick bounds
-        require(t % TICK_SPACING == 0, "invalid tick");
+        Tick.check(t, TICK_SPACING);
+
         if (zero) {
             require(tick < t, "tick >= current");
         } else {
@@ -257,7 +251,7 @@ contract Pool {
         assert(p == prices[t]);
 
         s = slots[t];
-        Bundle storage bun = book[t][s];
+        Bundle storage bun = buns[t][s];
         bun.zero = zero;
         if (zero) {
             bun.x += amt * norm0;
@@ -283,15 +277,14 @@ contract Pool {
         uint128 x_min,
         uint128 y_min
     ) external lock returns (uint128 x, uint128 y) {
-        // TODO: check tick bounds
-        require(t % TICK_SPACING == 0, "invalid tick");
+        Tick.check(t, TICK_SPACING);
 
         require(s <= slots[t], "invalid slot");
 
         ins[t][s][msg.sender] -= delta;
 
         // TODO: use memory?
-        Bundle storage bun = book[t][s];
+        Bundle storage bun = buns[t][s];
 
         // TODO: is this correct?
         x = bun.x / delta / norm0;
@@ -309,7 +302,7 @@ contract Pool {
 
         if (bun.zero) {
             if (bun.x == 0) {
-                delete book[t][s];
+                delete buns[t][s];
                 Bin storage bin = bins[t];
                 uint128 l = Liq.calc(p, bin.x, bin.y);
                 if (l == 0) {
@@ -318,7 +311,7 @@ contract Pool {
             }
         } else {
             if (bun.y == 0) {
-                delete book[t][s];
+                delete buns[t][s];
                 Bin storage bin = bins[t];
                 uint128 l = Liq.calc(p, bin.x, bin.y);
                 if (l == 0) {
@@ -353,7 +346,7 @@ contract Pool {
 
             // TODO: use memory?
             Bin storage bin = bins[t];
-            Bundle storage bun = book[t][slots[t]];
+            Bundle storage bun = buns[t][slots[t]];
             // TODO: assert bun.p = bin.p
 
             // TODO: check p > 0?

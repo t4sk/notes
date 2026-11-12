@@ -4,6 +4,13 @@ pragma solidity 0.8.33;
 import {u128, mul, RAY_128} from "./Math.sol";
 
 // TODO: test
+
+// Liquidity
+// L = Px + y
+// Liquidity shares
+// (T + s) / T = (a + L) / L -> s / T = a / L
+// withdraw = P * bin.x * s / T + bin.y * s / T = (P*bin.x + bin.y) * s / T = L * s / T
+
 // Liquidity shares math
 library Liq {
     // Vault math
