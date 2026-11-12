@@ -19,10 +19,10 @@ import {Liq} from "./lib/Liq.sol";
 import {Swap} from "./lib/Swap.sol";
 import {Price} from "./lib/Price.sol";
 
-// Swap
-// p*dx = dy
+// TODO: multi token
+// TODO: limit order hook
+// TODO: Lean / tama?
 
-// p(i) = 1.0001^i
 // X[i] = token X in tick i
 // Y[i] = token Y in tick i
 // L[i] = liquidity at tick i
@@ -31,10 +31,6 @@ import {Price} from "./lib/Price.sol";
 // t = current tick
 // For i < t -> L[i] = Y[i]
 // For t < i -> L[i] = p(i) * X[i]
-
-// TODO: multi token
-// TODO: limit order hook
-// TODO: Lean / tama?
 
 contract Pool {
     using SafeTransfer for IERC20;
@@ -136,7 +132,6 @@ contract Pool {
         Tick.check(t, TICK_SPACING);
         require(min > 0, "min = 0");
 
-        // TODO: gas save
         if (t < tick) {
             c0 = 0;
         }
@@ -146,24 +141,24 @@ contract Pool {
 
         Bin storage bin = bins[t];
 
-        uint128 x = c0 * norm0;
-        uint128 y = c1 * norm1;
+        uint128 dx = c0 * norm0;
+        uint128 dy = c1 * norm1;
         uint128 p = Price.calc(t);
-        uint128 dl = Liq.calc(p, x, y);
+        uint128 dl = Liq.calc(p, dx, dy);
         uint128 l = Liq.calc(p, bin.x, bin.y);
 
         if (prices[t] == 0) {
             prices[t] = p;
         }
-        // assert(p == prices[t]);
+        // TODO: assert(p == prices[t]);
 
         // TODO: check type (uint128 big enough)?
         // TODO: fix cast
         uint128 s = Liq.shares(uint128(dl), uint128(l), uint128(bin.s), OFF);
         require(s >= min, "s < min");
 
-        bin.x += x;
-        bin.y += y;
+        bin.x += dx;
+        bin.y += dy;
         bin.s += s;
 
         shares[t][msg.sender] += s;
@@ -197,11 +192,11 @@ contract Pool {
         uint128 dl = Liq.val(s, bin.s, l, OFF);
 
         // TODO: use muldiv?
-        uint128 x = u128(uint256(bin.x) * dl / l);
-        uint128 y = u128(uint256(bin.y) * dl / l);
+        uint128 dx = u128(uint256(bin.x) * dl / l);
+        uint128 dy = u128(uint256(bin.y) * dl / l);
 
-        bin.x -= x;
-        bin.y -= y;
+        bin.x -= dx;
+        bin.y -= dy;
         bin.s -= s;
 
         // TODO: when l = 0 and / or s = 0?
@@ -214,8 +209,8 @@ contract Pool {
             // TODO: clear out x, y?
         }
 
-        c0 = x / norm0;
-        c1 = y / norm1;
+        c0 = dx / norm0;
+        c1 = dy / norm1;
 
         require(c0 >= min0, "c0 < min");
         require(c1 >= min1, "c1 < min");
@@ -276,7 +271,7 @@ contract Pool {
         uint128 delta,
         uint128 x_min,
         uint128 y_min
-    ) external lock returns (uint128 x, uint128 y) {
+    ) external lock returns (uint128 dx, uint128 dy) {
         Tick.check(t, TICK_SPACING);
 
         require(s <= slots[t], "invalid slot");
@@ -287,13 +282,13 @@ contract Pool {
         Bundle storage bun = buns[t][s];
 
         // TODO: is this correct?
-        x = bun.x / delta / norm0;
-        y = bun.y / delta / norm1;
-        require(x >= x_min, "x < min");
-        require(y >= y_min, "y < min");
+        dx = bun.x / delta / norm0;
+        dy = bun.y / delta / norm1;
+        require(dx >= x_min, "x < min");
+        require(dy >= y_min, "y < min");
 
-        bun.x -= x;
-        bun.y -= y;
+        bun.x -= dx;
+        bun.y -= dy;
 
         // TODO: delete bun if 0 coins?
         // TODO: delete from tick bitmap?
@@ -320,11 +315,11 @@ contract Pool {
             }
         }
 
-        if (x > 0) {
-            coin0.safeTransferFrom(msg.sender, address(this), uint256(x));
+        if (dx > 0) {
+            coin0.safeTransferFrom(msg.sender, address(this), uint256(dx));
         }
-        if (y > 0) {
-            coin1.safeTransferFrom(msg.sender, address(this), uint256(y));
+        if (dy > 0) {
+            coin1.safeTransferFrom(msg.sender, address(this), uint256(dy));
         }
     }
 

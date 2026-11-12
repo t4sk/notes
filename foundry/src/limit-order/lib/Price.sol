@@ -3,10 +3,12 @@ pragma solidity 0.8.33;
 
 import {RAY_256, u128, pow} from "./Math.sol";
 
+// p(i) = 1.0001^i
 uint256 constant B = 1.0001 * 1e27;
 
 // TODO: test
 // Uni v3 min, max +/- 887272
+
 library Price {
     function calc(int24 t) internal pure returns (uint128 p) {
         p = t >= 0
