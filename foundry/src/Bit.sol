@@ -32,4 +32,12 @@ library Bit {
             z := sub(255, clz(and(x, sub(0, x))))
         }
     }
+
+    // M = type(uint256).max
+    // Returns M - x
+    function max_sub(uint256 x) internal pure returns (uint256 z) {
+        // x + ~x = M
+        // ~x = M - x
+        z = ~x;
+    }
 }

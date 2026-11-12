@@ -32,4 +32,8 @@ contract BitTest is Test {
         x = bound(x, 1, type(uint256).max);
         assertEq(Bit.lsb(x), lsb(x));
     }
+
+    function test_max_sub(uint256 x) public pure {
+        assertEq(Bit.max_sub(x), type(uint256).max - x);
+    }
 }
