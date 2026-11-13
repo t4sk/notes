@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.33;
 
-import {u128, mul, RAY_128} from "./Math.sol";
+import {u128, mul, muldiv, RAY_128} from "./Math.sol";
 
 // TODO: test
 
@@ -54,5 +54,41 @@ library Liq {
     {
         // TODO: uint128 or uint256?
         l = u128(mul(p, x) + mul(y, RAY_128));
+    }
+
+    // Calculate dx and dy to be added
+    function calc_dx_dy_in(
+        uint128 p,
+        // Target tick
+        int24 t,
+        // Current tick
+        int24 tick,
+        uint128 a0,
+        uint128 a1,
+        uint128 norm0,
+        uint128 norm1
+    ) internal pure returns (uint128 dx, uint128 dy, uint128 c0, uint128 c1) {
+        c0 = a0;
+        c1 = a1;
+        if (t < tick) {
+            // dx = 0
+            c0 = 0;
+            dy = c1 * norm1;
+        } else if (t < tick) {
+            // dy = 0
+            c1 = 0;
+            dx = c0 * norm0;
+        } else {
+            // p * dx = dy
+            dx = c0 * norm0;
+            dy = c1 * norm1;
+            if (mul(p, dx) > mul(dy, RAY_128)) {
+                dx = muldiv(dy, RAY_128, p);
+                c0 = dx / norm0;
+            } else if (mul(p, dx) < mul(dy, RAY_128)) {
+                dy = muldiv(dx, p, RAY_128);
+                c1 = dy / norm1;
+            }
+        }
     }
 }

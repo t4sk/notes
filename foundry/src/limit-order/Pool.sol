@@ -132,18 +132,16 @@ contract Pool {
         Tick.check(t, TICK_SPACING);
         require(min > 0, "min = 0");
 
-        if (t < tick) {
-            c0 = 0;
-        }
-        if (t < tick) {
-            c1 = 0;
-        }
+        uint128 p = Price.calc(t);
+
+        // TODO: move to lib
+        uint128 dx;
+        uint128 dy;
+        (dx, dy, c0, c1) = Liq.calc_dx_dy_in(p, t, tick, c0, c1, norm0, norm1);
 
         Bin storage bin = bins[t];
 
-        uint128 dx = c0 * norm0;
-        uint128 dy = c1 * norm1;
-        uint128 p = Price.calc(t);
+        // TODO: require dl > 0?
         uint128 dl = Liq.calc(p, dx, dy);
         uint128 l = Liq.calc(p, bin.x, bin.y);
 
