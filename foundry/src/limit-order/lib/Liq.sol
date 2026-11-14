@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.33;
 
-import {u128, mul, muldiv, RAY_128} from "./Math.sol";
+import {u128, mul, muldiv, muldiv_up, div_up, RAY_128} from "./Math.sol";
 
 // TODO: test
 
@@ -86,15 +86,11 @@ library Liq {
             dx = c0 * norm0;
             dy = c1 * norm1;
             if (lhs > rhs) {
-                // TODO: round up?
-                dx = muldiv(dy, RAY_128, p);
-                // TODO: round up?
-                c0 = dx / norm0;
+                dx = muldiv_up(dy, RAY_128, p);
+                c0 = div_up(dx, norm0);
             } else if (lhs < rhs) {
-                // TODO: round up?
-                dy = muldiv(dx, p, RAY_128);
-                // TODO: round up?
-                c1 = dy / norm1;
+                dy = muldiv_up(dx, p, RAY_128);
+                c1 = div_up(dy, norm1);
             }
         }
     }

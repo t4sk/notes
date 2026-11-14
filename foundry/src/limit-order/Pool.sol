@@ -10,6 +10,7 @@ import {
     max,
     mul,
     muldiv,
+    div_up,
     u128,
     pow
 } from "./lib/Math.sol";

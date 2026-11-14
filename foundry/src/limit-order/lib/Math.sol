@@ -18,8 +18,32 @@ function mul(uint128 x, uint128 y) pure returns (uint256 z) {
     z = uint256(x) * uint256(y);
 }
 
+function div_up(uint128 x, uint128 y) pure returns (uint128 z) {
+    // divup(0, 0) returns 0
+    // x = qy + r
+    // ceil[x / y] = r = 0 -> q
+    //             = r > 0 -> q + 1
+    // r = 0
+    // floor((x - 1) / y) + 1 = floor((qy - 1) / y) + 1
+    //                        = q - 1 + 1 = q (underflows if r = 0 and q = 0 -> x = 0)
+    // r > 0
+    // floor((x - 1) / y) + 1 = floor((qy + r - 1) / y) + 1
+    //                          y > r - 1
+    //                        = q + 1
+    unchecked {
+        z = x != 0 ? ((x - 1) / y) + 1 : 0;
+    }
+}
+
 function muldiv(uint128 x, uint128 y, uint128 d) pure returns (uint128 z) {
     z = u128(uint256(x) * uint256(y) / uint256(d));
+}
+
+function muldiv_up(uint128 x, uint128 y, uint128 d) pure returns (uint128 z) {
+    z = muldiv(x, y, d);
+    if (mulmod(x, y, z) > 0) {
+        z += 1;
+    }
 }
 
 function u128(uint256 x) pure returns (uint128 z) {
