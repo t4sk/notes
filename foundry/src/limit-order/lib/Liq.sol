@@ -74,21 +74,38 @@ library Liq {
             // dx = 0
             c0 = 0;
             dy = c1 * norm1;
-        } else if (t < tick) {
+        } else if (tick < t) {
             // dy = 0
             c1 = 0;
             dx = c0 * norm0;
         } else {
             // p * dx = dy
+            uint256 lhs = mul(p, dx);
+            uint256 rhs = mul(dy, RAY_128);
+
             dx = c0 * norm0;
             dy = c1 * norm1;
-            if (mul(p, dx) > mul(dy, RAY_128)) {
+            if (lhs > rhs) {
+                // TODO: round up?
                 dx = muldiv(dy, RAY_128, p);
+                // TODO: round up?
                 c0 = dx / norm0;
-            } else if (mul(p, dx) < mul(dy, RAY_128)) {
+            } else if (lhs < rhs) {
+                // TODO: round up?
                 dy = muldiv(dx, p, RAY_128);
+                // TODO: round up?
                 c1 = dy / norm1;
             }
         }
+    }
+
+    // Calculate dx and dy to be removed
+    function calc_dx_dy_out(uint128 x, uint128 y, uint128 dl, uint128 l)
+        internal
+        pure
+        returns (uint128 dx, uint128 dy)
+    {
+        dx = muldiv(x, dl, l);
+        dy = muldiv(y, dl, l);
     }
 }

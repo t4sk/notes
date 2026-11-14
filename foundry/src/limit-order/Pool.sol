@@ -19,6 +19,7 @@ import {Liq} from "./lib/Liq.sol";
 import {Swap} from "./lib/Swap.sol";
 import {Price} from "./lib/Price.sol";
 
+// TODO: use custom errors to save gas
 // TODO: multi token
 // TODO: limit order hook
 // TODO: Lean / tama?
@@ -124,25 +125,23 @@ contract Pool {
         tick = t;
     }
 
-    function inc(int24 t, uint128 c0, uint128 c1, uint256 min)
+    function inc(int24 t, uint128 a0, uint128 a1, uint256 min)
         external
         lock
-        returns (uint128, uint128, uint256)
+        returns (uint128 c0, uint128 c1, uint128 s)
     {
         Tick.check(t, TICK_SPACING);
         require(min > 0, "min = 0");
 
         uint128 p = Price.calc(t);
 
-        // TODO: move to lib
-        uint128 dx;
-        uint128 dy;
-        (dx, dy, c0, c1) = Liq.calc_dx_dy_in(p, t, tick, c0, c1, norm0, norm1);
+        (uint128 dx, uint128 dy, uint128 c0, uint128 c1) =
+            Liq.calc_dx_dy_in(p, t, tick, a0, a1, norm0, norm1);
+
+        uint128 dl = Liq.calc(p, dx, dy);
+        require(dl > 0, "delta liq = 0");
 
         Bin storage bin = bins[t];
-
-        // TODO: require dl > 0?
-        uint128 dl = Liq.calc(p, dx, dy);
         uint128 l = Liq.calc(p, bin.x, bin.y);
 
         if (prices[t] == 0) {
@@ -150,15 +149,13 @@ contract Pool {
         }
         // TODO: assert(p == prices[t]);
 
-        // TODO: check type (uint128 big enough)?
-        // TODO: fix cast
+        // TODO: fix cast, check type (uint128 big enough)?
         uint128 s = Liq.shares(uint128(dl), uint128(l), uint128(bin.s), OFF);
         require(s >= min, "s < min");
 
         bin.x += dx;
         bin.y += dy;
         bin.s += s;
-
         shares[t][msg.sender] += s;
 
         bitmap.set(t, TICK_SPACING);
@@ -170,7 +167,7 @@ contract Pool {
             coin1.safeTransferFrom(msg.sender, address(this), uint256(c1));
         }
 
-        return (c0, c1, dl);
+        return (c0, c1, s);
     }
 
     function dec(int24 t, uint128 s, uint128 min0, uint128 min1)
@@ -180,31 +177,32 @@ contract Pool {
     {
         Tick.check(t, TICK_SPACING);
 
-        // TODO: vault math
-        shares[t][msg.sender] -= s;
-
         uint128 p = prices[t];
         Bin storage bin = bins[t];
         // TODO: fix cast
         uint128 l = Liq.calc(p, bin.x, bin.y);
         uint128 dl = Liq.val(s, bin.s, l, OFF);
-
-        // TODO: use muldiv?
-        uint128 dx = u128(uint256(bin.x) * dl / l);
-        uint128 dy = u128(uint256(bin.y) * dl / l);
+        (uint128 dx, uint128 dy) = Liq.calc_dx_dy_out(bin.x, bin.y, dl, l);
 
         bin.x -= dx;
         bin.y -= dy;
         bin.s -= s;
+        shares[t][msg.sender] -= s;
 
-        // TODO: when l = 0 and / or s = 0?
+        // TODO: when l = 0?
         if (bin.s == 0) {
             Bundle memory bun = buns[t][slots[t]];
             if (bun.x == 0 && bun.y == 0) {
-                // TODO: del tick if no bundle
                 bitmap.del(t, TICK_SPACING);
             }
-            // TODO: clear out x, y?
+            if (bin.x > 0) {
+                dx += bin.x;
+                bin.x = 0;
+            }
+            if (bin.y > 0) {
+                dy += bin.y;
+                bin.y = 0;
+            }
         }
 
         c0 = dx / norm0;
