@@ -59,7 +59,11 @@ contract Pool {
         uint128 y;
         // Swap coin 0 to 1
         bool zero;
+        // Total X or Y amount in [1e18]
+        // TODO: need vault math?
+        uint128 tot;
     }
+    // TODO: min to prevent dust orders?
 
     // 0.3%
     uint128 private constant FEE = 0.003 * 1e5;
@@ -99,7 +103,7 @@ contract Pool {
     mapping(int24 => uint256) public slots;
     // tick => slot => Bundle
     mapping(int24 => mapping(uint256 => Bundle)) public buns;
-    // tick => slot => user => amount in
+    // tick => slot => user => amount in [1e18]
     mapping(int24 => mapping(uint256 => mapping(address => uint128))) public
         ins;
 
@@ -148,7 +152,7 @@ contract Pool {
         if (prices[t] == 0) {
             prices[t] = p;
         }
-        // TODO: assert(p == prices[t]);
+        // TODO: if dev? assert(p == prices[t]);
 
         // TODO: fix cast, check type (uint128 big enough)?
         uint128 s = Liq.shares(uint128(dl), uint128(l), uint128(bin.s), OFF);
@@ -190,12 +194,13 @@ contract Pool {
         bin.s -= s;
         shares[t][msg.sender] -= s;
 
-        // TODO: when l = 0?
         if (bin.s == 0) {
             Bundle memory bun = buns[t][slots[t]];
+            // TODO: is there a case where bun.x > 0 and bun.y > 0?
             if (bun.x == 0 && bun.y == 0) {
                 bitmap.del(t, TICK_SPACING);
             }
+            // Give remaining x and y
             if (bin.x > 0) {
                 dx += bin.x;
                 bin.x = 0;
@@ -227,6 +232,7 @@ contract Pool {
     {
         Tick.check(t, TICK_SPACING);
 
+        // t != tick
         if (zero) {
             require(tick < t, "tick >= current");
         } else {
@@ -240,17 +246,26 @@ contract Pool {
         if (prices[t] == 0) {
             prices[t] = p;
         }
-        assert(p == prices[t]);
+        // TODO: if dev? assert(p == prices[t]);
 
         s = slots[t];
         Bundle storage bun = buns[t][s];
-        bun.zero = zero;
-        if (zero) {
-            bun.x += amt * norm0;
-        } else {
-            bun.y += amt * norm1;
+        // Not initialized
+        if (bun.x == 0 && bun.y == 0) {
+            bun.zero = zero;
         }
-        ins[t][s][msg.sender] += amt;
+        // TODO: if dev? assert(bun.zero == zero);
+        if (zero) {
+            uint128 d = amt * norm0;
+            bun.x += d;
+            bun.tot += d;
+            ins[t][s][msg.sender] += d;
+        } else {
+            uint128 d = amt * norm1;
+            bun.y += d;
+            bun.tot += d;
+            ins[t][s][msg.sender] += d;
+        }
 
         bitmap.set(t, TICK_SPACING);
 
@@ -261,62 +276,61 @@ contract Pool {
         }
     }
 
-    // TODO: split (take and decrease size?)
-    function take(
-        int24 t,
-        uint256 s,
-        uint128 delta,
-        uint128 x_min,
-        uint128 y_min
-    ) external lock returns (uint128 dx, uint128 dy) {
+    function take(int24 t, uint256 s, uint128 delta, uint128 min0, uint128 min1)
+        external
+        lock
+        returns (uint128 c0, uint128 c1)
+    {
         Tick.check(t, TICK_SPACING);
 
         require(s <= slots[t], "invalid slot");
 
         ins[t][s][msg.sender] -= delta;
 
-        // TODO: use memory?
         Bundle storage bun = buns[t][s];
 
-        // TODO: is this correct?
-        dx = bun.x / delta / norm0;
-        dy = bun.y / delta / norm1;
-        require(dx >= x_min, "x < min");
-        require(dy >= y_min, "y < min");
+        // TODO: move to lib?
+        // TODO: check math (dx, dy)
+        uint128 dx = bun.x * delta / bun.tot;
+        uint128 dy = bun.y * delta / bun.tot;
 
         bun.x -= dx;
         bun.y -= dy;
+
+        // TODO: Deallocate dx, dy if no more shares
+        bun.tot -= delta;
+
+        if (bun.tot == 0) {
+            dx += bun.x;
+            bun.x = 0;
+            dy += bun.y;
+            bun.y = 0;
+        }
+
+        c0 = dx / norm0;
+        c1 = dy / norm1;
+        require(c0 >= min0, "c0 < min");
+        require(c1 >= min1, "c1 < min");
 
         // TODO: delete bun if 0 coins?
         // TODO: delete from tick bitmap?
         // TODO: check p > 0?
         uint128 p = prices[t];
 
-        if (bun.zero) {
-            if (bun.x == 0) {
-                delete buns[t][s];
-                Bin storage bin = bins[t];
-                uint128 l = Liq.calc(p, bin.x, bin.y);
-                if (l == 0) {
-                    bitmap.del(t, TICK_SPACING);
-                }
-            }
-        } else {
-            if (bun.y == 0) {
-                delete buns[t][s];
-                Bin storage bin = bins[t];
-                uint128 l = Liq.calc(p, bin.x, bin.y);
-                if (l == 0) {
-                    bitmap.del(t, TICK_SPACING);
-                }
+        if (bun.tot == 0) {
+            delete buns[t][s];
+            Bin storage bin = bins[t];
+            uint128 l = Liq.calc(p, bin.x, bin.y);
+            if (l == 0) {
+                bitmap.del(t, TICK_SPACING);
             }
         }
 
-        if (dx > 0) {
-            coin0.safeTransferFrom(msg.sender, address(this), uint256(dx));
+        if (c0 > 0) {
+            coin0.safeTransferFrom(msg.sender, address(this), uint256(c0));
         }
-        if (dy > 0) {
-            coin1.safeTransferFrom(msg.sender, address(this), uint256(dy));
+        if (c1 > 0) {
+            coin1.safeTransferFrom(msg.sender, address(this), uint256(c1));
         }
     }
 
