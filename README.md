@@ -52,6 +52,7 @@
   - [Bit reversal](./excalidraw/algo/fft/fft-bit-reversal.png)
   - [Python](./python/algo/fft.ipynb)
 - [Most and least significant bits using clz](./foundry/test/Bit.t.sol)
+- [Binary search](./foundry/test/BinarySearch.t.sol)
 
 # Groth16
 
