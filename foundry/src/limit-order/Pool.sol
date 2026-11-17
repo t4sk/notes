@@ -22,8 +22,8 @@ import {Price} from "./lib/Price.sol";
 
 // TODO: use custom errors to save gas
 // TODO: multi token
-// TODO: limit order hook
 // TODO: Lean / tama?
+// TODO: fin or fout?
 
 // X[i] = token X in tick i
 // Y[i] = token Y in tick i
@@ -296,8 +296,6 @@ contract Pool {
 
         bun.x -= dx;
         bun.y -= dy;
-
-        // TODO: Deallocate dx, dy if no more shares
         bun.tot -= delta;
 
         if (bun.tot == 0) {
@@ -305,26 +303,19 @@ contract Pool {
             bun.x = 0;
             dy += bun.y;
             bun.y = 0;
+
+            delete buns[t][s];
+
+            Bin storage bin = bins[t];
+            if (bin.s == 0) {
+                bitmap.del(t, TICK_SPACING);
+            }
         }
 
         c0 = dx / norm0;
         c1 = dy / norm1;
         require(c0 >= min0, "c0 < min");
         require(c1 >= min1, "c1 < min");
-
-        // TODO: delete bun if 0 coins?
-        // TODO: delete from tick bitmap?
-        // TODO: check p > 0?
-        uint128 p = prices[t];
-
-        if (bun.tot == 0) {
-            delete buns[t][s];
-            Bin storage bin = bins[t];
-            uint128 l = Liq.calc(p, bin.x, bin.y);
-            if (l == 0) {
-                bitmap.del(t, TICK_SPACING);
-            }
-        }
 
         if (c0 > 0) {
             coin0.safeTransferFrom(msg.sender, address(this), uint256(c0));
@@ -347,69 +338,64 @@ contract Pool {
             // px = y
             uint128 cin;
             uint128 cout;
-            // Fee on amount in
             uint128 fin;
 
             // TODO: use memory?
             Bin storage bin = bins[t];
             Bundle storage bun = buns[t][slots[t]];
-            // TODO: assert bun.p = bin.p
 
             // TODO: check p > 0?
             uint128 p = prices[t];
-            uint128 l = Liq.calc(p, bin.x, bin.y);
 
+            // Limit orders
             if (zero ? bun.y > 0 : bun.x > 0) {
                 if (zero) {
                     // y <- x
                     (cin, cout, fin) =
-                        Swap.xy(bun.x, bun.y, p, l > 0 ? FEE : 0, rem);
-                    // Exclude fin
+                        Swap.xy(bun.x, bun.y, p, bin.s > 0 ? FEE : 0, rem);
+                    // Exclude fin, fin goes to LP
                     bun.x += cin;
                     bun.y -= cout;
                     if (!bun.zero && bun.y == 0) {
                         slots[t] += 1;
                     }
+                    if (bin.s > 0) {
+                        bin.x += fin;
+                    }
                 } else {
                     // y -> x
                     (cin, cout, fin) =
-                        Swap.yx(bun.x, bun.y, p, l > 0 ? FEE : 0, rem);
+                        Swap.yx(bun.x, bun.y, p, bin.s > 0 ? FEE : 0, rem);
                     bun.x -= cout;
-                    // Exclude fin
+                    // Exclude fin, fin goes to LP
                     bun.y += cin;
                     if (bun.zero && bun.x == 0) {
                         slots[t] += 1;
                     }
+                    if (bin.s > 0) {
+                        bin.y += fin;
+                    }
                 }
+
+                fee += fin;
+                rem -= cin + fin;
+                out += cout;
             }
 
-            // Limit order fee goes to LP
-            // TODO: does this cause errors in LP shares?
-            if (fin > 0) {
-                // TODO: assert bin.l > 0
-                if (zero) {
-                    bin.x += fin;
-                } else {
-                    bin.y += fin;
-                }
-            }
-
+            /* TODO: fix stack too deep
+            uint128 l = Liq.calc(p, bin.x, bin.y);
             if (l > 0) {
+                uint128 cin;
+                uint128 cout;
+                uint128 fin;
+
                 if (zero) {
-                    (uint128 i, uint128 o, uint128 f) =
-                        Swap.xy(bin.x, bin.y, p, FEE, rem);
-                    cin += i;
-                    cout += o;
-                    fin += f;
+                    (cin, cout, fin) = Swap.xy(bin.x, bin.y, p, FEE, rem);
                     // TODO: need to inc liq?
                     bin.x += cin + fin;
                     bin.y -= cout;
                 } else {
-                    (uint128 i, uint128 o, uint128 f) =
-                        Swap.yx(bin.x, bin.y, p, FEE, rem);
-                    cin += i;
-                    cout += o;
-                    fin += f;
+                    (cin, cout, fin) = Swap.yx(bin.x, bin.y, p, FEE, rem);
                     bin.x -= cout;
                     // TODO: need to inc liq?
                     bin.y += cin + fin;
@@ -421,7 +407,11 @@ contract Pool {
                 out += cout;
             }
 
-            (t,) = bitmap.next(t, TICK_SPACING, !zero);
+            // TODO: check condition
+            if (zero ? bun.y == 0 && bin.x == 0 : bun.x == 0 && bin.y == 0) {
+                (t,) = bitmap.next(t, TICK_SPACING, !zero);
+            }
+            */
         }
 
         tick = t;
