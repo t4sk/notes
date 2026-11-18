@@ -325,29 +325,27 @@ contract Pool {
         }
     }
 
-    struct SwapAmts {
-        uint128 cin;
-        uint128 cout;
-        uint128 fin;
+    // Need struct to prevent stack-too-deep error
+    struct SwapState {
+        uint128 rem;
+        uint128 out;
+        int24 t;
     }
 
     function swap(uint128 max_in, uint128 min_out, int24 tick_limit, bool zero)
         external
         lock
-        returns (uint128 rem, uint128 out, uint128 fee)
+        returns (uint128 rem, uint128 out)
     {
-        int24 t = tick;
-        rem = max_in * (zero ? norm0 : norm1);
+        SwapState memory s;
+        s.t = tick;
+        s.rem = max_in * (zero ? norm0 : norm1);
 
-        while (rem > 0 && (zero ? t >= tick_limit : t <= tick_limit)) {
-            // TODO: Skip if tick not init?
+        while (s.rem > 0 && (zero ? s.t >= tick_limit : s.t <= tick_limit)) {
+            Bin storage bin = bins[s.t];
+            Bundle storage bun = buns[s.t][slots[s.t]];
 
-            // TODO: use memory?
-            Bin storage bin = bins[t];
-            Bundle storage bun = buns[t][slots[t]];
-
-            // TODO: check p > 0?
-            uint128 p = prices[t];
+            uint128 p = prices[s.t];
 
             // Limit orders
             if (zero ? bun.y > 0 : bun.x > 0) {
@@ -356,39 +354,38 @@ contract Pool {
                 uint128 fin;
 
                 if (zero) {
-                    // y <- x
                     (cin, cout, fin) =
-                        Swap.xy(bun.x, bun.y, p, bin.s > 0 ? FEE : 0, rem);
-                    // Exclude fin, fin goes to LP
+                        Swap.xy(bun.x, bun.y, p, bin.s > 0 ? FEE : 0, s.rem);
+
                     bun.x += cin;
                     bun.y -= cout;
+
                     if (!bun.zero && bun.y == 0) {
-                        slots[t] += 1;
+                        slots[s.t] += 1;
                     }
                     if (bin.s > 0) {
                         bin.x += fin;
                     }
                 } else {
-                    // y -> x
                     (cin, cout, fin) =
-                        Swap.yx(bun.x, bun.y, p, bin.s > 0 ? FEE : 0, rem);
+                        Swap.yx(bun.x, bun.y, p, bin.s > 0 ? FEE : 0, s.rem);
+
                     bun.x -= cout;
-                    // Exclude fin, fin goes to LP
                     bun.y += cin;
+
                     if (bun.zero && bun.x == 0) {
-                        slots[t] += 1;
+                        slots[s.t] += 1;
                     }
                     if (bin.s > 0) {
                         bin.y += fin;
                     }
                 }
 
-                fee += fin;
-                rem -= cin + fin;
-                out += cout;
+                s.rem -= cin + fin;
+                s.out += cout;
             }
 
-            /*
+            // Bin liquidity
             {
                 uint128 cin;
                 uint128 cout;
@@ -396,54 +393,51 @@ contract Pool {
 
                 if (zero) {
                     if (bin.y > 0) {
-                        (cin, cout, fin) = Swap.xy(bin.x, bin.y, p, FEE, rem);
-                        // TODO: need to inc liq?
+                        (cin, cout, fin) = Swap.xy(bin.x, bin.y, p, FEE, s.rem);
                         bin.x += cin + fin;
                         bin.y -= cout;
                     }
                 } else {
                     if (bin.x > 0) {
-                        (cin, cout, fin) = Swap.yx(bin.x, bin.y, p, FEE, rem);
+                        (cin, cout, fin) = Swap.yx(bin.x, bin.y, p, FEE, s.rem);
                         bin.x -= cout;
-                        // TODO: need to inc liq?
                         bin.y += cin + fin;
                     }
                 }
 
-                fee += fin;
-                // TODO: check underflow
-                rem -= cin + fin;
-                out += cout;
+                s.rem -= cin + fin;
+                s.out += cout;
             }
 
-            // TODO: check condition
             if (zero ? bun.y == 0 && bin.x == 0 : bun.x == 0 && bin.y == 0) {
-                (t,) = bitmap.next(t, TICK_SPACING, !zero);
+                (s.t,) = bitmap.next(s.t, TICK_SPACING, !zero);
             }
-            */
         }
 
-        tick = t;
-
-        out /= zero ? norm1 : norm0;
-        require(out >= min_out, "out < min");
+        tick = s.t;
 
         if (zero) {
-            // Round in favor of the pool
-            coin0.safeTransferFrom(
-                msg.sender, address(this), max_in - rem / norm0
-            );
-            if (out > 0) {
-                coin1.safeTransfer(msg.sender, uint256(out));
+            s.rem /= norm0;
+            s.out /= norm1;
+            require(s.out >= min_out, "out < min");
+
+            coin0.safeTransferFrom(msg.sender, address(this), max_in - s.rem);
+
+            if (s.out > 0) {
+                coin1.safeTransfer(msg.sender, uint256(s.out));
             }
         } else {
-            // Round in favor of the pool
-            coin1.safeTransferFrom(
-                msg.sender, address(this), max_in - rem / norm1
-            );
-            if (out > 0) {
-                coin0.safeTransfer(msg.sender, uint256(out));
+            s.rem /= norm1;
+            s.out /= norm0;
+            require(s.out >= min_out, "out < min");
+
+            coin1.safeTransferFrom(msg.sender, address(this), max_in - s.rem);
+
+            if (s.out > 0) {
+                coin0.safeTransfer(msg.sender, uint256(s.out));
             }
         }
+
+        return (s.rem, s.out);
     }
 }
