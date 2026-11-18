@@ -325,6 +325,12 @@ contract Pool {
         }
     }
 
+    struct SwapAmts {
+        uint128 cin;
+        uint128 cout;
+        uint128 fin;
+    }
+
     function swap(uint128 max_in, uint128 min_out, int24 tick_limit, bool zero)
         external
         lock
@@ -333,12 +339,8 @@ contract Pool {
         int24 t = tick;
         rem = max_in * (zero ? norm0 : norm1);
 
-        while (rem > 0 && zero ? t >= tick_limit : t <= tick_limit) {
+        while (rem > 0 && (zero ? t >= tick_limit : t <= tick_limit)) {
             // TODO: Skip if tick not init?
-            // px = y
-            uint128 cin;
-            uint128 cout;
-            uint128 fin;
 
             // TODO: use memory?
             Bin storage bin = bins[t];
@@ -349,6 +351,10 @@ contract Pool {
 
             // Limit orders
             if (zero ? bun.y > 0 : bun.x > 0) {
+                uint128 cin;
+                uint128 cout;
+                uint128 fin;
+
                 if (zero) {
                     // y <- x
                     (cin, cout, fin) =
@@ -382,23 +388,26 @@ contract Pool {
                 out += cout;
             }
 
-            /* TODO: fix stack too deep
-            uint128 l = Liq.calc(p, bin.x, bin.y);
-            if (l > 0) {
+            /*
+            {
                 uint128 cin;
                 uint128 cout;
                 uint128 fin;
 
                 if (zero) {
-                    (cin, cout, fin) = Swap.xy(bin.x, bin.y, p, FEE, rem);
-                    // TODO: need to inc liq?
-                    bin.x += cin + fin;
-                    bin.y -= cout;
+                    if (bin.y > 0) {
+                        (cin, cout, fin) = Swap.xy(bin.x, bin.y, p, FEE, rem);
+                        // TODO: need to inc liq?
+                        bin.x += cin + fin;
+                        bin.y -= cout;
+                    }
                 } else {
-                    (cin, cout, fin) = Swap.yx(bin.x, bin.y, p, FEE, rem);
-                    bin.x -= cout;
-                    // TODO: need to inc liq?
-                    bin.y += cin + fin;
+                    if (bin.x > 0) {
+                        (cin, cout, fin) = Swap.yx(bin.x, bin.y, p, FEE, rem);
+                        bin.x -= cout;
+                        // TODO: need to inc liq?
+                        bin.y += cin + fin;
+                    }
                 }
 
                 fee += fin;
