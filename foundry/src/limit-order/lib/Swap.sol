@@ -2,6 +2,7 @@
 pragma solidity 0.8.33;
 
 import {RAY_128, min, muldiv} from "./Math.sol";
+import {BASE} from "./Constants.sol";
 
 // TODO: test
 
@@ -19,13 +20,13 @@ library Swap {
         // TODO: check bin.y * RAY / p <= u128
         // TODO: p > 0?
         uint128 max_cin = min(muldiv(y, RAY_128, p), x);
-        uint128 max_fin = max_cin * fee / 1e5;
+        uint128 max_fin = max_cin * fee / BASE;
 
         if (rem >= max_cin + max_fin) {
             fin = max_fin;
             cin = max_cin;
         } else {
-            fin = rem * fee / 1e5;
+            fin = rem * fee / BASE;
             cin = rem - fin;
         }
 
@@ -42,13 +43,13 @@ library Swap {
         // y -> x
         // px = y -> max y = px
         uint128 max_cin = min(muldiv(x, p, RAY_128), y);
-        uint128 max_fin = max_cin * fee / 1e5;
+        uint128 max_fin = max_cin * fee / BASE;
 
         if (rem >= max_cin + max_fin) {
             fin = max_fin;
             cin = max_cin;
         } else {
-            fin = rem * fee / 1e5;
+            fin = rem * fee / BASE;
             cin = rem - fin;
         }
 

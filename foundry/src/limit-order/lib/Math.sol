@@ -3,6 +3,8 @@ pragma solidity 0.8.33;
 
 // TODO: test
 
+uint128 constant WAD_128 = 1e18;
+uint256 constant WAD_256 = 1e18;
 uint128 constant RAY_128 = 1e27;
 uint256 constant RAY_256 = 1e27;
 

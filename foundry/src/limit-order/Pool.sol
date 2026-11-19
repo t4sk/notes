@@ -14,6 +14,7 @@ import {
     u128,
     pow
 } from "./lib/Math.sol";
+import {BASE, SWAP_FEE, FLASH_FEE, OFF} from "./lib/Constants.sol";
 import {Bitmap} from "./lib/Bitmap.sol";
 import {Tick} from "./lib/Tick.sol";
 import {Liq} from "./lib/Liq.sol";
@@ -52,6 +53,7 @@ contract Pool {
     // - limit orders are execute first before bin liquidity
     // - limit order fees goes to liquidity providers
     // Bundle of limit orders in the same price
+    // TODO: min to prevent dust orders?
     struct Bundle {
         // Normalized coin X amount [1e18]
         uint128 x;
@@ -63,12 +65,7 @@ contract Pool {
         // TODO: need vault math?
         uint128 tot;
     }
-    // TODO: min to prevent dust orders?
 
-    // 0.3%
-    uint128 private constant FEE = 0.003 * 1e5;
-    // Virtual shares offset (1 unit of liquidity = 10**off shares)
-    uint128 private constant OFF = 3;
     // TODO: immutable?
     int24 private constant TICK_SPACING = 1;
 
@@ -354,8 +351,9 @@ contract Pool {
                 uint128 fin;
 
                 if (zero) {
-                    (cin, cout, fin) =
-                        Swap.xy(bun.x, bun.y, p, bin.s > 0 ? FEE : 0, s.rem);
+                    (cin, cout, fin) = Swap.xy(
+                        bun.x, bun.y, p, bin.s > 0 ? SWAP_FEE : 0, s.rem
+                    );
 
                     bun.x += cin;
                     bun.y -= cout;
@@ -367,8 +365,9 @@ contract Pool {
                         bin.x += fin;
                     }
                 } else {
-                    (cin, cout, fin) =
-                        Swap.yx(bun.x, bun.y, p, bin.s > 0 ? FEE : 0, s.rem);
+                    (cin, cout, fin) = Swap.yx(
+                        bun.x, bun.y, p, bin.s > 0 ? SWAP_FEE : 0, s.rem
+                    );
 
                     bun.x -= cout;
                     bun.y += cin;
@@ -393,13 +392,15 @@ contract Pool {
 
                 if (zero) {
                     if (bin.y > 0) {
-                        (cin, cout, fin) = Swap.xy(bin.x, bin.y, p, FEE, s.rem);
+                        (cin, cout, fin) =
+                            Swap.xy(bin.x, bin.y, p, SWAP_FEE, s.rem);
                         bin.x += cin + fin;
                         bin.y -= cout;
                     }
                 } else {
                     if (bin.x > 0) {
-                        (cin, cout, fin) = Swap.yx(bin.x, bin.y, p, FEE, s.rem);
+                        (cin, cout, fin) =
+                            Swap.yx(bin.x, bin.y, p, SWAP_FEE, s.rem);
                         bin.x -= cout;
                         bin.y += cin + fin;
                     }
@@ -440,4 +441,63 @@ contract Pool {
 
         return (s.rem, s.out);
     }
+
+    // TODO: need to update liquidity and fee growths?
+    // Total liquidity
+    uint256 public tot;
+    // LP => liquidity
+    mapping(address => uint128) public liqs;
+    uint256 public fee0;
+    uint256 public fee1;
+    mapping(address => uint256) public last0;
+    mapping(address => uint256) public last1;
+
+    function flash(uint128 a0, uint128 a1) external lock {
+        require(a0 > 0 || a1 > 0, "a0 = a1 = 0");
+
+        uint128 f0 = a0 * FLASH_FEE / BASE;
+        uint128 f1 = a1 * FLASH_FEE / BASE;
+
+        // TODO: static calls
+        uint256 b0 = coin0.balanceOf(address(this));
+        uint256 b1 = coin1.balanceOf(address(this));
+
+        if (a0 > 0) {
+            coin0.transfer(msg.sender, a0);
+        }
+        if (a1 > 0) {
+            coin1.transfer(msg.sender, a1);
+        }
+
+        IFlash(msg.sender).flash(a0, a1, f0, f1);
+
+        // TODO: static calls
+        require(coin0.balanceOf(address(this)) >= b0 + f0, "bal0 after");
+        require(coin1.balanceOf(address(this)) >= b1 + f1, "bal1 after");
+
+        fee0 += uint256(f0 * norm0) * RAY_256 / tot;
+        fee1 += uint256(f1 * norm1) * RAY_256 / tot;
+    }
+
+    // TODO: collect to tick
+    function collect() external returns (uint128 f0, uint128 f1) {
+        uint128 l = liqs[msg.sender];
+
+        f0 = u128((fee0 - last0[msg.sender]) * l / tot / norm0);
+        f1 = u128((fee1 - last1[msg.sender]) * l / tot / norm1);
+
+        last0[msg.sender] = fee0;
+        last1[msg.sender] = fee1;
+
+        if (f0 > 0) {
+            coin0.transfer(msg.sender, uint256(f0));
+        }
+        if (f1 > 0) {
+            coin1.transfer(msg.sender, uint256(f1));
+        }
+    }
+}
+
+interface IFlash {
+    function flash(uint128 a0, uint128 a1, uint128 f0, uint128 f1) external;
 }
