@@ -5,21 +5,25 @@ import "forge-std/Test.sol";
 import {BinarySearch} from "../src/BinarySearch.sol";
 
 contract BinarySearchTest is Test {
-    function test(uint256[] memory xs, uint256 i) public {
-        if (xs.length == 0) {
-            return;
+    function test_range(uint256[] memory xs, uint256 x) public {
+        xs = vm.sort(xs);
+
+        if (xs.length > 0) {
+            x = bound(x, xs[0], xs[xs.length - 1]);
         }
 
-        xs = vm.sort(xs);
-        i = bound(i, 0, xs.length - 1);
-        uint256 x = xs[i];
-        uint256 j = BinarySearch.search(xs, x);
+        uint256 k = BinarySearch.search(xs, x);
 
-        assertGt(j, 0);
-        assertLe(j, xs.length);
-        assertEq(xs[j - 1], x);
-        if (j < xs.length) {
-            assertGt(xs[j], x);
+        assertGe(k, 0);
+        assertLe(k, xs.length);
+
+        // (1) x < xs[i] for all i >= lo
+        for (uint256 i = k; i < xs.length; i++) {
+            assertGt(xs[i], x);
+        }
+        // (2) xs[i] <= x for all i < lo
+        for (uint256 i = 0; i < k; i++) {
+            assertLe(xs[i], x);
         }
     }
 }
