@@ -2,7 +2,7 @@
 pragma solidity 0.8.33;
 
 import "forge-std/Test.sol";
-import {BinarySearch} from "../src/BinarySearch.sol";
+import {BinarySearch} from "@src/BinarySearch.sol";
 
 contract BinarySearchTest is Test {
     function test_range(uint256[] memory xs, uint256 x) public {
