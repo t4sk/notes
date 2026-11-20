@@ -20,6 +20,7 @@ import {Tick} from "./lib/Tick.sol";
 import {Liq} from "./lib/Liq.sol";
 import {Swap} from "./lib/Swap.sol";
 import {Price} from "./lib/Price.sol";
+import {IFlash} from "./lib/IFlash.sol";
 
 // TODO: use custom errors to save gas
 // TODO: multi token
@@ -104,6 +105,20 @@ contract Pool {
     mapping(int24 => mapping(uint256 => mapping(address => uint128))) public
         ins;
 
+    // Flash
+    // TODO: need to update liquidity and fee growths?
+    // Total liquidity
+    uint256 public tot_liq;
+    // LP => liquidity
+    mapping(address => uint128) public liqs;
+    // TODO: split vars - fee growth and current collect fees
+    uint256 public fee0;
+    uint256 public fee1;
+    mapping(address => uint256) public last0;
+    mapping(address => uint256) public last1;
+    mapping(address => uint256) public claims0;
+    mapping(address => uint256) public claims1;
+
     modifier lock() {
         require(!locked, "locked");
         locked = true;
@@ -127,6 +142,79 @@ contract Pool {
         tick = t;
     }
 
+    function bal(address coin) internal view returns (uint256) {
+        (bool ok, bytes memory res) = address(coin)
+            .staticcall(abi.encodeCall(IERC20.balanceOf, address(this)));
+        require(ok && res.length >= 32, "balance query failed");
+        return abi.decode(res, (uint256));
+    }
+
+    function sync(address usr) internal {
+        uint128 l = liqs[usr];
+
+        if (tot_liq > 0) {
+            uint256 f0 = (fee0 - last0[usr]) * l / tot_liq;
+            uint256 f1 = (fee1 - last1[usr]) * l / tot_liq;
+            claims0[usr] += f0;
+            claims1[usr] += f1;
+        }
+
+        last0[usr] = fee0;
+        last1[usr] = fee1;
+    }
+
+    function flash(uint128 a0, uint128 a1) external lock {
+        require(a0 > 0 || a1 > 0, "a0 = a1 = 0");
+
+        uint128 f0 = a0 * FLASH_FEE / BASE;
+        uint128 f1 = a1 * FLASH_FEE / BASE;
+
+        uint256 b0_before = bal(address(coin0));
+        uint256 b1_before = bal(address(coin1));
+
+        if (a0 > 0) {
+            coin0.safeTransfer(msg.sender, a0);
+        }
+        if (a1 > 0) {
+            coin1.safeTransfer(msg.sender, a1);
+        }
+
+        IFlash(msg.sender).flash(a0, a1, f0, f1);
+
+        uint256 b0_after = bal(address(coin0));
+        uint256 b1_after = bal(address(coin1));
+
+        require(b0_after >= b0_before + f0, "bal0 after");
+        require(b1_after >= b1_before + f1, "bal1 after");
+
+        // TODO: check math and cast
+        fee0 += uint256(f0 * norm0) * RAY_256 / tot_liq;
+        fee1 += uint256(f1 * norm1) * RAY_256 / tot_liq;
+    }
+
+    function collect(uint256 min0, uint256 min1)
+        external
+        returns (uint128 f0, uint128 f1)
+    {
+        sync(msg.sender);
+
+        f0 = u128(claims0[msg.sender] / norm0);
+        f1 = u128(claims1[msg.sender] / norm1);
+
+        claims0[msg.sender] -= f0 * norm0;
+        claims1[msg.sender] -= f1 * norm1;
+
+        require(f0 >= min0, "fee 0 < min");
+        require(f1 >= min1, "fee 1 < min");
+
+        if (f0 > 0) {
+            coin0.safeTransfer(msg.sender, uint256(f0));
+        }
+        if (f1 > 0) {
+            coin1.safeTransfer(msg.sender, uint256(f1));
+        }
+    }
+
     function inc(int24 t, uint128 a0, uint128 a1, uint256 min)
         external
         lock
@@ -145,6 +233,10 @@ contract Pool {
 
         Bin storage bin = bins[t];
         uint128 l = Liq.calc(p, bin.x, bin.y);
+
+        sync(msg.sender);
+        tot_liq += dl;
+        liqs[msg.sender] += dl;
 
         if (prices[t] == 0) {
             prices[t] = p;
@@ -185,6 +277,10 @@ contract Pool {
         uint128 l = Liq.calc(p, bin.x, bin.y);
         uint128 dl = Liq.val(s, bin.s, l, OFF);
         (uint128 dx, uint128 dy) = Liq.calc_dx_dy_out(bin.x, bin.y, dl, l);
+
+        sync(msg.sender);
+        tot_liq -= dl;
+        liqs[msg.sender] -= dl;
 
         bin.x -= dx;
         bin.y -= dy;
@@ -385,6 +481,7 @@ contract Pool {
             }
 
             // Bin liquidity
+            // TODO: ignore updating tot_liq?
             {
                 uint128 cin;
                 uint128 cout;
@@ -441,63 +538,5 @@ contract Pool {
 
         return (s.rem, s.out);
     }
-
-    // TODO: need to update liquidity and fee growths?
-    // Total liquidity
-    uint256 public tot;
-    // LP => liquidity
-    mapping(address => uint128) public liqs;
-    uint256 public fee0;
-    uint256 public fee1;
-    mapping(address => uint256) public last0;
-    mapping(address => uint256) public last1;
-
-    function flash(uint128 a0, uint128 a1) external lock {
-        require(a0 > 0 || a1 > 0, "a0 = a1 = 0");
-
-        uint128 f0 = a0 * FLASH_FEE / BASE;
-        uint128 f1 = a1 * FLASH_FEE / BASE;
-
-        // TODO: static calls
-        uint256 b0 = coin0.balanceOf(address(this));
-        uint256 b1 = coin1.balanceOf(address(this));
-
-        if (a0 > 0) {
-            coin0.transfer(msg.sender, a0);
-        }
-        if (a1 > 0) {
-            coin1.transfer(msg.sender, a1);
-        }
-
-        IFlash(msg.sender).flash(a0, a1, f0, f1);
-
-        // TODO: static calls
-        require(coin0.balanceOf(address(this)) >= b0 + f0, "bal0 after");
-        require(coin1.balanceOf(address(this)) >= b1 + f1, "bal1 after");
-
-        fee0 += uint256(f0 * norm0) * RAY_256 / tot;
-        fee1 += uint256(f1 * norm1) * RAY_256 / tot;
-    }
-
-    // TODO: collect to tick
-    function collect() external returns (uint128 f0, uint128 f1) {
-        uint128 l = liqs[msg.sender];
-
-        f0 = u128((fee0 - last0[msg.sender]) * l / tot / norm0);
-        f1 = u128((fee1 - last1[msg.sender]) * l / tot / norm1);
-
-        last0[msg.sender] = fee0;
-        last1[msg.sender] = fee1;
-
-        if (f0 > 0) {
-            coin0.transfer(msg.sender, uint256(f0));
-        }
-        if (f1 > 0) {
-            coin1.transfer(msg.sender, uint256(f1));
-        }
-    }
 }
 
-interface IFlash {
-    function flash(uint128 a0, uint128 a1, uint128 f0, uint128 f1) external;
-}
