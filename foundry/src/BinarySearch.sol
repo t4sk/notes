@@ -40,17 +40,13 @@ library BinarySearch {
         // (1) x < xs[i] for all i >= lo
         // (2) xs[i] <= x for all i < lo
 
-        // If lo < xs.length
-        // (1) -> x < xs[lo]
-        // (2) -> lo is the first index with x < xs[lo]
-
         // If lo == xs.length
         // (1) -> {i: i >= lo} = empty set, no i >= lo
         // (2) -> xs[i] <= x for all i
 
-        // If lo < xs.length:
-        // (1) gives x < xs[lo], and (2) gives xs[i] <= x for all i < lo,
-        // so together lo is the first index with x < xs[lo]
+        // If lo < xs.length
+        // (1) -> x < xs[lo]
+        // (2) -> lo is the first index with x < xs[lo]
 
         return lo;
     }
